@@ -69,8 +69,8 @@ test("renderSiteJson emits the structure Eleventy templates expect", () => {
   const json = JSON.parse(renderSiteJson(config));
   assert.equal(json.identity.name, "rmendes.net");
   assert.equal(json.branding.typography.sans, "Inter");
-  assert.deepEqual(typeof json.layout, "object");
-  assert.deepEqual(typeof json.features, "object");
+  assert.ok(json.layout !== null && typeof json.layout === "object", "layout should be a non-null object");
+  assert.ok(json.features !== null && typeof json.features === "object", "features should be a non-null object");
 });
 
 test("renderSiteJson strips updatedBy but keeps updatedAt", () => {
@@ -84,4 +84,10 @@ test("renderSiteJson strips updatedBy but keeps updatedAt", () => {
   const json = JSON.parse(renderSiteJson(configWithMeta));
   assert.equal(json.updatedBy, undefined, "updatedBy (PII) must be stripped");
   assert.equal(json.updatedAt, "2026-01-15T12:00:00.000Z", "updatedAt must be kept");
+});
+
+test("renderSiteJson preserves schemaVersion for migration logic", () => {
+  const config = mergeWithDefaults({});
+  const json = JSON.parse(renderSiteJson(config));
+  assert.equal(json.schemaVersion, 1, "schemaVersion must survive the PII strip");
 });
