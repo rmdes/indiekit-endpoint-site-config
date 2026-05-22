@@ -33,9 +33,7 @@
       "fontSans": "Police sans-serif",
       "fontSerif": "Police serif",
       "fontMono": "Police mono",
-      "fontHosting": "Hébergement des polices",
-      "logo": "Logo",
-      "favicon": "Favicon"
+      "fontHosting": "Hébergement des polices"
     },
     "layout": {
       "title": "Mise en page",

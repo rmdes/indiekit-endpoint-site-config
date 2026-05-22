@@ -33,9 +33,7 @@
       "fontSans": "Sans-serif font",
       "fontSerif": "Serif font",
       "fontMono": "Monospace font",
-      "fontHosting": "Font hosting",
-      "logo": "Logo",
-      "favicon": "Favicon"
+      "fontHosting": "Font hosting"
     },
     "layout": {
       "title": "Layout",
