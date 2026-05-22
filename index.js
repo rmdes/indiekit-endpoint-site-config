@@ -52,14 +52,14 @@ export default class SiteConfigEndpoint {
 
   async init(Indiekit) {
     Indiekit.addEndpoint(this);
+    this._apiRouter = apiRouter(Indiekit);
 
     const protectedRouter = express.Router();
-    protectedRouter.get("/", (req, res) => res.redirect("/site-config/identity"));
+    protectedRouter.get("/", (req, res) => res.redirect(`${this.mountPath}/identity`));
     protectedRouter.use("/identity", identityRouter(Indiekit));
     protectedRouter.use("/branding", brandingRouter(Indiekit));
     protectedRouter.use("/layout",   layoutRouter(Indiekit));
     protectedRouter.use("/features", featuresRouter(Indiekit));
-    protectedRouter.use("/api",      apiRouter(Indiekit));
 
     this.routes = protectedRouter;
 
@@ -71,5 +71,13 @@ export default class SiteConfigEndpoint {
     } catch (error) {
       console.warn("[site-config] initial render skipped:", error.message);
     }
+  }
+
+  get routesPublic() {
+    const router = express.Router();
+    if (this._apiRouter) {
+      router.use("/api", this._apiRouter);
+    }
+    return router;
   }
 }
