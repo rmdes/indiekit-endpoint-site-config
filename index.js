@@ -8,6 +8,7 @@ import { layoutRouter } from "./lib/controllers/layout.js";
 import { featuresRouter } from "./lib/controllers/features.js";
 import { apiRouter } from "./lib/controllers/api.js";
 import { getSiteConfig } from "./lib/storage/get-site-config.js";
+import { maybeSeedFromEnv } from "./lib/storage/seed-from-env.js";
 import { writeThemeCss } from "./lib/render/write-theme-css.js";
 import { writeSiteJson } from "./lib/render/write-site-json.js";
 
@@ -65,6 +66,7 @@ export default class SiteConfigEndpoint {
 
     // Ensure files exist on first boot — synchronously regenerate.
     try {
+      await maybeSeedFromEnv(Indiekit);
       const config = await getSiteConfig(Indiekit);
       await writeThemeCss(config);
       await writeSiteJson(config);
