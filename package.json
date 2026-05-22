@@ -1,0 +1,25 @@
+{
+  "name": "@rmdes/indiekit-endpoint-site-config",
+  "version": "1.0.0-alpha.0",
+  "type": "module",
+  "description": "Site identity, branding, layout, and feature flag configuration for Indiekit",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": ["index.js", "lib/", "views/", "locales/", "README.md"],
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "publish:beta": "npm publish --tag beta"
+  },
+  "engines": { "node": ">=22" },
+  "peerDependencies": {
+    "@indiekit/indiekit": "^1.0.0-beta.27"
+  },
+  "dependencies": {
+    "@rmdes/indiekit-startup-gate": "^1.0.0",
+    "culori": "^4.0.1",
+    "express": "^4.21.2"
+  },
+  "publishConfig": { "access": "public" }
+}
