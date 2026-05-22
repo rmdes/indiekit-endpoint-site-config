@@ -1,11 +1,26 @@
-{# locals: name (string), label (string), value (hex string) #}
-<div class="form-field form-field--color">
-  <label for="{{ name }}">{{ label }}</label>
-  <div class="color-picker">
-    <input type="color" class="color-picker__swatch" id="{{ name }}-swatch" value="{{ value }}"
+{#
+  Nunjucks macro: colorPicker(name, label, value)
+  Usage:
+    {% import "partials/color-picker.njk" as cp %}
+    {{ cp.colorPicker("accentBase", "Accent colour", config.branding.accentBase) }}
+#}
+{% macro colorPicker(name, label, value) %}
+<div class="field sc-color-field">
+  <label class="field__label" for="{{ name }}">{{ label }}</label>
+  <div class="sc-color-picker">
+    <input type="color"
+           class="sc-color-picker__swatch"
+           id="{{ name }}-swatch"
+           value="{{ value or '#888888' }}"
            oninput="document.getElementById('{{ name }}').value = this.value">
-    <input type="text" class="color-picker__hex" id="{{ name }}" name="{{ name }}"
-           value="{{ value }}" pattern="^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" required
+    <input class="field__input sc-color-picker__hex"
+           type="text"
+           id="{{ name }}"
+           name="{{ name }}"
+           value="{{ value or '#888888' }}"
+           pattern="^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"
+           required
            oninput="document.getElementById('{{ name }}-swatch').value = this.value">
   </div>
 </div>
+{% endmacro %}

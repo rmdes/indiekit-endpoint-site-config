@@ -1,76 +1,311 @@
 {% extends "document.njk" %}
+{% import "partials/color-picker.njk" as cp %}
 
 {% block title %}{{ __('siteConfig.branding.title') }}{% endblock %}
 
 {% block content %}
-  <h1>{{ __('siteConfig.title') }}</h1>
-  {% include "partials/tab-strip.njk" %}
+<style>
+  .sc-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl, 2rem);
+  }
 
-  <form method="post" action="/site-config/branding" class="site-config__form site-config__form--branding">
-    <div class="site-config__columns">
-      <div class="site-config__form-column">
-        <fieldset>
-          <legend>{{ __('siteConfig.branding.surfacePreset') }}</legend>
-          <div class="form-radio-group">
-            {% for preset in ['warm-stone', 'cool-slate', 'neutral-zinc', 'custom'] %}
-              <label class="form-radio">
-                <input type="radio" name="surfacePreset" value="{{ preset }}"
-                       {% if config.branding.surfacePreset == preset %}checked{% endif %}>
-                <span>{{ preset }}</span>
-              </label>
+  .sc-section {
+    background: var(--color-offset, #f5f5f5);
+    border-radius: var(--border-radius-small, 0.5rem);
+    padding: var(--space-m, 1.5rem);
+  }
+
+  .sc-section h2 {
+    font: var(--font-heading, bold 1.25rem/1.4 sans-serif);
+    margin-block-end: var(--space-s, 0.75rem);
+    padding-block-end: var(--space-xs, 0.5rem);
+    border-block-end: 1px solid var(--color-outline-variant, #ddd);
+  }
+
+  .sc-section__desc {
+    color: var(--color-on-offset, #666);
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    margin-block-end: var(--space-s, 0.75rem);
+  }
+
+  .hp-success {
+    background: var(--color-success-container, #d4edda);
+    border: 1px solid var(--color-success, #28a745);
+    border-radius: var(--border-radius-small, 0.25rem);
+    padding: var(--space-s, 0.75rem);
+    margin-block-end: var(--space-m, 1rem);
+  }
+
+  /* Field grid for two-column layouts */
+  .hp-field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-m, 1rem) var(--space-s, 0.75rem);
+  }
+
+  .hp-field-grid .field--full {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 640px) {
+    .hp-field-grid {
+      grid-template-columns: 1fr;
+    }
+    .hp-field-grid .field--full {
+      grid-column: 1;
+    }
+  }
+
+  /* Field styling */
+  .sc-dashboard .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .sc-dashboard .field__label {
+    display: block;
+    font: var(--font-caption, 0.75rem/1.4 sans-serif);
+    font-weight: 600;
+    color: var(--color-on-surface, inherit);
+  }
+
+  .sc-dashboard .field__input {
+    width: 100%;
+    padding: var(--space-2xs, 0.375rem) var(--space-xs, 0.5rem);
+    border: 1px solid var(--color-outline-variant, #ccc);
+    border-radius: var(--border-radius-small, 0.25rem);
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    background: var(--color-background, #fff);
+    color: var(--color-on-surface, inherit);
+    transition: border-color 0.15s;
+  }
+
+  .sc-dashboard .field__input:focus {
+    outline: none;
+    border-color: var(--color-primary, #0066cc);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #0066cc) 20%, transparent);
+  }
+
+  .sc-dashboard .field__hint {
+    color: var(--color-on-offset, #888);
+    font: var(--font-caption, 0.75rem/1.4 sans-serif);
+    margin: 0;
+  }
+
+  /* Radio group */
+  .sc-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s, 0.75rem);
+    margin-block-start: var(--space-xs, 0.5rem);
+  }
+
+  .sc-radio-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2xs, 0.375rem);
+    cursor: pointer;
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    padding: var(--space-2xs, 0.375rem) var(--space-s, 0.75rem);
+    border: 1px solid var(--color-outline-variant, #ccc);
+    border-radius: var(--border-radius-small, 0.25rem);
+    background: var(--color-background, #fff);
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .sc-radio-label:has(input:checked) {
+    border-color: var(--color-primary, #0066cc);
+    background: color-mix(in srgb, var(--color-primary, #0066cc) 8%, var(--color-background, #fff));
+  }
+
+  /* Color picker compound */
+  .sc-color-picker {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs, 0.5rem);
+  }
+
+  .sc-color-picker__swatch {
+    width: 2.5rem;
+    height: 2.25rem;
+    padding: 2px;
+    border: 1px solid var(--color-outline-variant, #ccc);
+    border-radius: var(--border-radius-small, 0.25rem);
+    background: var(--color-background, #fff);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .sc-color-picker .field__input {
+    flex: 1;
+  }
+
+  /* Surface tones grid */
+  .sc-tones-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: var(--space-s, 0.75rem);
+  }
+
+  /* Two-column layout for branding (form + preview) */
+  .sc-branding-layout {
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    gap: var(--space-xl, 2rem);
+    align-items: start;
+  }
+
+  @media (max-width: 1024px) {
+    .sc-branding-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .sc-preview-panel {
+    position: sticky;
+    top: var(--space-m, 1rem);
+  }
+
+  .sc-preview-panel h3 {
+    font: var(--font-heading, bold 1rem/1.4 sans-serif);
+    margin-block-end: var(--space-s, 0.75rem);
+    color: var(--color-on-surface, inherit);
+  }
+
+  .sc-preview-iframe {
+    width: 100%;
+    height: 600px;
+    border: 1px solid var(--color-outline-variant, #ccc);
+    border-radius: var(--border-radius-small, 0.5rem);
+    background: var(--color-background, #fff);
+  }
+</style>
+
+<header class="page-header">
+  <h1 class="page-header__title">{{ __('siteConfig.title') }}</h1>
+</header>
+
+{% include "partials/tab-strip.njk" %}
+
+{% if request.query.saved %}
+<div class="hp-success">
+  <p>{{ __('siteConfig.common.saved') }}</p>
+</div>
+{% endif %}
+
+<div class="sc-branding-layout">
+
+  <form method="post" action="/site-config/branding" class="sc-dashboard">
+
+    {# Surface Preset #}
+    <section class="sc-section">
+      <h2>{{ __('siteConfig.branding.surfacePreset') }}</h2>
+      <p class="sc-section__desc">Choose a base surface palette or define your own custom tones.</p>
+      <div class="sc-radio-group">
+        {% for preset in ['warm-stone', 'cool-slate', 'neutral-zinc', 'custom'] %}
+          <label class="sc-radio-label">
+            <input type="radio" name="surfacePreset" value="{{ preset }}"
+                   {% if config.branding.surfacePreset == preset %}checked{% endif %}>
+            {{ preset }}
+          </label>
+        {% endfor %}
+      </div>
+    </section>
+
+    {# Custom Surface Tones #}
+    <section class="sc-section">
+      <h2>{{ __('siteConfig.branding.surfaceCustom') }}</h2>
+      <p class="sc-section__desc">11 tones from lightest (50) to darkest (950). Only applied when preset is set to "custom".</p>
+      <div class="sc-tones-grid">
+        {% for tone in [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] %}
+          {% set toneVal = config.branding.surfaceCustom[tone] if config.branding.surfaceCustom else '#888888' %}
+          {{ cp.colorPicker('surfaceCustom_' + tone, 'surface-' + tone, toneVal) }}
+        {% endfor %}
+      </div>
+    </section>
+
+    {# Accent Colour #}
+    <section class="sc-section">
+      <h2>{{ __('siteConfig.branding.accent') }}</h2>
+      <p class="sc-section__desc">Base hue used to derive the accent scale.</p>
+      <div class="hp-field-grid">
+        <div class="field--full">
+          {{ cp.colorPicker('accentBase', __('siteConfig.branding.accent'), config.branding.accentBase or '#0066cc') }}
+        </div>
+      </div>
+    </section>
+
+    {# Brand Tokens #}
+    <section class="sc-section">
+      <h2>{{ __('siteConfig.branding.brandTokens') }}</h2>
+      <p class="sc-section__desc">Semantic colours for UI states.</p>
+      <div class="hp-field-grid">
+        {% for token in ['primary', 'link', 'focus', 'success', 'warning', 'danger'] %}
+          {{ cp.colorPicker('colors_' + token, __('siteConfig.branding.' + token), config.branding.colors[token] or '#888888') }}
+        {% endfor %}
+      </div>
+    </section>
+
+    {# Typography #}
+    <section class="sc-section">
+      <h2>{{ __('siteConfig.branding.typography') }}</h2>
+      <div class="hp-field-grid">
+
+        <div class="field">
+          <label class="field__label" for="typography_sans">{{ __('siteConfig.branding.fontSans') }}</label>
+          <select class="field__input" id="typography_sans" name="typography_sans">
+            {% for f in curatedFonts.sans %}
+              <option value="{{ f }}" {% if config.branding.typography.sans == f %}selected{% endif %}>{{ f }}</option>
             {% endfor %}
-          </div>
-        </fieldset>
+          </select>
+        </div>
 
-        <fieldset class="surface-custom" data-show-when="surfacePreset=custom">
-          <legend>{{ __('siteConfig.branding.surfaceCustom') }}</legend>
-          {% for tone in [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] %}
-            {% set v = config.branding.surfaceCustom and config.branding.surfaceCustom[tone] or '#888888' %}
-            {% include "partials/color-picker.njk" with { name: 'surfaceCustom_' + tone, label: 'surface-' + tone, value: v } %}
-          {% endfor %}
-        </fieldset>
+        <div class="field">
+          <label class="field__label" for="typography_serif">{{ __('siteConfig.branding.fontSerif') }}</label>
+          <select class="field__input" id="typography_serif" name="typography_serif">
+            {% for f in curatedFonts.serif %}
+              <option value="{{ f }}" {% if config.branding.typography.serif == f %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        </div>
 
-        <fieldset>
-          <legend>{{ __('siteConfig.branding.accent') }}</legend>
-          {% include "partials/color-picker.njk" with { name: 'accentBase', label: __('siteConfig.branding.accent'), value: config.branding.accentBase } %}
-        </fieldset>
+        <div class="field">
+          <label class="field__label" for="typography_mono">{{ __('siteConfig.branding.fontMono') }}</label>
+          <select class="field__input" id="typography_mono" name="typography_mono">
+            {% for f in curatedFonts.mono %}
+              <option value="{{ f }}" {% if config.branding.typography.mono == f %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        </div>
 
-        <fieldset>
-          <legend>{{ __('siteConfig.branding.brandTokens') }}</legend>
-          {% for token in ['primary', 'link', 'focus', 'success', 'warning', 'danger'] %}
-            {% include "partials/color-picker.njk" with { name: 'colors_' + token, label: __('siteConfig.branding.' + token), value: config.branding.colors[token] } %}
-          {% endfor %}
-        </fieldset>
+        <div class="field">
+          <label class="field__label" for="typography_hosting">{{ __('siteConfig.branding.fontHosting') }}</label>
+          <select class="field__input" id="typography_hosting" name="typography_hosting">
+            <option value="self" {% if config.branding.typography.hosting == 'self' %}selected{% endif %}>Self-hosted</option>
+            <option value="bunny" {% if config.branding.typography.hosting == 'bunny' %}selected{% endif %}>Bunny Fonts</option>
+          </select>
+        </div>
 
-        <fieldset>
-          <legend>{{ __('siteConfig.branding.typography') }}</legend>
-          {% for cat in ['sans', 'serif', 'mono'] %}
-            <div class="form-field">
-              <label for="typography_{{ cat }}">{{ __('siteConfig.branding.font' + cat | capitalize) }}</label>
-              <select id="typography_{{ cat }}" name="typography_{{ cat }}">
-                {% for f in curatedFonts[cat] %}
-                  <option value="{{ f }}" {% if config.branding.typography[cat] == f %}selected{% endif %}>{{ f }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          {% endfor %}
-          <div class="form-field">
-            <label for="typography_hosting">{{ __('siteConfig.branding.fontHosting') }}</label>
-            <select id="typography_hosting" name="typography_hosting">
-              <option value="self" {% if config.branding.typography.hosting == 'self' %}selected{% endif %}>self-hosted</option>
-              <option value="bunny" {% if config.branding.typography.hosting == 'bunny' %}selected{% endif %}>Bunny Fonts</option>
-            </select>
-          </div>
-        </fieldset>
-
-        <button type="submit" class="button">{{ __('siteConfig.common.save') }}</button>
       </div>
+    </section>
 
-      <div class="site-config__preview-column">
-        <h3>{{ __('siteConfig.common.preview') }}</h3>
-        {# TODO Task 10: /site-config/api/preview endpoint not yet implemented; iframe will 404 until then #}
-        <iframe src="/site-config/api/preview" class="site-config__preview-iframe" title="{{ __('siteConfig.common.preview') }}"></iframe>
-      </div>
+    <div class="button-group">
+      <button type="submit" class="button button--primary">{{ __('siteConfig.common.save') }}</button>
     </div>
+
   </form>
+
+  {# Live preview panel #}
+  <aside class="sc-preview-panel">
+    <h3>{{ __('siteConfig.common.preview') }}</h3>
+    {# Preview iframe — renders a styled sample page at /site-config/api/preview #}
+    <iframe src="/site-config/api/preview"
+            class="sc-preview-iframe"
+            title="{{ __('siteConfig.common.preview') }}"></iframe>
+  </aside>
+
+</div>
 {% endblock %}

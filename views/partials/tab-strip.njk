@@ -1,14 +1,40 @@
-{# locals: activeTab (string, one of identity|branding|layout|features) #}
-<nav class="site-config__tabs" aria-label="{{ __('siteConfig.title') }}">
+{# Tab navigation for site-config admin - server-rendered URL tabs #}
+{# Expects: activeTab (string, one of identity|branding|layout|features) #}
+<style>
+  .sc-tab-nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--color-outline-variant, #ddd);
+    margin-block-end: var(--space-xl, 2rem);
+  }
+  .sc-tab-nav__item {
+    padding: var(--space-s, 0.75rem) var(--space-m, 1.25rem);
+    text-decoration: none;
+    color: var(--color-on-offset, #666);
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .sc-tab-nav__item:hover {
+    color: var(--color-primary, #0066cc);
+  }
+  .sc-tab-nav__item--active {
+    color: var(--color-primary, #0066cc);
+    border-bottom-color: var(--color-primary, #0066cc);
+    font-weight: 600;
+  }
+</style>
+<nav class="sc-tab-nav" aria-label="{{ __('siteConfig.title') }}">
   {% set tabs = [
     {key: 'identity', href: '/site-config/identity'},
     {key: 'branding', href: '/site-config/branding'},
-    {key: 'layout', href: '/site-config/layout'},
+    {key: 'layout',   href: '/site-config/layout'},
     {key: 'features', href: '/site-config/features'}
   ] %}
   {% for tab in tabs %}
     <a href="{{ tab.href }}"
-       class="site-config__tab {% if activeTab == tab.key %}site-config__tab--active{% endif %}"
+       class="sc-tab-nav__item{% if activeTab == tab.key %} sc-tab-nav__item--active{% endif %}"
        {% if activeTab == tab.key %}aria-current="page"{% endif %}>
       {{ __('siteConfig.tabs.' + tab.key) }}
     </a>

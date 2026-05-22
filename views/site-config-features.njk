@@ -3,33 +3,164 @@
 {% block title %}{{ __('siteConfig.features.title') }}{% endblock %}
 
 {% block content %}
-  <h1>{{ __('siteConfig.title') }}</h1>
-  {% include "partials/tab-strip.njk" %}
+<style>
+  .sc-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl, 2rem);
+  }
 
-  {% if flags.length == 0 %}
-    <p class="empty-state">{{ __('siteConfig.features.empty') }}</p>
-  {% else %}
-    <form method="post" action="/site-config/features" class="site-config__form">
-      {% set currentCategory = '' %}
-      {% for flag in flags %}
-        {% if flag.category != currentCategory %}
-          {% if not loop.first %}</fieldset>{% endif %}
-          <fieldset>
-            <legend>{{ flag.category }}</legend>
-          {% set currentCategory = flag.category %}
-        {% endif %}
-        <div class="form-field">
-          <label>
-            <input type="checkbox" name="feature_{{ flag.key }}"
-                   {% if config.features[flag.key] %}checked{% elif flag.default %}checked{% endif %}>
-            <strong>{{ flag.label }}</strong>
-            {% if flag.description %}<span class="hint">{{ flag.description }}</span>{% endif %}
-            {% if flag.requiresRestart %}<span class="badge">Restart required</span>{% endif %}
-          </label>
-        </div>
-      {% endfor %}
-      </fieldset>
-      <button type="submit" class="button">{{ __('siteConfig.common.save') }}</button>
-    </form>
-  {% endif %}
+  .sc-section {
+    background: var(--color-offset, #f5f5f5);
+    border-radius: var(--border-radius-small, 0.5rem);
+    padding: var(--space-m, 1.5rem);
+  }
+
+  .sc-section h2 {
+    font: var(--font-heading, bold 1.25rem/1.4 sans-serif);
+    margin-block-end: var(--space-s, 0.75rem);
+    padding-block-end: var(--space-xs, 0.5rem);
+    border-block-end: 1px solid var(--color-outline-variant, #ddd);
+  }
+
+  .sc-section__desc {
+    color: var(--color-on-offset, #666);
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    margin-block-end: var(--space-s, 0.75rem);
+  }
+
+  .hp-success {
+    background: var(--color-success-container, #d4edda);
+    border: 1px solid var(--color-success, #28a745);
+    border-radius: var(--border-radius-small, 0.25rem);
+    padding: var(--space-s, 0.75rem);
+    margin-block-end: var(--space-m, 1rem);
+  }
+
+  /* Empty state */
+  .sc-empty-state {
+    text-align: center;
+    padding: var(--space-xl, 2rem) var(--space-m, 1rem);
+    color: var(--color-on-offset, #888);
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    background: var(--color-offset, #f5f5f5);
+    border: 1px dashed var(--color-outline-variant, #ddd);
+    border-radius: var(--border-radius-small, 0.5rem);
+  }
+
+  .sc-empty-state p {
+    margin: 0;
+  }
+
+  /* Flag rows */
+  .sc-flag-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-s, 0.75rem);
+    padding: var(--space-s, 0.75rem) 0;
+    border-bottom: 1px solid var(--color-outline-variant, #eee);
+  }
+
+  .sc-flag-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .sc-flag-row:first-child {
+    padding-top: 0;
+  }
+
+  .sc-flag-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    flex: 1;
+  }
+
+  .sc-flag-label strong {
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    font-weight: 600;
+    color: var(--color-on-surface, inherit);
+  }
+
+  .sc-flag-hint {
+    font: var(--font-caption, 0.75rem/1.4 sans-serif);
+    color: var(--color-on-offset, #888);
+    margin: 0;
+  }
+
+  .sc-restart-badge {
+    display: inline-flex;
+    align-items: center;
+    font: var(--font-caption, 0.7rem/1.4 sans-serif);
+    font-weight: 600;
+    color: var(--color-warning, #856404);
+    background: color-mix(in srgb, var(--color-warning, #856404) 12%, var(--color-background, #fff));
+    border: 1px solid color-mix(in srgb, var(--color-warning, #856404) 30%, transparent);
+    border-radius: var(--border-radius-small, 0.25rem);
+    padding: 0.1rem 0.4rem;
+    white-space: nowrap;
+  }
+</style>
+
+<header class="page-header">
+  <h1 class="page-header__title">{{ __('siteConfig.title') }}</h1>
+</header>
+
+{% include "partials/tab-strip.njk" %}
+
+{% if request.query.saved %}
+<div class="hp-success">
+  <p>{{ __('siteConfig.common.saved') }}</p>
+</div>
+{% endif %}
+
+{% if flags.length == 0 %}
+
+  <div class="sc-empty-state">
+    <p>{{ __('siteConfig.features.empty') }}</p>
+  </div>
+
+{% else %}
+
+  <form method="post" action="/site-config/features" class="sc-dashboard">
+
+    {% set currentCategory = '' %}
+    {% for flag in flags %}
+
+      {% if flag.category != currentCategory %}
+        {% set currentCategory = flag.category %}
+        <section class="sc-section">
+          <h2>{{ flag.category }}</h2>
+      {% endif %}
+
+      <div class="sc-flag-row">
+        <input type="checkbox"
+               id="feature_{{ flag.key }}"
+               name="feature_{{ flag.key }}"
+               {% if config.features[flag.key] %}checked{% elif flag.default %}checked{% endif %}>
+        <label class="sc-flag-label" for="feature_{{ flag.key }}">
+          <strong>{{ flag.label }}</strong>
+          {% if flag.description %}
+            <p class="sc-flag-hint">{{ flag.description }}</p>
+          {% endif %}
+          {% if flag.requiresRestart %}
+            <span class="sc-restart-badge">Restart required</span>
+          {% endif %}
+        </label>
+      </div>
+
+      {% if loop.last or flags[loop.index].category != flag.category %}
+        </section>
+      {% endif %}
+
+    {% endfor %}
+
+    <div class="button-group">
+      <button type="submit" class="button button--primary">{{ __('siteConfig.common.save') }}</button>
+    </div>
+
+  </form>
+
+{% endif %}
 {% endblock %}
