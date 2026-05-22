@@ -32,3 +32,31 @@ test("renderThemeCss writes rgb triplets without commas (Tailwind alpha-value pa
   const css = renderThemeCss(config);
   assert.match(css, /--c-primary: 255 0 0;/);
 });
+
+test("renderThemeCss emits CSS generic keywords unquoted", () => {
+  const config = mergeWithDefaults({
+    branding: { typography: { mono: "ui-monospace", sans: "system-ui" } },
+  });
+  const css = renderThemeCss(config);
+  assert.match(css, /--font-mono: {2}ui-monospace,/);
+  assert.match(css, /--font-sans: {2}system-ui,/);
+  assert.doesNotMatch(css, /--font-mono: {2}"ui-monospace"/);
+  assert.doesNotMatch(css, /--font-sans: {2}"system-ui"/);
+});
+
+test("renderThemeCss emits named fonts quoted", () => {
+  const config = mergeWithDefaults({
+    branding: { typography: { sans: "Inter", serif: "Fraunces" } },
+  });
+  const css = renderThemeCss(config);
+  assert.match(css, /--font-sans: {2}"Inter",/);
+  assert.match(css, /--font-serif: "Fraunces",/);
+});
+
+test("renderThemeCss tolerates null/invalid brand colors via 0 0 0 fallback", () => {
+  // Pass null through the merge so we exercise hexToRgbTriplet's fallback path
+  // without mutating frozen DEFAULTS substructures.
+  const config = mergeWithDefaults({ branding: { colors: { primary: null } } });
+  const css = renderThemeCss(config);
+  assert.match(css, /--c-primary: 0 0 0;/);
+});
