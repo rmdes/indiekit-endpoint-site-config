@@ -1,0 +1,75 @@
+{% extends "document.njk" %}
+
+{% block title %}{{ __('siteConfig.branding.title') }}{% endblock %}
+
+{% block content %}
+  <h1>{{ __('siteConfig.title') }}</h1>
+  {% include "partials/tab-strip.njk" %}
+
+  <form method="post" action="/site-config/branding" class="site-config__form site-config__form--branding">
+    <div class="site-config__columns">
+      <div class="site-config__form-column">
+        <fieldset>
+          <legend>{{ __('siteConfig.branding.surfacePreset') }}</legend>
+          <div class="form-radio-group">
+            {% for preset in ['warm-stone', 'cool-slate', 'neutral-zinc', 'custom'] %}
+              <label class="form-radio">
+                <input type="radio" name="surfacePreset" value="{{ preset }}"
+                       {% if config.branding.surfacePreset == preset %}checked{% endif %}>
+                <span>{{ preset }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+
+        <fieldset class="surface-custom" data-show-when="surfacePreset=custom">
+          <legend>{{ __('siteConfig.branding.surfaceCustom') }}</legend>
+          {% for tone in [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] %}
+            {% set v = config.branding.surfaceCustom and config.branding.surfaceCustom[tone] or '#888888' %}
+            {% include "partials/color-picker.njk" with { name: 'surfaceCustom_' + tone, label: 'surface-' + tone, value: v } %}
+          {% endfor %}
+        </fieldset>
+
+        <fieldset>
+          <legend>{{ __('siteConfig.branding.accent') }}</legend>
+          {% include "partials/color-picker.njk" with { name: 'accentBase', label: __('siteConfig.branding.accent'), value: config.branding.accentBase } %}
+        </fieldset>
+
+        <fieldset>
+          <legend>Brand tokens</legend>
+          {% for token in ['primary', 'link', 'focus', 'success', 'warning', 'danger'] %}
+            {% include "partials/color-picker.njk" with { name: 'colors_' + token, label: __('siteConfig.branding.' + token), value: config.branding.colors[token] } %}
+          {% endfor %}
+        </fieldset>
+
+        <fieldset>
+          <legend>{{ __('siteConfig.branding.typography') }}</legend>
+          {% for cat in ['sans', 'serif', 'mono'] %}
+            <div class="form-field">
+              <label for="typography_{{ cat }}">{{ __('siteConfig.branding.font' + cat | capitalize) }}</label>
+              <select id="typography_{{ cat }}" name="typography_{{ cat }}">
+                {% for f in curatedFonts[cat] %}
+                  <option value="{{ f }}" {% if config.branding.typography[cat] == f %}selected{% endif %}>{{ f }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endfor %}
+          <div class="form-field">
+            <label for="typography_hosting">{{ __('siteConfig.branding.fontHosting') }}</label>
+            <select id="typography_hosting" name="typography_hosting">
+              <option value="self" {% if config.branding.typography.hosting == 'self' %}selected{% endif %}>self-hosted</option>
+              <option value="bunny" {% if config.branding.typography.hosting == 'bunny' %}selected{% endif %}>Bunny Fonts</option>
+            </select>
+          </div>
+        </fieldset>
+
+        <button type="submit" class="button">{{ __('siteConfig.common.save') }}</button>
+      </div>
+
+      <div class="site-config__preview-column">
+        <h3>{{ __('siteConfig.common.preview') }}</h3>
+        <iframe src="/site-config/api/preview" class="site-config__preview-iframe" title="{{ __('siteConfig.common.preview') }}"></iframe>
+      </div>
+    </div>
+  </form>
+{% endblock %}

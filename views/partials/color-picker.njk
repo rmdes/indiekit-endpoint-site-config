@@ -1,0 +1,11 @@
+{# locals: name (string), label (string), value (hex string) #}
+<div class="form-field form-field--color">
+  <label for="{{ name }}">{{ label }}</label>
+  <div class="color-picker">
+    <input type="color" class="color-picker__swatch" id="{{ name }}-swatch" value="{{ value }}"
+           oninput="document.getElementById('{{ name }}').value = this.value">
+    <input type="text" class="color-picker__hex" id="{{ name }}" name="{{ name }}"
+           value="{{ value }}" pattern="^#[0-9a-fA-F]{3,8}$" required
+           oninput="document.getElementById('{{ name }}-swatch').value = this.value">
+  </div>
+</div>
