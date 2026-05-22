@@ -1,0 +1,16 @@
+{# locals: activeTab (string, one of identity|branding|layout|features) #}
+<nav class="site-config__tabs" aria-label="{{ __('siteConfig.title') }}">
+  {% set tabs = [
+    {key: 'identity', href: '/site-config/identity'},
+    {key: 'branding', href: '/site-config/branding'},
+    {key: 'layout', href: '/site-config/layout'},
+    {key: 'features', href: '/site-config/features'}
+  ] %}
+  {% for tab in tabs %}
+    <a href="{{ tab.href }}"
+       class="site-config__tab {% if activeTab == tab.key %}site-config__tab--active{% endif %}"
+       {% if activeTab == tab.key %}aria-current="page"{% endif %}>
+      {{ __('siteConfig.tabs.' + tab.key) }}
+    </a>
+  {% endfor %}
+</nav>

@@ -1,0 +1,56 @@
+{
+  "siteConfig": {
+    "title": "Configuration du site",
+    "tabs": {
+      "identity": "Identité",
+      "branding": "Identité visuelle",
+      "layout": "Mise en page",
+      "features": "Fonctionnalités"
+    },
+    "identity": {
+      "title": "Identité",
+      "name": "Nom du site",
+      "description": "Description",
+      "tagline": "Slogan",
+      "defaultAuthor": "Auteur par défaut",
+      "defaultOgImage": "Image OpenGraph par défaut",
+      "locale": "Langue (ISO 639-1)",
+      "timezone": "Fuseau horaire (IANA)"
+    },
+    "branding": {
+      "title": "Identité visuelle",
+      "surfacePreset": "Palette de fond",
+      "surfaceCustom": "Tons personnalisés",
+      "accent": "Accent",
+      "primary": "Couleur principale",
+      "link": "Lien",
+      "focus": "Anneau de focus",
+      "success": "Succès",
+      "warning": "Avertissement",
+      "danger": "Erreur",
+      "typography": "Typographie",
+      "fontSans": "Police sans-serif",
+      "fontSerif": "Police serif",
+      "fontMono": "Police mono",
+      "fontHosting": "Hébergement des polices",
+      "logo": "Logo",
+      "favicon": "Favicon"
+    },
+    "layout": {
+      "title": "Mise en page",
+      "preset": "Modèle",
+      "sidebarEnabled": "Barre latérale activée",
+      "sidebarSide": "Côté de la barre latérale",
+      "navItems": "Éléments de navigation"
+    },
+    "features": {
+      "title": "Fonctionnalités",
+      "empty": "Aucun plugin ne déclare encore de drapeau de fonctionnalité."
+    },
+    "common": {
+      "save": "Enregistrer",
+      "saved": "Enregistré",
+      "preview": "Aperçu en direct"
+    }
+  }
+}

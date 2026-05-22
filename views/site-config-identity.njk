@@ -1,0 +1,42 @@
+{% extends "document.njk" %}
+
+{% block title %}{{ __('siteConfig.identity.title') }}{% endblock %}
+
+{% block content %}
+  <h1>{{ __('siteConfig.title') }}</h1>
+  {% include "partials/tab-strip.njk" %}
+
+  <form method="post" action="/site-config/identity" class="site-config__form">
+    <div class="form-field">
+      <label for="name">{{ __('siteConfig.identity.name') }}</label>
+      <input type="text" id="name" name="name" value="{{ config.identity.name }}" required>
+    </div>
+    <div class="form-field">
+      <label for="description">{{ __('siteConfig.identity.description') }}</label>
+      <textarea id="description" name="description" rows="2">{{ config.identity.description }}</textarea>
+    </div>
+    <div class="form-field">
+      <label for="tagline">{{ __('siteConfig.identity.tagline') }}</label>
+      <input type="text" id="tagline" name="tagline" value="{{ config.identity.tagline }}">
+    </div>
+    <div class="form-field">
+      <label for="defaultAuthor">{{ __('siteConfig.identity.defaultAuthor') }}</label>
+      <input type="text" id="defaultAuthor" name="defaultAuthor" value="{{ config.identity.defaultAuthor }}">
+    </div>
+    <div class="form-field">
+      <label for="defaultOgImage">{{ __('siteConfig.identity.defaultOgImage') }}</label>
+      <input type="url" id="defaultOgImage" name="defaultOgImage" value="{{ config.identity.defaultOgImage }}">
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label for="locale">{{ __('siteConfig.identity.locale') }}</label>
+        <input type="text" id="locale" name="locale" value="{{ config.identity.locale }}" maxlength="5">
+      </div>
+      <div class="form-field">
+        <label for="timezone">{{ __('siteConfig.identity.timezone') }}</label>
+        <input type="text" id="timezone" name="timezone" value="{{ config.identity.timezone }}">
+      </div>
+    </div>
+    <button type="submit" class="button">{{ __('siteConfig.common.save') }}</button>
+  </form>
+{% endblock %}

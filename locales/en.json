@@ -1,0 +1,56 @@
+{
+  "siteConfig": {
+    "title": "Site Config",
+    "tabs": {
+      "identity": "Identity",
+      "branding": "Branding",
+      "layout": "Layout",
+      "features": "Feature Flags"
+    },
+    "identity": {
+      "title": "Identity",
+      "name": "Site name",
+      "description": "Description",
+      "tagline": "Tagline",
+      "defaultAuthor": "Default author",
+      "defaultOgImage": "Default OpenGraph image URL",
+      "locale": "Locale (ISO 639-1)",
+      "timezone": "Timezone (IANA)"
+    },
+    "branding": {
+      "title": "Branding",
+      "surfacePreset": "Surface palette",
+      "surfaceCustom": "Custom surface tones",
+      "accent": "Accent",
+      "primary": "Primary",
+      "link": "Link",
+      "focus": "Focus ring",
+      "success": "Success",
+      "warning": "Warning",
+      "danger": "Danger",
+      "typography": "Typography",
+      "fontSans": "Sans-serif font",
+      "fontSerif": "Serif font",
+      "fontMono": "Monospace font",
+      "fontHosting": "Font hosting",
+      "logo": "Logo",
+      "favicon": "Favicon"
+    },
+    "layout": {
+      "title": "Layout",
+      "preset": "Layout preset",
+      "sidebarEnabled": "Sidebar enabled",
+      "sidebarSide": "Sidebar side",
+      "navItems": "Navigation items"
+    },
+    "features": {
+      "title": "Feature Flags",
+      "empty": "No plugins declare a feature flag yet."
+    },
+    "common": {
+      "save": "Save changes",
+      "saved": "Saved",
+      "preview": "Live preview"
+    }
+  }
+}
