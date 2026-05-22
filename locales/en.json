@@ -22,6 +22,7 @@
       "surfacePreset": "Surface palette",
       "surfaceCustom": "Custom surface tones",
       "accent": "Accent",
+      "brandTokens": "Brand tokens",
       "primary": "Primary",
       "link": "Link",
       "focus": "Focus ring",

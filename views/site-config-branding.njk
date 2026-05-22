@@ -36,7 +36,7 @@
         </fieldset>
 
         <fieldset>
-          <legend>Brand tokens</legend>
+          <legend>{{ __('siteConfig.branding.brandTokens') }}</legend>
           {% for token in ['primary', 'link', 'focus', 'success', 'warning', 'danger'] %}
             {% include "partials/color-picker.njk" with { name: 'colors_' + token, label: __('siteConfig.branding.' + token), value: config.branding.colors[token] } %}
           {% endfor %}
@@ -68,6 +68,7 @@
 
       <div class="site-config__preview-column">
         <h3>{{ __('siteConfig.common.preview') }}</h3>
+        {# TODO Task 10: /site-config/api/preview endpoint not yet implemented; iframe will 404 until then #}
         <iframe src="/site-config/api/preview" class="site-config__preview-iframe" title="{{ __('siteConfig.common.preview') }}"></iframe>
       </div>
     </div>
