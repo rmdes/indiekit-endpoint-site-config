@@ -14,12 +14,11 @@
   },
   "engines": { "node": ">=22" },
   "peerDependencies": {
-    "@indiekit/indiekit": "^1.0.0-beta.27"
+    "@indiekit/indiekit": ">=1.0.0-beta.27"
   },
   "dependencies": {
-    "@rmdes/indiekit-startup-gate": "^1.0.0",
     "culori": "^4.0.1",
-    "express": "^4.21.2"
+    "express": "^5.0.0"
   },
   "publishConfig": { "access": "public" }
 }
