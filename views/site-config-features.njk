@@ -1,0 +1,35 @@
+{% extends "document.njk" %}
+
+{% block title %}{{ __('siteConfig.features.title') }}{% endblock %}
+
+{% block content %}
+  <h1>{{ __('siteConfig.title') }}</h1>
+  {% include "partials/tab-strip.njk" %}
+
+  {% if flags.length == 0 %}
+    <p class="empty-state">{{ __('siteConfig.features.empty') }}</p>
+  {% else %}
+    <form method="post" action="/site-config/features" class="site-config__form">
+      {% set currentCategory = '' %}
+      {% for flag in flags %}
+        {% if flag.category != currentCategory %}
+          {% if not loop.first %}</fieldset>{% endif %}
+          <fieldset>
+            <legend>{{ flag.category }}</legend>
+          {% set currentCategory = flag.category %}
+        {% endif %}
+        <div class="form-field">
+          <label>
+            <input type="checkbox" name="feature_{{ flag.key }}"
+                   {% if config.features[flag.key] %}checked{% elif flag.default %}checked{% endif %}>
+            <strong>{{ flag.label }}</strong>
+            {% if flag.description %}<span class="hint">{{ flag.description }}</span>{% endif %}
+            {% if flag.requiresRestart %}<span class="badge">Restart required</span>{% endif %}
+          </label>
+        </div>
+      {% endfor %}
+      </fieldset>
+      <button type="submit" class="button">{{ __('siteConfig.common.save') }}</button>
+    </form>
+  {% endif %}
+{% endblock %}

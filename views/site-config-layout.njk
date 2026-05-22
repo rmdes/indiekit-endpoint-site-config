@@ -1,0 +1,55 @@
+{% extends "document.njk" %}
+
+{% block title %}{{ __('siteConfig.layout.title') }}{% endblock %}
+
+{% block content %}
+  <h1>{{ __('siteConfig.title') }}</h1>
+  {% include "partials/tab-strip.njk" %}
+
+  <form method="post" action="/site-config/layout" class="site-config__form">
+    <div class="form-field">
+      <label for="preset">{{ __('siteConfig.layout.preset') }}</label>
+      <select id="preset" name="preset">
+        {% for p in presets %}
+          <option value="{{ p }}" {% if config.layout.preset == p %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-field">
+      <label>
+        <input type="checkbox" name="sidebarEnabled" {% if config.layout.sidebarEnabled %}checked{% endif %}>
+        {{ __('siteConfig.layout.sidebarEnabled') }}
+      </label>
+    </div>
+    <div class="form-field">
+      <label for="sidebarSide">{{ __('siteConfig.layout.sidebarSide') }}</label>
+      <select id="sidebarSide" name="sidebarSide">
+        <option value="left" {% if config.layout.sidebarSide == 'left' %}selected{% endif %}>left</option>
+        <option value="right" {% if config.layout.sidebarSide == 'right' %}selected{% endif %}>right</option>
+      </select>
+    </div>
+
+    <fieldset>
+      <legend>{{ __('siteConfig.layout.navItems') }}</legend>
+      <table class="form-table">
+        <thead>
+          <tr><th>Label</th><th>URL</th></tr>
+        </thead>
+        <tbody>
+          {% for item in config.layout.navItems %}
+            <tr>
+              <td><input type="text" name="navLabel" value="{{ item.label }}"></td>
+              <td><input type="text" name="navUrl" value="{{ item.url }}"></td>
+            </tr>
+          {% endfor %}
+          <tr>
+            <td><input type="text" name="navLabel" placeholder="New label"></td>
+            <td><input type="text" name="navUrl" placeholder="/path or https://..."></td>
+          </tr>
+        </tbody>
+      </table>
+    </fieldset>
+
+    <button type="submit" class="button">{{ __('siteConfig.common.save') }}</button>
+  </form>
+{% endblock %}
