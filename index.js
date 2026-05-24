@@ -10,6 +10,7 @@ import { apiRouter } from "./lib/controllers/api.js";
 import { getSiteConfig } from "./lib/storage/get-site-config.js";
 import { maybeSeedFromEnv } from "./lib/storage/seed-from-env.js";
 import { writeThemeCss } from "./lib/render/write-theme-css.js";
+import { writeCriticalCss } from "./lib/render/write-critical-css.js";
 import { writeSiteJson } from "./lib/render/write-site-json.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -69,6 +70,7 @@ export default class SiteConfigEndpoint {
       await maybeSeedFromEnv(Indiekit);
       const config = await getSiteConfig(Indiekit);
       await writeThemeCss(config);
+      await writeCriticalCss(config);
       await writeSiteJson(config);
     } catch (error) {
       console.warn("[site-config] initial render skipped:", error.message);
