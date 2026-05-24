@@ -30,6 +30,24 @@ test("getSurfacePalette returns preset", () => {
   assert.notEqual(slate[500], stone[500]);
 });
 
+test("getSurfacePalette exposes the Phase 2c presets warm-gray and stone", () => {
+  // warm-gray = Tailwind "stone" (warm-leaning), distinct from warm-stone
+  const warmGray = getSurfacePalette("warm-gray");
+  assert.match(warmGray[500], /^#[0-9a-f]{6}$/);
+  assert.equal(warmGray[50], "#fafaf9");
+  assert.equal(warmGray[950], "#0c0a09");
+
+  // stone = Tailwind "neutral" — pure gray
+  const stone = getSurfacePalette("stone");
+  assert.equal(stone[50], "#fafafa");
+  assert.equal(stone[950], "#0a0a0a");
+
+  // All five presets distinct at mid-tone
+  const presets = ["warm-stone", "warm-gray", "stone", "cool-slate", "neutral-zinc"];
+  const mid500s = presets.map((p) => getSurfacePalette(p)[500]);
+  assert.equal(new Set(mid500s).size, presets.length, "mid-tones should all differ");
+});
+
 test("getSurfacePalette returns custom override when preset === 'custom'", () => {
   const custom = {
     50: "#ffffff", 100: "#eeeeee", 200: "#dddddd", 300: "#cccccc",

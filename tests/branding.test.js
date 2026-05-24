@@ -352,7 +352,13 @@ test("ACCENT_SUGGESTIONS exposes 8 entries with valid hex values", () => {
   }
 });
 
-test("SURFACE_PRESET_OPTIONS exposes the 3 v2 Phase 2b presets", () => {
+test("SURFACE_PRESET_OPTIONS exposes the 5 v2 Phase 2c presets", () => {
   const slugs = SURFACE_PRESET_OPTIONS.map((p) => p.slug);
-  assert.deepEqual(slugs, ["warm-stone", "cool-slate", "neutral-zinc"]);
+  assert.deepEqual(slugs, [
+    "warm-stone",
+    "warm-gray",
+    "stone",
+    "cool-slate",
+    "neutral-zinc",
+  ]);
 });
