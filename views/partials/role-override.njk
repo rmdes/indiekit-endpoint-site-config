@@ -1,0 +1,114 @@
+{#
+  Nunjucks macro: roleOverride(role, label, hint, override, defaults)
+  -------------------------------------------------------------------
+  Renders a Tier 2 semantic-role color control: light + dark color pickers
+  and an "Inherit from palette" checkbox.
+
+  Arguments:
+    role     - Role key (e.g. "heading", "fg", "link"). Used to name form
+               fields: roles_<role>_light, roles_<role>_dark,
+               roles_<role>_inherit.
+    label    - Visible label (e.g. "Heading color").
+    hint     - Micro-copy describing what this role affects.
+    override - The current override from siteConfig — either
+               { light: "#hex", dark: "#hex" } or null (inherit).
+    defaults - { light: "#hex", dark: "#hex" } palette-derived defaults
+               used to pre-populate the color inputs when no override exists.
+
+  Submission semantics (handled by the branding controller):
+    - roles_<role>_inherit=1   → controller sets roles[<role>] = null.
+    - Else (no inherit flag):  → controller reads roles_<role>_light
+                                  and roles_<role>_dark and stores
+                                  { light, dark } as the override.
+
+  Usage:
+    {% import "partials/role-override.njk" as ro %}
+    {{ ro.roleOverride(
+         "heading",
+         "Heading color",
+         "Color for h1-h6 elements...",
+         config.branding.roles.heading,
+         { light: defaults.heading.light, dark: defaults.heading.dark }
+       ) }}
+#}
+{% macro roleOverride(role, label, hint, override, defaults) %}
+{% set fieldId    = "roles_" + role %}
+{% set lightId    = fieldId + "_light" %}
+{% set darkId     = fieldId + "_dark" %}
+{% set inheritId  = fieldId + "_inherit" %}
+{% set isInherit  = (not override) %}
+{% set lightVal   = (override.light if override else defaults.light) or "#888888" %}
+{% set darkVal    = (override.dark  if override else defaults.dark)  or "#888888" %}
+<div class="sc-role-field" data-role="{{ role }}" data-inherit="{{ '1' if isInherit else '0' }}">
+  <div class="sc-role-field__header">
+    <label class="field__label" for="{{ lightId }}">{{ label }}</label>
+    <button
+      type="button"
+      class="sc-role-reset"
+      data-role-reset="{{ role }}"
+      title="Reset to default (inherit from palette)"
+      aria-label="Reset {{ label }} to default"
+    >Reset to default</button>
+  </div>
+  {% if hint %}<p class="field__hint">{{ hint }}</p>{% endif %}
+
+  <div class="sc-role-field__row">
+    <label class="sc-role-field__inherit">
+      <input
+        type="checkbox"
+        id="{{ inheritId }}"
+        name="{{ inheritId }}"
+        value="1"
+        data-role-inherit="{{ role }}"
+        {% if isInherit %}checked{% endif %}
+      >
+      <span>Use default (derived from palette)</span>
+    </label>
+  </div>
+
+  <div class="sc-role-field__overrides" data-role-overrides="{{ role }}" {% if isInherit %}hidden{% endif %}>
+    <div class="sc-role-field__pair">
+      <div class="sc-color-picker">
+        <input
+          type="color"
+          class="sc-color-picker__swatch"
+          id="{{ lightId }}-swatch"
+          value="{{ lightVal }}"
+          aria-label="{{ label }} - light mode"
+          oninput="document.getElementById('{{ lightId }}').value = this.value"
+        >
+        <input
+          type="text"
+          class="field__input sc-color-picker__hex"
+          id="{{ lightId }}"
+          name="{{ lightId }}"
+          value="{{ lightVal }}"
+          pattern="^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"
+          oninput="document.getElementById('{{ lightId }}-swatch').value = this.value"
+        >
+        <span class="sc-role-field__mode">Light</span>
+      </div>
+      <div class="sc-color-picker">
+        <input
+          type="color"
+          class="sc-color-picker__swatch"
+          id="{{ darkId }}-swatch"
+          value="{{ darkVal }}"
+          aria-label="{{ label }} - dark mode"
+          oninput="document.getElementById('{{ darkId }}').value = this.value"
+        >
+        <input
+          type="text"
+          class="field__input sc-color-picker__hex"
+          id="{{ darkId }}"
+          name="{{ darkId }}"
+          value="{{ darkVal }}"
+          pattern="^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"
+          oninput="document.getElementById('{{ darkId }}-swatch').value = this.value"
+        >
+        <span class="sc-role-field__mode">Dark</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}

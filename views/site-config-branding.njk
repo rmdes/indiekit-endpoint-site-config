@@ -1,7 +1,8 @@
 {% extends "document.njk" %}
 {% import "partials/color-picker.njk" as cp %}
+{% import "partials/role-override.njk" as ro %}
 
-{% block title %}{{ __('siteConfig.branding.title') }}{% endblock %}
+{% block title %}{{ __("siteConfig.branding.title") }}{% endblock %}
 
 {% block content %}
 <style>
@@ -19,7 +20,7 @@
 
   .sc-section h2 {
     font: var(--font-heading, bold 1.25rem/1.4 sans-serif);
-    margin-block-end: var(--space-s, 0.75rem);
+    margin-block-end: var(--space-2xs, 0.375rem);
     padding-block-end: var(--space-xs, 0.5rem);
     border-block-end: 1px solid var(--color-outline-variant, #ddd);
   }
@@ -27,7 +28,7 @@
   .sc-section__desc {
     color: var(--color-on-offset, #666);
     font: var(--font-body, 0.875rem/1.5 sans-serif);
-    margin-block-end: var(--space-s, 0.75rem);
+    margin: 0 0 var(--space-m, 1rem);
   }
 
   .hp-success {
@@ -38,7 +39,7 @@
     margin-block-end: var(--space-m, 1rem);
   }
 
-  /* Field grid for two-column layouts */
+  /* Field grid */
   .hp-field-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -92,7 +93,7 @@
   .sc-dashboard .field__hint {
     color: var(--color-on-offset, #888);
     font: var(--font-caption, 0.75rem/1.4 sans-serif);
-    margin: 0;
+    margin: 0.125rem 0 0;
   }
 
   /* Radio group */
@@ -121,7 +122,7 @@
     background: color-mix(in srgb, var(--color-primary, #0066cc) 8%, var(--color-background, #fff));
   }
 
-  /* Color picker compound */
+  /* Generic color picker (palette inputs) */
   .sc-color-picker {
     display: flex;
     align-items: center;
@@ -141,13 +142,140 @@
 
   .sc-color-picker .field__input {
     flex: 1;
+    min-width: 6rem;
   }
 
   /* Surface tones grid */
   .sc-tones-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
     gap: var(--space-s, 0.75rem);
+  }
+
+  /* Role-override controls (Tier 2 semantic roles) */
+  .sc-role-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-m, 1rem);
+  }
+
+  .sc-role-field {
+    padding: var(--space-s, 0.75rem);
+    background: var(--color-background, #fff);
+    border: 1px solid var(--color-outline-variant, #e0e0e0);
+    border-radius: var(--border-radius-small, 0.375rem);
+  }
+
+  .sc-role-field__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-s, 0.75rem);
+    margin-block-end: var(--space-2xs, 0.25rem);
+  }
+
+  .sc-role-reset {
+    background: none;
+    border: none;
+    color: var(--color-primary, #0066cc);
+    font: var(--font-caption, 0.75rem/1.4 sans-serif);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .sc-role-reset:hover {
+    text-decoration: none;
+  }
+
+  .sc-role-field__row {
+    margin-block-start: var(--space-xs, 0.5rem);
+  }
+
+  .sc-role-field__inherit {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs, 0.375rem);
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    cursor: pointer;
+  }
+
+  .sc-role-field__overrides[hidden] {
+    display: none;
+  }
+
+  .sc-role-field__pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-s, 0.75rem);
+    margin-block-start: var(--space-xs, 0.5rem);
+  }
+
+  @media (max-width: 640px) {
+    .sc-role-field__pair {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .sc-role-field__mode {
+    font: var(--font-caption, 0.75rem/1.4 sans-serif);
+    color: var(--color-on-offset, #888);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Accent suggestions */
+  .sc-accent-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs, 0.5rem);
+    margin-block-end: var(--space-s, 0.75rem);
+  }
+
+  .sc-accent-suggestion {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs, 0.375rem);
+    padding: var(--space-2xs, 0.25rem) var(--space-xs, 0.5rem);
+    border: 1px solid var(--color-outline-variant, #ccc);
+    border-radius: var(--border-radius-small, 0.25rem);
+    background: var(--color-background, #fff);
+    font: var(--font-caption, 0.75rem/1.4 sans-serif);
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+  }
+
+  .sc-accent-suggestion:hover {
+    border-color: var(--color-primary, #0066cc);
+    transform: translateY(-1px);
+  }
+
+  .sc-accent-swatch {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0.125rem;
+    border: 1px solid var(--color-outline-variant, #ddd);
+    flex-shrink: 0;
+  }
+
+  /* Advanced toggle */
+  .sc-advanced-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs, 0.375rem);
+    cursor: pointer;
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    color: var(--color-primary, #0066cc);
+  }
+
+  .sc-advanced-content[hidden] {
+    display: none;
+  }
+
+  /* Custom surface tones, hidden by default */
+  .sc-surface-custom[hidden] {
+    display: none;
   }
 
   /* Two-column layout for branding (form + preview) */
@@ -185,77 +313,235 @@
 </style>
 
 <header class="page-header">
-  <h1 class="page-header__title">{{ __('siteConfig.title') }}</h1>
+  <h1 class="page-header__title">{{ __("siteConfig.title") }}</h1>
+  <p class="page-header__description">{{ __("siteConfig.branding.description") }}</p>
 </header>
 
 {% include "partials/tab-strip.njk" %}
 
 {% if request.query.saved %}
 <div class="hp-success">
-  <p>{{ __('siteConfig.common.saved') }}</p>
+  <p>{{ __("siteConfig.common.saved") }}</p>
 </div>
 {% endif %}
 
 <div class="sc-branding-layout">
 
-  <form method="post" action="/site-config/branding" class="sc-dashboard">
+  <form method="post" action="/site-config/branding" class="sc-dashboard" id="branding-form">
 
-    {# Surface Preset #}
+    {# ──────────────────────────────────────────────────────────────
+       Group 1: PALETTE
+       Surface preset · Accent base · Mode
+       ────────────────────────────────────────────────────────────── #}
     <section class="sc-section">
-      <h2>{{ __('siteConfig.branding.surfacePreset') }}</h2>
-      <p class="sc-section__desc">Choose a base surface palette or define your own custom tones.</p>
-      <div class="sc-radio-group">
-        {% for preset in ['warm-stone', 'cool-slate', 'neutral-zinc', 'custom'] %}
+      <h2>{{ __("siteConfig.branding.groups.palette") }}</h2>
+      <p class="sc-section__desc">{{ __("siteConfig.branding.groups.paletteDesc") }}</p>
+
+      {# Surface preset #}
+      <div class="field">
+        <label class="field__label">{{ __("siteConfig.branding.surfacePreset") }}</label>
+        <p class="field__hint">{{ __("siteConfig.branding.surfacePresetHint") }}</p>
+        <div class="sc-radio-group">
+          {% for preset in surfacePresets %}
+            <label class="sc-radio-label">
+              <input type="radio" name="surfacePreset" value="{{ preset.slug }}"
+                     {% if config.branding.surfacePreset == preset.slug %}checked{% endif %}>
+              {{ preset.label }}
+            </label>
+          {% endfor %}
           <label class="sc-radio-label">
-            <input type="radio" name="surfacePreset" value="{{ preset }}"
-                   {% if config.branding.surfacePreset == preset %}checked{% endif %}>
-            {{ preset }}
+            <input type="radio" name="surfacePreset" value="custom"
+                   {% if config.branding.surfacePreset == "custom" %}checked{% endif %}>
+            {{ __("siteConfig.branding.surfacePresetCustom") }}
           </label>
-        {% endfor %}
+        </div>
       </div>
-    </section>
 
-    {# Custom Surface Tones #}
-    <section class="sc-section">
-      <h2>{{ __('siteConfig.branding.surfaceCustom') }}</h2>
-      <p class="sc-section__desc">11 tones from lightest (50) to darkest (950). Only applied when preset is set to "custom".</p>
-      <div class="sc-tones-grid">
-        {% for tone in [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] %}
-          {% set toneVal = config.branding.surfaceCustom[tone] if config.branding.surfaceCustom else '#888888' %}
-          {{ cp.colorPicker('surfaceCustom_' + tone, 'surface-' + tone, toneVal) }}
-        {% endfor %}
+      {# Custom surface tones (revealed only when preset=custom) #}
+      <div class="sc-surface-custom"
+           id="surface-custom-panel"
+           {% if config.branding.surfacePreset != "custom" %}hidden{% endif %}>
+        <h3 style="font: var(--font-caption, 0.75rem/1.4 sans-serif); font-weight: 600; margin: var(--space-m, 1rem) 0 var(--space-2xs, 0.375rem);">
+          {{ __("siteConfig.branding.surfaceCustom") }}
+        </h3>
+        <p class="field__hint" style="margin-block-end: var(--space-s, 0.75rem);">
+          {{ __("siteConfig.branding.surfaceCustomHint") }}
+        </p>
+        <div class="sc-tones-grid">
+          {% for tone in [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] %}
+            {% set toneVal = config.branding.surfaceCustom[tone] if config.branding.surfaceCustom else "#888888" %}
+            {{ cp.colorPicker("surfaceCustom_" + tone, "surface-" + tone, toneVal) }}
+          {% endfor %}
+        </div>
       </div>
-    </section>
 
-    {# Accent Colour #}
-    <section class="sc-section">
-      <h2>{{ __('siteConfig.branding.accent') }}</h2>
-      <p class="sc-section__desc">Base hue used to derive the accent scale.</p>
-      <div class="hp-field-grid">
-        <div class="field--full">
-          {{ cp.colorPicker('accentBase', __('siteConfig.branding.accent'), config.branding.accentBase or '#0066cc') }}
+      {# Accent base + suggestions #}
+      <div class="field" style="margin-block-start: var(--space-m, 1rem);">
+        <label class="field__label" for="accentBase">{{ __("siteConfig.branding.accentBase") }}</label>
+        <p class="field__hint">{{ __("siteConfig.branding.accentBaseHint") }}</p>
+
+        <div class="sc-accent-suggestions" role="group" aria-label="{{ __('siteConfig.branding.accentSuggestionsLabel') }}">
+          {% for suggestion in accentSuggestions %}
+            <button type="button"
+                    class="sc-accent-suggestion"
+                    data-accent-suggestion="{{ suggestion.hex }}"
+                    data-accent-slug="{{ suggestion.slug }}"
+                    title="{{ suggestion.label }} ({{ suggestion.hex }})">
+              <span class="sc-accent-swatch" style="background-color: {{ suggestion.hex }};"></span>
+              <span>{{ suggestion.label }}</span>
+            </button>
+          {% endfor %}
+        </div>
+
+        <div class="sc-color-picker">
+          <input type="color"
+                 class="sc-color-picker__swatch"
+                 id="accentBase-swatch"
+                 value="{{ config.branding.accentBase or '#b45309' }}"
+                 oninput="document.getElementById('accentBase').value = this.value">
+          <input type="text"
+                 class="field__input sc-color-picker__hex"
+                 id="accentBase"
+                 name="accentBase"
+                 value="{{ config.branding.accentBase or '#b45309' }}"
+                 pattern="^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"
+                 required
+                 oninput="document.getElementById('accentBase-swatch').value = this.value">
+        </div>
+        {# Tracks the named slug (e.g. "amber") for the chosen suggestion;
+           a manual color picker change resets this to empty. #}
+        <input type="hidden" id="accentPreset" name="accentPreset"
+               value="{{ config.branding.accentPreset or '' }}">
+      </div>
+
+      {# Mode #}
+      <div class="field" style="margin-block-start: var(--space-m, 1rem);">
+        <label class="field__label">{{ __("siteConfig.branding.mode") }}</label>
+        <p class="field__hint">{{ __("siteConfig.branding.modeHint") }}</p>
+        <div class="sc-radio-group">
+          {% for opt in [
+            {value: "light", label: __("siteConfig.branding.modeLight")},
+            {value: "dark",  label: __("siteConfig.branding.modeDark")},
+            {value: "auto",  label: __("siteConfig.branding.modeAuto")}
+          ] %}
+            <label class="sc-radio-label">
+              <input type="radio" name="mode" value="{{ opt.value }}"
+                     {% if config.branding.mode == opt.value %}checked{% endif %}>
+              {{ opt.label }}
+            </label>
+          {% endfor %}
         </div>
       </div>
     </section>
 
-    {# Brand Tokens #}
+    {# ──────────────────────────────────────────────────────────────
+       Group 2: TEXT — heading, body, muted
+       ────────────────────────────────────────────────────────────── #}
     <section class="sc-section">
-      <h2>{{ __('siteConfig.branding.brandTokens') }}</h2>
-      <p class="sc-section__desc">Semantic colours for UI states.</p>
-      <div class="hp-field-grid">
-        {% for token in ['primary', 'link', 'focus', 'success', 'warning', 'danger'] %}
-          {{ cp.colorPicker('colors_' + token, __('siteConfig.branding.' + token), config.branding.colors[token] or '#888888') }}
-        {% endfor %}
+      <h2>{{ __("siteConfig.branding.groups.text") }}</h2>
+      <p class="sc-section__desc">{{ __("siteConfig.branding.groups.textDesc") }}</p>
+      <div class="sc-role-grid">
+        {{ ro.roleOverride("heading",
+             __("siteConfig.branding.roles.heading"),
+             __("siteConfig.branding.roles.headingHint"),
+             config.branding.roles.heading,
+             roleDefaults.heading) }}
+        {{ ro.roleOverride("fg",
+             __("siteConfig.branding.roles.fg"),
+             __("siteConfig.branding.roles.fgHint"),
+             config.branding.roles.fg,
+             roleDefaults.fg) }}
+        {{ ro.roleOverride("fgMuted",
+             __("siteConfig.branding.roles.fgMuted"),
+             __("siteConfig.branding.roles.fgMutedHint"),
+             config.branding.roles.fgMuted,
+             roleDefaults.fgMuted) }}
       </div>
     </section>
 
-    {# Typography #}
+    {# ──────────────────────────────────────────────────────────────
+       Group 3: INTERACTION — link, action, focus
+       ────────────────────────────────────────────────────────────── #}
     <section class="sc-section">
-      <h2>{{ __('siteConfig.branding.typography') }}</h2>
+      <h2>{{ __("siteConfig.branding.groups.interaction") }}</h2>
+      <p class="sc-section__desc">{{ __("siteConfig.branding.groups.interactionDesc") }}</p>
+      <div class="sc-role-grid">
+        {{ ro.roleOverride("link",
+             __("siteConfig.branding.roles.link"),
+             __("siteConfig.branding.roles.linkHint"),
+             config.branding.roles.link,
+             roleDefaults.link) }}
+        {{ ro.roleOverride("action",
+             __("siteConfig.branding.roles.action"),
+             __("siteConfig.branding.roles.actionHint"),
+             config.branding.roles.action,
+             roleDefaults.action) }}
+        {{ ro.roleOverride("focus",
+             __("siteConfig.branding.roles.focus"),
+             __("siteConfig.branding.roles.focusHint"),
+             config.branding.roles.focus,
+             roleDefaults.focus) }}
+      </div>
+    </section>
+
+    {# ──────────────────────────────────────────────────────────────
+       Group 4: STRUCTURE — surface (panel), border
+       ────────────────────────────────────────────────────────────── #}
+    <section class="sc-section">
+      <h2>{{ __("siteConfig.branding.groups.structure") }}</h2>
+      <p class="sc-section__desc">{{ __("siteConfig.branding.groups.structureDesc") }}</p>
+      <div class="sc-role-grid">
+        {{ ro.roleOverride("surface",
+             __("siteConfig.branding.roles.surface"),
+             __("siteConfig.branding.roles.surfaceHint"),
+             config.branding.roles.surface,
+             roleDefaults.surface) }}
+        {{ ro.roleOverride("border",
+             __("siteConfig.branding.roles.border"),
+             __("siteConfig.branding.roles.borderHint"),
+             config.branding.roles.border,
+             roleDefaults.border) }}
+      </div>
+    </section>
+
+    {# ──────────────────────────────────────────────────────────────
+       Advanced — page background, action-fg (default)
+       Hidden by default per Theming v2 spec §16.1
+       ────────────────────────────────────────────────────────────── #}
+    <section class="sc-section">
+      <h2>
+        <label class="sc-advanced-toggle">
+          <input type="checkbox" id="advanced-toggle">
+          {{ __("siteConfig.branding.groups.advanced") }}
+        </label>
+      </h2>
+      <p class="sc-section__desc">{{ __("siteConfig.branding.groups.advancedDesc") }}</p>
+
+      <div class="sc-advanced-content" id="advanced-content" hidden>
+        <div class="sc-role-grid">
+          {{ ro.roleOverride("bg",
+               __("siteConfig.branding.roles.bg"),
+               __("siteConfig.branding.roles.bgHint"),
+               config.branding.roles.bg,
+               roleDefaults.bg) }}
+          {{ ro.roleOverride("actionFg",
+               __("siteConfig.branding.roles.actionFg"),
+               __("siteConfig.branding.roles.actionFgHint"),
+               config.branding.roles.actionFg,
+               roleDefaults.actionFg) }}
+        </div>
+      </div>
+    </section>
+
+    {# ──────────────────────────────────────────────────────────────
+       Typography (unchanged from v1)
+       ────────────────────────────────────────────────────────────── #}
+    <section class="sc-section">
+      <h2>{{ __("siteConfig.branding.typography") }}</h2>
       <div class="hp-field-grid">
 
         <div class="field">
-          <label class="field__label" for="typography_sans">{{ __('siteConfig.branding.fontSans') }}</label>
+          <label class="field__label" for="typography_sans">{{ __("siteConfig.branding.fontSans") }}</label>
           <select class="field__input" id="typography_sans" name="typography_sans">
             {% for f in curatedFonts.sans %}
               <option value="{{ f }}" {% if config.branding.typography.sans == f %}selected{% endif %}>{{ f }}</option>
@@ -264,7 +550,7 @@
         </div>
 
         <div class="field">
-          <label class="field__label" for="typography_serif">{{ __('siteConfig.branding.fontSerif') }}</label>
+          <label class="field__label" for="typography_serif">{{ __("siteConfig.branding.fontSerif") }}</label>
           <select class="field__input" id="typography_serif" name="typography_serif">
             {% for f in curatedFonts.serif %}
               <option value="{{ f }}" {% if config.branding.typography.serif == f %}selected{% endif %}>{{ f }}</option>
@@ -273,7 +559,7 @@
         </div>
 
         <div class="field">
-          <label class="field__label" for="typography_mono">{{ __('siteConfig.branding.fontMono') }}</label>
+          <label class="field__label" for="typography_mono">{{ __("siteConfig.branding.fontMono") }}</label>
           <select class="field__input" id="typography_mono" name="typography_mono">
             {% for f in curatedFonts.mono %}
               <option value="{{ f }}" {% if config.branding.typography.mono == f %}selected{% endif %}>{{ f }}</option>
@@ -282,10 +568,10 @@
         </div>
 
         <div class="field">
-          <label class="field__label" for="typography_hosting">{{ __('siteConfig.branding.fontHosting') }}</label>
+          <label class="field__label" for="typography_hosting">{{ __("siteConfig.branding.fontHosting") }}</label>
           <select class="field__input" id="typography_hosting" name="typography_hosting">
-            <option value="self" {% if config.branding.typography.hosting == 'self' %}selected{% endif %}>Self-hosted</option>
-            <option value="bunny" {% if config.branding.typography.hosting == 'bunny' %}selected{% endif %}>Bunny Fonts</option>
+            <option value="self"  {% if config.branding.typography.hosting == "self"  %}selected{% endif %}>Self-hosted</option>
+            <option value="bunny" {% if config.branding.typography.hosting == "bunny" %}selected{% endif %}>Bunny Fonts</option>
           </select>
         </div>
 
@@ -293,19 +579,89 @@
     </section>
 
     <div class="button-group">
-      <button type="submit" class="button button--primary">{{ __('siteConfig.common.save') }}</button>
+      <button type="submit" class="button button--primary">{{ __("siteConfig.common.save") }}</button>
     </div>
 
   </form>
 
-  {# Live preview panel #}
+  {# Live preview iframe — Phase 2c will wire it to send pending changes
+     via querystring; for now it shows the saved state. #}
   <aside class="sc-preview-panel">
-    <h3>{{ __('siteConfig.common.preview') }}</h3>
-    {# Preview iframe — renders a styled sample page at /site-config/api/preview #}
+    <h3>{{ __("siteConfig.common.preview") }}</h3>
     <iframe src="/site-config/api/preview"
             class="sc-preview-iframe"
             title="{{ __('siteConfig.common.preview') }}"></iframe>
   </aside>
 
 </div>
+
+<script>
+  (function () {
+    // ── Surface preset radio reveals custom-tones panel ──────────
+    var surfaceRadios = document.querySelectorAll('input[name="surfacePreset"]');
+    var customPanel = document.getElementById('surface-custom-panel');
+    function syncCustomPanel() {
+      var checked = document.querySelector('input[name="surfacePreset"]:checked');
+      if (!checked || !customPanel) return;
+      customPanel.hidden = checked.value !== 'custom';
+    }
+    surfaceRadios.forEach(function (radio) {
+      radio.addEventListener('change', syncCustomPanel);
+    });
+    syncCustomPanel();
+
+    // ── Accent suggestion swatches populate accentBase + swatch ──
+    var accentInput   = document.getElementById('accentBase');
+    var accentSwatch  = document.getElementById('accentBase-swatch');
+    var accentPreset  = document.getElementById('accentPreset');
+    document.querySelectorAll('[data-accent-suggestion]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var hex = btn.getAttribute('data-accent-suggestion');
+        var slug = btn.getAttribute('data-accent-slug');
+        if (!hex) return;
+        if (accentInput)  accentInput.value  = hex;
+        if (accentSwatch) accentSwatch.value = hex;
+        if (accentPreset) accentPreset.value = slug || '';
+      });
+    });
+    // A manual color-input change clears the named-preset metadata.
+    if (accentInput && accentPreset) {
+      accentInput.addEventListener('change', function () { accentPreset.value = ''; });
+    }
+    if (accentSwatch && accentPreset) {
+      accentSwatch.addEventListener('change', function () { accentPreset.value = ''; });
+    }
+
+    // ── Role-override inherit checkbox toggles the override row ──
+    document.querySelectorAll('[data-role-inherit]').forEach(function (cb) {
+      var role = cb.getAttribute('data-role-inherit');
+      var panel = document.querySelector('[data-role-overrides="' + role + '"]');
+      if (!panel) return;
+      function sync() { panel.hidden = cb.checked; }
+      cb.addEventListener('change', sync);
+      sync();
+    });
+
+    // ── "Reset to default" buttons re-check the inherit checkbox ──
+    document.querySelectorAll('[data-role-reset]').forEach(function (btn) {
+      var role = btn.getAttribute('data-role-reset');
+      var inheritCb = document.querySelector('[data-role-inherit="' + role + '"]');
+      btn.addEventListener('click', function () {
+        if (!inheritCb) return;
+        inheritCb.checked = true;
+        // Trigger change so the panel hides
+        inheritCb.dispatchEvent(new Event('change'));
+      });
+    });
+
+    // ── Advanced toggle reveals the bg / actionFg panel ──────────
+    var advCheckbox = document.getElementById('advanced-toggle');
+    var advContent  = document.getElementById('advanced-content');
+    if (advCheckbox && advContent) {
+      advCheckbox.addEventListener('change', function () {
+        advContent.hidden = !advCheckbox.checked;
+      });
+    }
+  })();
+</script>
 {% endblock %}
