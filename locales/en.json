@@ -71,7 +71,23 @@
       "fontSans": "Sans-serif font",
       "fontSerif": "Serif font",
       "fontMono": "Monospace font",
-      "fontHosting": "Font hosting"
+      "fontHosting": "Font hosting",
+      "resetSection": "Reset this section",
+      "resetAll": "Reset all branding",
+      "resetDone": "Section reset to defaults",
+      "reverted": "Branding reverted from history",
+      "savedWithWarnings": "saved (with contrast warnings)",
+      "history": {
+        "title": "Saved history",
+        "desc": "Up to the 10 most recent branding states. Revert restores a snapshot — the current state is saved first so you can undo.",
+        "revert": "Revert"
+      },
+      "contrast": {
+        "failTitle": "Contrast check failed",
+        "failHint": "These role pairs have too little contrast to be legible. Saving is blocked until they are fixed.",
+        "warnTitle": "Contrast warnings",
+        "warnHint": "These pairs barely meet legibility thresholds — consider increasing contrast for visitors with low vision."
+      }
     },
     "layout": {
       "title": "Layout",

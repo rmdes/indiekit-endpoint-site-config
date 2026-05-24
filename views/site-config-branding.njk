@@ -310,6 +310,124 @@
     border-radius: var(--border-radius-small, 0.5rem);
     background: var(--color-background, #fff);
   }
+
+  /* Contrast feedback — inline next to role color pickers */
+  .sc-contrast-banner {
+    background: var(--color-warning-container, #fff3cd);
+    border: 1px solid var(--color-warning, #ffeeba);
+    border-radius: var(--border-radius-small, 0.25rem);
+    padding: var(--space-s, 0.75rem);
+    margin-block-end: var(--space-m, 1rem);
+    color: var(--color-on-warning-container, #856404);
+  }
+
+  .sc-contrast-banner--fail {
+    background: var(--color-error-container, #f8d7da);
+    border-color: var(--color-error, #f5c6cb);
+    color: var(--color-on-error-container, #721c24);
+  }
+
+  .sc-contrast-banner h3 {
+    margin: 0 0 var(--space-2xs, 0.375rem);
+    font: var(--font-caption, 0.875rem/1.4 sans-serif);
+    font-weight: 700;
+  }
+
+  .sc-contrast-banner ul {
+    margin: 0;
+    padding-inline-start: 1.25rem;
+    font: var(--font-caption, 0.8125rem/1.5 sans-serif);
+  }
+
+  .sc-contrast-pill {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.2rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    margin-inline-start: var(--space-2xs, 0.375rem);
+    vertical-align: middle;
+  }
+
+  .sc-contrast-pill--pass { background: #d4edda; color: #155724; }
+  .sc-contrast-pill--warn { background: #fff3cd; color: #856404; }
+  .sc-contrast-pill--fail { background: #f8d7da; color: #721c24; }
+
+  /* History list */
+  .sc-history-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs, 0.5rem);
+  }
+
+  .sc-history-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-s, 0.75rem);
+    padding: var(--space-xs, 0.5rem) var(--space-s, 0.75rem);
+    background: var(--color-background, #fff);
+    border: 1px solid var(--color-outline-variant, #e0e0e0);
+    border-radius: var(--border-radius-small, 0.25rem);
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+  }
+
+  .sc-history-entry__meta {
+    color: var(--color-on-offset, #666);
+    font-size: 0.8125rem;
+  }
+
+  .sc-history-entry__index {
+    display: inline-block;
+    min-width: 1.5rem;
+    text-align: center;
+    background: var(--color-offset, #f5f5f5);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.4rem;
+    font-weight: 600;
+    margin-inline-end: var(--space-2xs, 0.375rem);
+  }
+
+  /* Section + global reset buttons */
+  .sc-section__reset-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-block-start: var(--space-s, 0.75rem);
+  }
+
+  .sc-reset-btn {
+    background: transparent;
+    border: 1px solid var(--color-outline-variant, #ccc);
+    color: var(--color-on-surface, #444);
+    padding: var(--space-2xs, 0.375rem) var(--space-s, 0.75rem);
+    border-radius: var(--border-radius-small, 0.25rem);
+    font: var(--font-caption, 0.8125rem/1.5 sans-serif);
+    cursor: pointer;
+  }
+
+  .sc-reset-btn:hover {
+    border-color: var(--color-primary, #0066cc);
+    color: var(--color-primary, #0066cc);
+  }
+
+  .sc-reset-btn--danger {
+    border-color: var(--color-error, #dc3545);
+    color: var(--color-error, #dc3545);
+  }
+
+  .sc-reset-btn--danger:hover {
+    background: var(--color-error, #dc3545);
+    color: #fff;
+  }
+
+  .sc-inline-form {
+    display: inline;
+  }
+
+  /* Hide the per-section reset form's submit when there's already a save row */
 </style>
 
 <header class="page-header">
@@ -321,7 +439,41 @@
 
 {% if request.query.saved %}
 <div class="hp-success">
-  <p>{{ __("siteConfig.common.saved") }}</p>
+  <p>{{ __("siteConfig.common.saved") }}{% if request.query.warn %} — {{ __("siteConfig.branding.savedWithWarnings") }}{% endif %}</p>
+</div>
+{% endif %}
+
+{% if request.query.reverted %}
+<div class="hp-success">
+  <p>{{ __("siteConfig.branding.reverted") }}</p>
+</div>
+{% endif %}
+
+{% if request.query.reset %}
+<div class="hp-success">
+  <p>{{ __("siteConfig.branding.resetDone") }}{% if request.query.section %} ({{ request.query.section }}){% endif %}</p>
+</div>
+{% endif %}
+
+{% if contrastFailures and contrastFailures.length > 0 %}
+<div class="sc-contrast-banner sc-contrast-banner--fail" role="alert">
+  <h3>{{ __("siteConfig.branding.contrast.failTitle") }}</h3>
+  <p style="margin: 0 0 var(--space-2xs, 0.375rem);">{{ __("siteConfig.branding.contrast.failHint") }}</p>
+  <ul>
+    {% for f in contrastFailures %}
+      <li>{{ f.message }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% elif contrastWarnings and contrastWarnings.length > 0 %}
+<div class="sc-contrast-banner">
+  <h3>{{ __("siteConfig.branding.contrast.warnTitle") }}</h3>
+  <p style="margin: 0 0 var(--space-2xs, 0.375rem);">{{ __("siteConfig.branding.contrast.warnHint") }}</p>
+  <ul>
+    {% for w in contrastWarnings %}
+      <li>{{ w.message }}</li>
+    {% endfor %}
+  </ul>
 </div>
 {% endif %}
 
@@ -432,6 +584,13 @@
           {% endfor %}
         </div>
       </div>
+
+      <div class="sc-section__reset-row">
+        <button type="button" class="sc-reset-btn"
+                data-reset-section="palette">
+          {{ __("siteConfig.branding.resetSection") }}
+        </button>
+      </div>
     </section>
 
     {# ──────────────────────────────────────────────────────────────
@@ -456,6 +615,11 @@
              __("siteConfig.branding.roles.fgMutedHint"),
              config.branding.roles.fgMuted,
              roleDefaults.fgMuted) }}
+      </div>
+      <div class="sc-section__reset-row">
+        <button type="button" class="sc-reset-btn" data-reset-section="text">
+          {{ __("siteConfig.branding.resetSection") }}
+        </button>
       </div>
     </section>
 
@@ -482,6 +646,11 @@
              config.branding.roles.focus,
              roleDefaults.focus) }}
       </div>
+      <div class="sc-section__reset-row">
+        <button type="button" class="sc-reset-btn" data-reset-section="interaction">
+          {{ __("siteConfig.branding.resetSection") }}
+        </button>
+      </div>
     </section>
 
     {# ──────────────────────────────────────────────────────────────
@@ -501,6 +670,11 @@
              __("siteConfig.branding.roles.borderHint"),
              config.branding.roles.border,
              roleDefaults.border) }}
+      </div>
+      <div class="sc-section__reset-row">
+        <button type="button" class="sc-reset-btn" data-reset-section="structure">
+          {{ __("siteConfig.branding.resetSection") }}
+        </button>
       </div>
     </section>
 
@@ -529,6 +703,11 @@
                __("siteConfig.branding.roles.actionFgHint"),
                config.branding.roles.actionFg,
                roleDefaults.actionFg) }}
+        </div>
+        <div class="sc-section__reset-row">
+          <button type="button" class="sc-reset-btn" data-reset-section="advanced">
+            {{ __("siteConfig.branding.resetSection") }}
+          </button>
         </div>
       </div>
     </section>
@@ -576,12 +755,73 @@
         </div>
 
       </div>
+      <div class="sc-section__reset-row">
+        <button type="button" class="sc-reset-btn" data-reset-section="typography">
+          {{ __("siteConfig.branding.resetSection") }}
+        </button>
+      </div>
     </section>
+
+    {# ──────────────────────────────────────────────────────────────
+       Saved history — Phase 2c §11.2
+       Each save snapshots the prior branding state. Up to 10 most-recent
+       snapshots are retained. Click "Revert" to restore one (which itself
+       snapshots the current state first, so the revert is undoable).
+       ────────────────────────────────────────────────────────────── #}
+    {% if historyEntries and historyEntries.length > 0 %}
+    <section class="sc-section">
+      <h2>{{ __("siteConfig.branding.history.title") }}</h2>
+      <p class="sc-section__desc">{{ __("siteConfig.branding.history.desc") }}</p>
+      <ol class="sc-history-list">
+        {% for entry in historyEntries %}
+          <li class="sc-history-entry">
+            <div>
+              <span class="sc-history-entry__index">#{{ loop.index }}</span>
+              <span class="sc-history-entry__meta">
+                {{ entry.savedAt }}
+                {% if entry.snapshot and entry.snapshot.accentBase %}
+                  · accent <code>{{ entry.snapshot.accentBase }}</code>
+                {% endif %}
+                {% if entry.snapshot and entry.snapshot.surfacePreset %}
+                  · {{ entry.snapshot.surfacePreset }}
+                {% endif %}
+                {% if entry.snapshot and entry.snapshot.mode %}
+                  · {{ entry.snapshot.mode }}
+                {% endif %}
+              </span>
+            </div>
+            <button type="button"
+                    class="sc-reset-btn"
+                    data-revert-index="{{ loop.index0 }}">
+              {{ __("siteConfig.branding.history.revert") }}
+            </button>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+    {% endif %}
 
     <div class="button-group">
       <button type="submit" class="button button--primary">{{ __("siteConfig.common.save") }}</button>
+      <button type="button"
+              class="sc-reset-btn sc-reset-btn--danger"
+              data-reset-section="all"
+              style="margin-inline-start: var(--space-m, 1rem);">
+        {{ __("siteConfig.branding.resetAll") }}
+      </button>
     </div>
 
+  </form>
+
+  {# Hidden helper forms for reset + revert. Buttons in the main form
+     submit these by setting their index/section field and calling submit().
+     This avoids nested <form> elements (invalid HTML) while keeping the
+     primary <form> intact for the save flow. #}
+  <form method="post" action="/site-config/branding/reset" id="sc-reset-form" style="display:none;">
+    <input type="hidden" name="section" id="sc-reset-section" value="all">
+  </form>
+  <form method="post" action="/site-config/branding/revert" id="sc-revert-form" style="display:none;">
+    <input type="hidden" name="index" id="sc-revert-index" value="0">
   </form>
 
   {# Live preview iframe — Phase 2c will wire it to send pending changes
@@ -661,6 +901,57 @@
       advCheckbox.addEventListener('change', function () {
         advContent.hidden = !advCheckbox.checked;
       });
+    }
+
+    // ── Section + global reset buttons ─────────────────────────────
+    var resetForm = document.getElementById('sc-reset-form');
+    var resetSection = document.getElementById('sc-reset-section');
+    document.querySelectorAll('[data-reset-section]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var section = btn.getAttribute('data-reset-section');
+        var label = section === 'all'
+          ? 'Reset ALL branding to defaults? You can undo this from the Saved History list.'
+          : 'Reset the ' + section + ' section to defaults? You can undo from history.';
+        if (!window.confirm(label)) return;
+        if (!resetForm || !resetSection) return;
+        resetSection.value = section;
+        resetForm.submit();
+      });
+    });
+
+    // ── History revert buttons ─────────────────────────────────────
+    var revertForm = document.getElementById('sc-revert-form');
+    var revertIndex = document.getElementById('sc-revert-index');
+    document.querySelectorAll('[data-revert-index]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var idx = btn.getAttribute('data-revert-index');
+        if (!window.confirm('Revert branding to snapshot #' + (Number(idx) + 1) + '? The current state will be saved to history first so you can undo.')) return;
+        if (!revertForm || !revertIndex) return;
+        revertIndex.value = idx;
+        revertForm.submit();
+      });
+    });
+
+    // ── Live preview iframe — debounced refresh on any input event ─
+    var previewIframe = document.querySelector('.sc-preview-iframe');
+    var brandingForm = document.getElementById('branding-form');
+    if (previewIframe && brandingForm) {
+      var refreshTimer = null;
+      function refreshPreview() {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(function () {
+          try {
+            var fd = new FormData(brandingForm);
+            var params = new URLSearchParams();
+            fd.forEach(function (v, k) { params.append(k, v); });
+            previewIframe.src = '/site-config/api/preview?' + params.toString();
+          } catch (e) {
+            // Best-effort — if FormData/URLSearchParams blow up, leave the iframe alone.
+          }
+        }, 200);
+      }
+      brandingForm.addEventListener('input', refreshPreview);
+      brandingForm.addEventListener('change', refreshPreview);
     }
   })();
 </script>
