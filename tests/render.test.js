@@ -235,3 +235,24 @@ test("renderSiteJson preserves schemaVersion 3 in v3 schema", () => {
   const json = JSON.parse(renderSiteJson(config));
   assert.equal(json.schemaVersion, 3);
 });
+
+test("renderSiteJson drops legacy top-level keys (e.g. v2 layout) when present", () => {
+  // Simulate a legacy v2 MongoDB document leaking the layout subtree
+  // through deep-merge. The writer should NOT serialize it.
+  const legacy = {
+    schemaVersion: 3,
+    identity: { name: "Rick" },
+    branding: { surfacePreset: "warm-stone" },
+    navigation: { items: [] },
+    features: { rss: true },
+    layout: { preset: "blog", sidebarEnabled: true, navItems: [] },     // legacy v2 cruft
+    extraJunk: "hello",                                                 // arbitrary stray key
+  };
+  const json = JSON.parse(renderSiteJson(legacy));
+  assert.equal(json.layout, undefined, "legacy layout subtree must be dropped");
+  assert.equal(json.extraJunk, undefined, "arbitrary stray keys must be dropped");
+  // Whitelisted fields still present:
+  assert.equal(json.schemaVersion, 3);
+  assert.equal(json.identity.name, "Rick");
+  assert.equal(json.navigation.items.length, 0);
+});
