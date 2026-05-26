@@ -4,26 +4,26 @@
 
 {% block content %}
 <style>
-  .sc-dashboard {
+  .hp-dashboard {
     display: flex;
     flex-direction: column;
     gap: var(--space-xl, 2rem);
   }
 
-  .sc-section {
+  .hp-section {
     background: var(--color-offset, #f5f5f5);
     border-radius: var(--border-radius-small, 0.5rem);
     padding: var(--space-m, 1.5rem);
   }
 
-  .sc-section h2 {
+  .hp-section h2 {
     font: var(--font-heading, bold 1.25rem/1.4 sans-serif);
     margin-block-end: var(--space-s, 0.75rem);
     padding-block-end: var(--space-xs, 0.5rem);
     border-block-end: 1px solid var(--color-outline-variant, #ddd);
   }
 
-  .sc-section__desc {
+  .hp-section__desc {
     color: var(--color-on-offset, #666);
     font: var(--font-body, 0.875rem/1.5 sans-serif);
     margin-block-end: var(--space-s, 0.75rem);
@@ -52,26 +52,23 @@
     .hp-field-grid {
       grid-template-columns: 1fr;
     }
-    .hp-field-grid .field--full {
-      grid-column: 1;
-    }
   }
 
-  /* Field styling */
-  .sc-dashboard .field {
+  /* Field styling consistent with edit panels */
+  .hp-dashboard .field {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
   }
 
-  .sc-dashboard .field__label {
+  .hp-dashboard .field__label {
     display: block;
     font: var(--font-caption, 0.75rem/1.4 sans-serif);
     font-weight: 600;
     color: var(--color-on-surface, inherit);
   }
 
-  .sc-dashboard .field__input {
+  .hp-dashboard .field__input {
     width: 100%;
     padding: var(--space-2xs, 0.375rem) var(--space-xs, 0.5rem);
     border: 1px solid var(--color-outline-variant, #ccc);
@@ -82,91 +79,496 @@
     transition: border-color 0.15s;
   }
 
-  .sc-dashboard .field__input:focus {
+  .hp-dashboard .field__input:focus {
     outline: none;
     border-color: var(--color-primary, #0066cc);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #0066cc) 20%, transparent);
   }
 
-  .sc-dashboard textarea.field__input {
+  .hp-dashboard textarea.field__input {
     resize: vertical;
     min-height: 4.5rem;
   }
 
-  .sc-dashboard .field__hint {
+  .hp-dashboard .field__hint {
     color: var(--color-on-offset, #888);
     font: var(--font-caption, 0.75rem/1.4 sans-serif);
     margin: 0;
   }
+
+  /* Social links */
+  .hp-social-header {
+    display: grid;
+    grid-template-columns: 1.5rem 1fr 2fr 0.7fr 0.8fr auto;
+    gap: var(--space-xs, 0.5rem);
+    padding: var(--space-xs, 0.5rem) var(--space-xs, 0.5rem);
+    font: var(--font-caption, 0.75rem/1.4 sans-serif);
+    font-weight: 600;
+    color: var(--color-on-offset, #666);
+    border-bottom: 2px solid var(--color-outline-variant, #ddd);
+  }
+
+  .hp-social-row {
+    display: grid;
+    grid-template-columns: 1.5rem 1fr 2fr 0.7fr 0.8fr auto;
+    gap: var(--space-xs, 0.5rem);
+    align-items: center;
+    padding: var(--space-xs, 0.5rem);
+    background: var(--color-background, #fff);
+    border: 1px solid var(--color-outline-variant, #ddd);
+    border-top: none;
+    transition: background-color 0.15s;
+  }
+
+  .hp-social-row:first-child {
+    border-top: 1px solid var(--color-outline-variant, #ddd);
+    border-radius: var(--border-radius-small, 0.25rem) var(--border-radius-small, 0.25rem) 0 0;
+  }
+
+  .hp-social-row:last-child {
+    border-radius: 0 0 var(--border-radius-small, 0.25rem) var(--border-radius-small, 0.25rem);
+  }
+
+  .hp-social-row:only-child {
+    border-radius: var(--border-radius-small, 0.25rem);
+  }
+
+  .hp-social-row:hover {
+    background: color-mix(in srgb, var(--color-offset, #f5f5f5) 50%, transparent);
+  }
+
+  .hp-social-row.sortable-ghost {
+    opacity: 0.4;
+    background: var(--color-primary-container, #e6f0ff);
+  }
+
+  .hp-social-row.sortable-chosen {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+
+  .hp-social-drag {
+    cursor: grab;
+    color: var(--color-on-offset, #999);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hp-social-drag:active { cursor: grabbing; }
+
+  .hp-social-row input,
+  .hp-social-row select {
+    width: 100%;
+    padding: var(--space-2xs, 0.375rem) var(--space-xs, 0.5rem);
+    border: 1px solid var(--color-outline-variant, #ccc);
+    border-radius: var(--border-radius-small, 0.25rem);
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    background: var(--color-background, #fff);
+    color: var(--color-on-surface, inherit);
+    transition: border-color 0.15s;
+  }
+
+  .hp-social-row input:focus,
+  .hp-social-row select:focus {
+    outline: none;
+    border-color: var(--color-primary, #0066cc);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #0066cc) 20%, transparent);
+  }
+
+  .hp-social-empty {
+    text-align: center;
+    padding: var(--space-m, 1rem);
+    color: var(--color-on-offset, #888);
+    font: var(--font-caption, 0.875rem/1.4 sans-serif);
+    background: var(--color-background, #fff);
+    border: 1px dashed var(--color-outline-variant, #ddd);
+    border-radius: var(--border-radius-small, 0.25rem);
+  }
+
+  .hp-social-actions {
+    display: flex;
+    gap: var(--space-xs, 0.5rem);
+    align-items: center;
+    margin-block-start: var(--space-s, 0.75rem);
+  }
+
+  @media (max-width: 768px) {
+    .hp-social-header { display: none; }
+    .hp-social-row {
+      grid-template-columns: 1.5rem 1fr;
+      gap: var(--space-2xs, 0.25rem);
+      padding: var(--space-s, 0.75rem);
+    }
+    .hp-social-row input::placeholder,
+    .hp-social-row select { font-size: 0.8125rem; }
+  }
 </style>
 
 <header class="page-header">
-  <h1 class="page-header__title">{{ __('siteConfig.title') }}</h1>
+  <h1 class="page-header__title">{{ __("siteConfig.title") }}</h1>
+  <p class="page-header__description">{{ __("siteConfig.description") }}</p>
 </header>
 
 {% include "partials/tab-strip.njk" %}
 
 {% if request.query.saved %}
 <div class="hp-success">
-  <p>{{ __('siteConfig.common.saved') }}</p>
+  <p>{{ __("siteConfig.identity.saved") }}</p>
 </div>
 {% endif %}
 
-<form method="post" action="/site-config/identity" class="sc-dashboard">
+<form method="post" action="/site-config/identity" class="hp-dashboard" id="identity-form">
 
-  <section class="sc-section">
-    <h2>{{ __('siteConfig.identity.title') }}</h2>
+  {# Profile Section #}
+  <section class="hp-section">
+    <h2>{{ __("siteConfig.identity.profile.legend") }}</h2>
     <div class="hp-field-grid">
-
-      <div class="field field--full">
-        <label class="field__label" for="name">{{ __('siteConfig.identity.name') }}</label>
-        <input class="field__input" type="text" id="name" name="name"
-               value="{{ config.identity.name or '' }}" required>
-      </div>
-
-      <div class="field field--full">
-        <label class="field__label" for="description">{{ __('siteConfig.identity.description') }}</label>
-        <textarea class="field__input" id="description" name="description" rows="2">{{ config.identity.description or '' }}</textarea>
-      </div>
-
-      <div class="field field--full">
-        <label class="field__label" for="tagline">{{ __('siteConfig.identity.tagline') }}</label>
-        <input class="field__input" type="text" id="tagline" name="tagline"
-               value="{{ config.identity.tagline or '' }}">
-      </div>
-
       <div class="field">
-        <label class="field__label" for="defaultAuthor">{{ __('siteConfig.identity.defaultAuthor') }}</label>
-        <input class="field__input" type="text" id="defaultAuthor" name="defaultAuthor"
-               value="{{ config.identity.defaultAuthor or '' }}">
+        <label class="field__label" for="identity-name">{{ __("siteConfig.identity.profile.name.label") }}</label>
+        <input class="field__input" type="text" id="identity-name" name="identity-name" value="{{ config.identity.name or '' }}">
+        <p class="field__hint">{{ __("siteConfig.identity.profile.name.hint") }}</p>
       </div>
-
       <div class="field">
-        <label class="field__label" for="defaultOgImage">{{ __('siteConfig.identity.defaultOgImage') }}</label>
-        <input class="field__input" type="url" id="defaultOgImage" name="defaultOgImage"
-               value="{{ config.identity.defaultOgImage or '' }}">
+        <label class="field__label" for="identity-title">{{ __("siteConfig.identity.profile.title.label") }}</label>
+        <input class="field__input" type="text" id="identity-title" name="identity-title" value="{{ config.identity.title or '' }}">
+        <p class="field__hint">{{ __("siteConfig.identity.profile.title.hint") }}</p>
       </div>
+      <div class="field field--full">
+        <label class="field__label" for="identity-avatar">{{ __("siteConfig.identity.profile.avatar.label") }}</label>
+        <input class="field__input" type="url" id="identity-avatar" name="identity-avatar" value="{{ config.identity.avatar or '' }}">
+        <p class="field__hint">{{ __("siteConfig.identity.profile.avatar.hint") }}</p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="identity-pronoun">{{ __("siteConfig.identity.profile.pronoun.label") }}</label>
+        <input class="field__input" type="text" id="identity-pronoun" name="identity-pronoun" value="{{ config.identity.pronoun or '' }}">
+        <p class="field__hint">{{ __("siteConfig.identity.profile.pronoun.hint") }}</p>
+      </div>
+      <div class="field"></div>
+      <div class="field field--full">
+        <label class="field__label" for="identity-bio">{{ __("siteConfig.identity.profile.bio.label") }}</label>
+        <textarea class="field__input" id="identity-bio" name="identity-bio" rows="3">{{ config.identity.bio or '' }}</textarea>
+        <p class="field__hint">{{ __("siteConfig.identity.profile.bio.hint") }}</p>
+      </div>
+      <div class="field field--full">
+        <label class="field__label" for="identity-description">{{ __("siteConfig.identity.profile.description.label") }}</label>
+        <textarea class="field__input" id="identity-description" name="identity-description" rows="3">{{ config.identity.description or '' }}</textarea>
+        <p class="field__hint">{{ __("siteConfig.identity.profile.description.hint") }}</p>
+      </div>
+    </div>
+  </section>
 
+  {# Location Section #}
+  <section class="hp-section">
+    <h2>{{ __("siteConfig.identity.location.legend") }}</h2>
+    <div class="hp-field-grid">
+      <div class="field">
+        <label class="field__label" for="identity-locality">{{ __("siteConfig.identity.location.locality.label") }}</label>
+        <input class="field__input" type="text" id="identity-locality" name="identity-locality" value="{{ config.identity.locality or '' }}">
+        <p class="field__hint">{{ __("siteConfig.identity.location.locality.hint") }}</p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="identity-country">{{ __("siteConfig.identity.location.country.label") }}</label>
+        <input class="field__input" type="text" id="identity-country" name="identity-country" value="{{ config.identity.country or '' }}">
+      </div>
+      <div class="field">
+        <label class="field__label" for="identity-org">{{ __("siteConfig.identity.location.org.label") }}</label>
+        <input class="field__input" type="text" id="identity-org" name="identity-org" value="{{ config.identity.org or '' }}">
+        <p class="field__hint">{{ __("siteConfig.identity.location.org.hint") }}</p>
+      </div>
+    </div>
+  </section>
+
+  {# Contact Section #}
+  <section class="hp-section">
+    <h2>{{ __("siteConfig.identity.contact.legend") }}</h2>
+    <div class="hp-field-grid">
+      <div class="field field--full">
+        <label class="field__label" for="identity-url">{{ __("siteConfig.identity.contact.url.label") }}</label>
+        <input class="field__input" type="url" id="identity-url" name="identity-url" value="{{ config.identity.url or '' }}">
+        <p class="field__hint">{{ __("siteConfig.identity.contact.url.hint") }}</p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="identity-email">{{ __("siteConfig.identity.contact.email.label") }}</label>
+        <input class="field__input" type="email" id="identity-email" name="identity-email" value="{{ config.identity.email or '' }}">
+      </div>
+      <div class="field">
+        <label class="field__label" for="identity-keyUrl">{{ __("siteConfig.identity.contact.keyUrl.label") }}</label>
+        <input class="field__input" type="url" id="identity-keyUrl" name="identity-keyUrl" value="{{ config.identity.keyUrl or '' }}">
+        <p class="field__hint">{{ __("siteConfig.identity.contact.keyUrl.hint") }}</p>
+      </div>
+    </div>
+  </section>
+
+  {# Categories Section #}
+  <section class="hp-section">
+    <h2>{{ __("siteConfig.identity.categories.legend") }}</h2>
+    <div class="field">
+      <label class="field__label" for="identity-categories">{{ __("siteConfig.identity.categories.tags.label") }}</label>
+      <input class="field__input" type="text" id="identity-categories" name="identity-categories" value="{{ config.identity.categories | join(', ') if config.identity.categories else '' }}">
+      <p class="field__hint">{{ __("siteConfig.identity.categories.tags.hint") }}</p>
+    </div>
+  </section>
+
+  {# Social Links Section #}
+  <section class="hp-section">
+    <h2>{{ __("siteConfig.identity.social.legend") }}</h2>
+    <p class="hp-section__desc">{{ __("siteConfig.identity.social.description") }}</p>
+
+    <div class="hp-social-header">
+      <span></span>
+      <span>{{ __("siteConfig.identity.social.name.label") }}</span>
+      <span>{{ __("siteConfig.identity.social.url.label") }}</span>
+      <span>{{ __("siteConfig.identity.social.rel.label") }}</span>
+      <span>{{ __("siteConfig.identity.social.icon.label") }}</span>
+      <span></span>
+    </div>
+
+    <div id="social-links-container"></div>
+
+    <div class="hp-social-actions">
+      <button type="button" class="button button--small" id="add-social-link">Add Social Link</button>
+    </div>
+  </section>
+
+  {# Site Preferences Section (v3 identity schema) #}
+  <section class="hp-section">
+    <h2>{{ __('siteConfig.identity.preferences.legend') }}</h2>
+    <div class="hp-field-grid">
       <div class="field">
         <label class="field__label" for="locale">{{ __('siteConfig.identity.locale') }}</label>
         <input class="field__input" type="text" id="locale" name="locale"
                value="{{ config.identity.locale or 'en' }}" maxlength="5">
         <p class="field__hint">e.g. en, fr, en-GB</p>
       </div>
-
       <div class="field">
         <label class="field__label" for="timezone">{{ __('siteConfig.identity.timezone') }}</label>
         <input class="field__input" type="text" id="timezone" name="timezone"
                value="{{ config.identity.timezone or 'UTC' }}">
         <p class="field__hint">e.g. UTC, Europe/Paris, America/New_York</p>
       </div>
-
+      <div class="field field--full">
+        <label class="field__label" for="defaultOgImage">{{ __('siteConfig.identity.defaultOgImage') }}</label>
+        <input class="field__input" type="url" id="defaultOgImage" name="defaultOgImage"
+               value="{{ config.identity.defaultOgImage or '' }}">
+      </div>
+      <div class="field field--full">
+        <label class="field__label" for="tagline">{{ __('siteConfig.identity.tagline') }}</label>
+        <input class="field__input" type="text" id="tagline" name="tagline"
+               value="{{ config.identity.tagline or '' }}">
+      </div>
     </div>
   </section>
 
+  {# Save Button #}
   <div class="button-group">
-    <button type="submit" class="button button--primary">{{ __('siteConfig.common.save') }}</button>
+    <button type="submit" class="button button--primary">{{ __("siteConfig.common.save") }}</button>
   </div>
-
 </form>
+
+<script>
+  var socialData = {{ config.identity.social | dump | default('[]') | safe }};
+  var socialContainer = document.getElementById('social-links-container');
+
+  // Icon options grouped for the select dropdown
+  var iconOptions = [
+    { value: '', label: 'None', group: '' },
+    { value: 'github', label: 'GitHub', group: 'Code' },
+    { value: 'gitlab', label: 'GitLab', group: 'Code' },
+    { value: 'forgejo', label: 'Forgejo', group: 'Code' },
+    { value: 'codeberg', label: 'Codeberg', group: 'Code' },
+    { value: 'sourcehut', label: 'SourceHut', group: 'Code' },
+    { value: 'linkedin', label: 'LinkedIn', group: 'Social' },
+    { value: 'bluesky', label: 'Bluesky', group: 'Social' },
+    { value: 'mastodon', label: 'Mastodon', group: 'Social' },
+    { value: 'activitypub', label: 'ActivityPub', group: 'Social' },
+    { value: 'pixelfed', label: 'PixelFed', group: 'Social' },
+    { value: 'twitter', label: 'X / Twitter', group: 'Social' },
+    { value: 'facebook', label: 'Facebook', group: 'Social' },
+    { value: 'instagram', label: 'Instagram', group: 'Social' },
+    { value: 'threads', label: 'Threads', group: 'Social' },
+    { value: 'reddit', label: 'Reddit', group: 'Social' },
+    { value: 'hackernews', label: 'Hacker News', group: 'Social' },
+    { value: 'indieweb', label: 'IndieWeb', group: 'Social' },
+    { value: 'youtube', label: 'YouTube', group: 'Content' },
+    { value: 'twitch', label: 'Twitch', group: 'Content' },
+    { value: 'flickr', label: 'Flickr', group: 'Content' },
+    { value: 'spotify', label: 'Spotify', group: 'Content' },
+    { value: 'bandcamp', label: 'Bandcamp', group: 'Content' },
+    { value: 'soundcloud', label: 'SoundCloud', group: 'Content' },
+    { value: 'funkwhale', label: 'Funkwhale', group: 'Content' },
+    { value: 'lastfm', label: 'Last.fm', group: 'Content' },
+    { value: 'peertube', label: 'PeerTube', group: 'Content' },
+    { value: 'bookwyrm', label: 'BookWyrm', group: 'Content' },
+    { value: 'matrix', label: 'Matrix', group: 'Messaging' },
+    { value: 'discord', label: 'Discord', group: 'Messaging' },
+    { value: 'signal', label: 'Signal', group: 'Messaging' },
+    { value: 'telegram', label: 'Telegram', group: 'Messaging' },
+    { value: 'xmpp', label: 'XMPP', group: 'Messaging' },
+    { value: 'rss', label: 'RSS', group: 'Other' },
+    { value: 'email', label: 'Email', group: 'Other' },
+    { value: 'keybase', label: 'Keybase', group: 'Other' },
+    { value: 'orcid', label: 'ORCID', group: 'Other' },
+    { value: 'website', label: 'Website', group: 'Other' }
+  ];
+
+  /**
+   * Sync DOM input values back into socialData.
+   * Must be called before any operation that triggers renderSocialLinks().
+   */
+  function syncSocialData() {
+    var rows = socialContainer.querySelectorAll('.hp-social-row');
+    rows.forEach(function(row, index) {
+      if (index >= socialData.length) return;
+      var inputs = row.querySelectorAll('input');
+      var select = row.querySelector('select');
+      if (inputs[0]) socialData[index].name = inputs[0].value;
+      if (inputs[1]) socialData[index].url = inputs[1].value;
+      if (inputs[2]) socialData[index].rel = inputs[2].value;
+      if (select) socialData[index].icon = select.value;
+    });
+  }
+
+  function createDragHandle() {
+    var drag = document.createElement('span');
+    drag.className = 'hp-social-drag drag-handle';
+    drag.title = 'Drag to reorder';
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'currentColor');
+    var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M8 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm8-16a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4z');
+    svg.appendChild(path);
+    drag.appendChild(svg);
+    return drag;
+  }
+
+  function buildIconSelect(selectedValue) {
+    var select = document.createElement('select');
+    var currentGroup = '';
+    var optgroup = null;
+
+    iconOptions.forEach(function(icon) {
+      if (icon.group && icon.group !== currentGroup) {
+        currentGroup = icon.group;
+        optgroup = document.createElement('optgroup');
+        optgroup.label = currentGroup;
+        select.appendChild(optgroup);
+      }
+      var opt = document.createElement('option');
+      opt.value = icon.value;
+      opt.textContent = icon.label;
+      if (icon.value === (selectedValue || '')) opt.selected = true;
+      if (optgroup && icon.group) {
+        optgroup.appendChild(opt);
+      } else {
+        select.appendChild(opt);
+      }
+    });
+
+    return select;
+  }
+
+  function renderSocialLinks() {
+    socialContainer.textContent = '';
+    if (socialData.length === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'hp-social-empty';
+      empty.textContent = 'No social links configured. Click "Add Social Link" to add one.';
+      socialContainer.appendChild(empty);
+      return;
+    }
+    socialData.forEach(function(link, index) {
+      socialContainer.appendChild(createSocialRow(link, index));
+    });
+    initSortable();
+  }
+
+  function createSocialRow(link, index) {
+    var row = document.createElement('div');
+    row.className = 'hp-social-row';
+    row.dataset.index = index;
+
+    row.appendChild(createDragHandle());
+
+    var nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.name = 'social[' + index + '][name]';
+    nameInput.value = link.name || '';
+    nameInput.placeholder = 'GitHub';
+    row.appendChild(nameInput);
+
+    var urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.name = 'social[' + index + '][url]';
+    urlInput.value = link.url || '';
+    urlInput.placeholder = 'https://github.com/username';
+    row.appendChild(urlInput);
+
+    var relInput = document.createElement('input');
+    relInput.type = 'text';
+    relInput.name = 'social[' + index + '][rel]';
+    relInput.value = link.rel || 'me';
+    relInput.placeholder = 'me';
+    row.appendChild(relInput);
+
+    var iconSelect = buildIconSelect(link.icon);
+    iconSelect.name = 'social[' + index + '][icon]';
+    row.appendChild(iconSelect);
+
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'button button--small button--secondary';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', function() {
+      syncSocialData();
+      socialData.splice(index, 1);
+      renderSocialLinks();
+    });
+    row.appendChild(removeBtn);
+
+    return row;
+  }
+
+  document.getElementById('add-social-link').addEventListener('click', function() {
+    syncSocialData();
+    socialData.push({ name: '', url: '', rel: 'me', icon: '' });
+    renderSocialLinks();
+  });
+
+  // --- SortableJS for drag-and-drop reordering ---
+  function syncOrderFromDom() {
+    syncSocialData();
+    var rows = socialContainer.querySelectorAll('.hp-social-row');
+    var reordered = [];
+    rows.forEach(function(row) {
+      var idx = parseInt(row.dataset.index, 10);
+      if (socialData[idx]) reordered.push(socialData[idx]);
+    });
+    socialData = reordered;
+    // Re-render to update form field name indices
+    renderSocialLinks();
+  }
+
+  function initSortable() {
+    if (typeof Sortable === 'undefined') return;
+    if (socialContainer._sortable) socialContainer._sortable.destroy();
+    socialContainer._sortable = new Sortable(socialContainer, {
+      handle: '.drag-handle',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      draggable: '.hp-social-row',
+      onEnd: syncOrderFromDom
+    });
+  }
+
+  var sortableScript = document.createElement('script');
+  sortableScript.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js';
+  sortableScript.onload = function() { initSortable(); };
+  document.head.appendChild(sortableScript);
+
+  renderSocialLinks();
+</script>
 {% endblock %}
