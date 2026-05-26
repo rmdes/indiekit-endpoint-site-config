@@ -1,21 +1,67 @@
 {
   "siteConfig": {
     "title": "Site Config",
+    "description": "Configure your site identity, branding, homepage layout, blog sidebars, navigation, and feature flags.",
     "tabs": {
       "identity": "Identity",
       "branding": "Branding",
-      "layout": "Layout",
+      "homepage": "Homepage",
+      "blog": "Blog",
+      "navigation": "Navigation",
       "features": "Feature Flags"
+    },
+    "common": {
+      "save": "Save",
+      "saved": "Saved",
+      "cancel": "Cancel",
+      "reset": "Reset",
+      "preview": "Live preview"
     },
     "identity": {
       "title": "Identity",
-      "name": "Site name",
-      "description": "Description",
-      "tagline": "Tagline",
-      "defaultAuthor": "Default author",
-      "defaultOgImage": "Default OpenGraph image URL",
-      "locale": "Locale (ISO 639-1)",
-      "timezone": "Timezone (IANA)"
+      "saved": "Identity saved successfully. Refresh your site to see changes.",
+      "profile": {
+        "legend": "Profile",
+        "name":        { "label": "Name",        "hint": "Your name as shown in the h-card and OG metadata" },
+        "title":       { "label": "Title",       "hint": "Job title or tagline (e.g. 'Middleware Engineer')" },
+        "avatar":      { "label": "Avatar URL",  "hint": "URL of your profile photo for the h-card" },
+        "pronoun":     { "label": "Pronouns",    "hint": "e.g. she/her, he/him, they/them" },
+        "bio":         { "label": "Short bio",   "hint": "One-paragraph bio for sidebars and h-card" },
+        "description": { "label": "Description", "hint": "Longer description (microformats h-card note)" }
+      },
+      "location": {
+        "legend": "Location",
+        "locality": { "label": "City",         "hint": "City or town" },
+        "country":  { "label": "Country",      "hint": "Country (full name)" },
+        "org":      { "label": "Organization", "hint": "Optional organization/affiliation" }
+      },
+      "contact": {
+        "legend": "Contact",
+        "url":    { "label": "URL",     "hint": "Your canonical site URL (used as rel=me)" },
+        "email":  { "label": "Email",   "hint": "Public contact email (optional)" },
+        "keyUrl": { "label": "PGP key", "hint": "URL of your public PGP key (optional, used for IndieAuth/rel=key)" }
+      },
+      "categories": {
+        "legend": "Categories",
+        "tags": { "label": "Tags", "hint": "Comma-separated h-card categories (e.g. indieweb, devops, brussels)" }
+      },
+      "social": {
+        "legend": "Social Links",
+        "description": "Profiles linked from the h-card. Drag to reorder.",
+        "name":  { "label": "Name" },
+        "url":   { "label": "URL" },
+        "rel":   { "label": "Rel" },
+        "icon":  { "label": "Icon" }
+      },
+      "preferences": {
+        "legend": "Site preferences"
+      },
+      "name":            "Site name",
+      "description":     "Description",
+      "tagline":         "Tagline",
+      "defaultOgImage":  "Default OpenGraph image URL",
+      "locale":          "Locale (ISO 639-1)",
+      "timezone":        "Timezone (IANA)"
     },
     "branding": {
       "title": "Branding",
@@ -89,6 +135,83 @@
         "warnHint": "These pairs barely meet legibility thresholds — consider increasing contrast for visitors with low vision."
       }
     },
+    "homepage": {
+      "title": "Homepage",
+      "description": "Configure your homepage layout, sections, sidebar widgets, and footer.",
+      "saved": "Configuration saved successfully. Refresh your homepage to see changes.",
+      "save": "Save Configuration",
+      "presets": {
+        "title": "Quick Start",
+        "description": "Choose a preset to quickly configure your homepage. You can customize it further below.",
+        "apply": "Apply",
+        "active": "Active",
+        "custom": "Custom",
+        "customDescription": "Your own customized layout"
+      },
+      "layout": {
+        "title": "Layout",
+        "singleColumn": "Single Column",
+        "twoColumn": "Two Column with Sidebar",
+        "fullWidthHero": "Full-width Hero + Grid"
+      },
+      "hero": {
+        "title": "Hero Section",
+        "enabled": "Show hero section with author info",
+        "showSocial": "Show social links in hero"
+      },
+      "sections": {
+        "title": "Content Sections",
+        "description": "Add and arrange sections that appear in the main content area.",
+        "add": "Add Section",
+        "empty": "No sections configured. Add sections from the picker below."
+      },
+      "sidebar": {
+        "title": "Sidebar Widgets",
+        "description": "Configure widgets that appear in the sidebar (only visible with two-column layout).",
+        "add": "Add Widget",
+        "empty": "No widgets configured. Add widgets from the picker below."
+      },
+      "footer": {
+        "title": "Footer (3-column)",
+        "description": "A responsive 3-column area below the main content — add up to 3 blocks (one per column). Ideal for webrings, links, or custom content.",
+        "add": "Add Footer Column",
+        "empty": "No footer columns configured.",
+        "full": "All 3 footer columns are filled."
+      },
+      "customContent": {
+        "editTitle": "Edit Custom Content",
+        "titleLabel": "Title (optional)",
+        "contentLabel": "Content (HTML or text)",
+        "save": "Apply",
+        "cancel": "Cancel"
+      }
+    },
+    "blog": {
+      "title": "Blog Layout",
+      "blogListingSidebar": {
+        "title": "Blog Listing Sidebar",
+        "description": "Configure widgets that appear in the sidebar on blog listing pages (/blog/, /notes/, /articles/...). Leave empty to use default widgets.",
+        "add": "Add Widget",
+        "empty": "No widgets configured — using default sidebar."
+      },
+      "blogPostSidebar": {
+        "title": "Blog Post Sidebar",
+        "description": "Configure widgets that appear in the sidebar on individual post pages. Leave empty to use default widgets.",
+        "add": "Add Widget",
+        "empty": "No widgets configured — using default sidebar."
+      },
+      "customContent": {
+        "editTitle": "Edit Custom Content",
+        "titleLabel": "Title (optional)",
+        "contentLabel": "Content (HTML or text)",
+        "save": "Apply",
+        "cancel": "Cancel"
+      }
+    },
+    "navigation": {
+      "title": "Navigation",
+      "description": "Site header menu links. Leave empty rows blank — they will be ignored on save."
+    },
     "layout": {
       "title": "Layout",
       "preset": "Layout preset",
@@ -99,11 +222,6 @@
     "features": {
       "title": "Feature Flags",
       "empty": "No plugins declare a feature flag yet."
-    },
-    "common": {
-      "save": "Save changes",
-      "saved": "Saved",
-      "preview": "Live preview"
     }
   }
 }

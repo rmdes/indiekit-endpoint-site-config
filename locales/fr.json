@@ -1,39 +1,216 @@
 {
   "siteConfig": {
     "title": "Configuration du site",
+    "description": "Configurez l'identité de votre site, l'identité visuelle, la mise en page de la page d'accueil, les barres latérales du blog, la navigation et les drapeaux de fonctionnalités.",
     "tabs": {
       "identity": "Identité",
       "branding": "Identité visuelle",
-      "layout": "Mise en page",
+      "homepage": "Accueil",
+      "blog": "Blog",
+      "navigation": "Navigation",
       "features": "Fonctionnalités"
+    },
+    "common": {
+      "save": "Enregistrer",
+      "saved": "Enregistré",
+      "cancel": "Annuler",
+      "reset": "Réinitialiser",
+      "preview": "Aperçu en direct"
     },
     "identity": {
       "title": "Identité",
-      "name": "Nom du site",
-      "description": "Description",
-      "tagline": "Slogan",
-      "defaultAuthor": "Auteur par défaut",
-      "defaultOgImage": "Image OpenGraph par défaut",
-      "locale": "Langue (ISO 639-1)",
-      "timezone": "Fuseau horaire (IANA)"
+      "saved": "Identité enregistrée avec succès. Actualisez votre site pour voir les modifications.",
+      "profile": {
+        "legend": "Profil",
+        "name":        { "label": "Nom",            "hint": "Votre nom tel qu'il apparaît dans la h-card et les métadonnées OG" },
+        "title":       { "label": "Titre",          "hint": "Intitulé de poste ou slogan (ex. « Ingénieur middleware »)" },
+        "avatar":      { "label": "URL de l'avatar","hint": "URL de votre photo de profil pour la h-card" },
+        "pronoun":     { "label": "Pronoms",        "hint": "ex. elle, il, iel" },
+        "bio":         { "label": "Courte bio",     "hint": "Bio d'un paragraphe pour les barres latérales et la h-card" },
+        "description": { "label": "Description",    "hint": "Description plus longue (note de la h-card en microformats)" }
+      },
+      "location": {
+        "legend": "Localisation",
+        "locality": { "label": "Ville",        "hint": "Ville ou localité" },
+        "country":  { "label": "Pays",         "hint": "Pays (nom complet)" },
+        "org":      { "label": "Organisation", "hint": "Organisation ou affiliation (facultatif)" }
+      },
+      "contact": {
+        "legend": "Contact",
+        "url":    { "label": "URL",         "hint": "URL canonique de votre site (utilisée comme rel=me)" },
+        "email":  { "label": "E-mail",      "hint": "Adresse e-mail publique (facultatif)" },
+        "keyUrl": { "label": "Clé PGP",     "hint": "URL de votre clé PGP publique (facultatif, utilisée pour IndieAuth/rel=key)" }
+      },
+      "categories": {
+        "legend": "Catégories",
+        "tags": { "label": "Étiquettes", "hint": "Catégories h-card séparées par des virgules (ex. indieweb, devops, bruxelles)" }
+      },
+      "social": {
+        "legend": "Liens sociaux",
+        "description": "Profils liés depuis la h-card. Glissez pour réorganiser.",
+        "name":  { "label": "Nom" },
+        "url":   { "label": "URL" },
+        "rel":   { "label": "Rel" },
+        "icon":  { "label": "Icône" }
+      },
+      "preferences": {
+        "legend": "Préférences du site"
+      },
+      "name":            "Nom du site",
+      "description":     "Description",
+      "tagline":         "Slogan",
+      "defaultOgImage":  "Image OpenGraph par défaut",
+      "locale":          "Langue (ISO 639-1)",
+      "timezone":        "Fuseau horaire (IANA)"
     },
     "branding": {
       "title": "Identité visuelle",
+      "description": "Choisissez une palette, choisissez votre accent et remplacez n'importe quel rôle de couleur. Les valeurs par défaut découlent de la palette choisie.",
+      "groups": {
+        "palette": "Palette",
+        "paletteDesc": "Choisissez la base neutre, la teinte d'accent et la façon dont le site répond à la préférence de schéma de couleurs du système.",
+        "text": "Texte",
+        "textDesc": "Couleurs pour les titres, le corps du texte et le texte secondaire.",
+        "interaction": "Interaction",
+        "interactionDesc": "Couleurs pour les liens, les appels à l'action et l'anneau de focus clavier.",
+        "structure": "Structure",
+        "structureDesc": "Couleurs pour les surfaces de cartes et les bordures.",
+        "advanced": "Avancé (arrière-plan de page, texte d'action)",
+        "advancedDesc": "La plupart des sites devraient laisser ces options telles quelles — la palette les dérive déjà. Ne les remplacez qu'avec une bonne raison."
+      },
       "surfacePreset": "Palette de fond",
+      "surfacePresetHint": "Choisissez une palette neutre de base. Warm Stone est crème/brun. Cool Slate est bleu-gris. Neutral Zinc est un gris pur. Custom vous permet de définir manuellement les 11 tons.",
+      "surfacePresetCustom": "Personnalisé (avancé)",
       "surfaceCustom": "Tons personnalisés",
-      "accent": "Accent",
-      "brandTokens": "Couleurs de marque",
-      "primary": "Couleur principale",
-      "link": "Lien",
-      "focus": "Anneau de focus",
-      "success": "Succès",
-      "warning": "Avertissement",
-      "danger": "Erreur",
+      "surfaceCustomHint": "11 tons du plus clair (50) au plus sombre (950). Appliqué uniquement lorsque la palette de fond ci-dessus est définie sur Personnalisé.",
+      "accentBase": "Couleur d'accent de base",
+      "accentBaseHint": "La teinte principale de la marque. Nous dérivons une échelle de 11 teintes (utilisée pour les liens, les appels à l'action et l'anneau de focus) à partir de cette unique couleur.",
+      "accentSuggestionsLabel": "Suggestions de couleurs d'accent",
+      "mode": "Mode de couleur",
+      "modeHint": "Clair sert toujours la palette claire. Sombre sert toujours la palette sombre. Auto suit la préférence du système d'exploitation du visiteur et lui permet de basculer via le bouton de la page.",
+      "modeLight": "Clair",
+      "modeDark": "Sombre",
+      "modeAuto": "Auto",
+      "roles": {
+        "bg": "Arrière-plan de page",
+        "bgHint": "La couleur derrière tout. Par défaut, le ton de surface le plus clair (ou le plus sombre).",
+        "fg": "Corps du texte",
+        "fgHint": "Couleur du texte par défaut pour les paragraphes et le contenu du corps.",
+        "fgMuted": "Texte atténué",
+        "fgMutedHint": "Utilisé pour les métadonnées, les légendes, les horodatages et les libellés secondaires.",
+        "heading": "Titre",
+        "headingHint": "Utilisé pour les titres de page et les en-têtes de section (h1-h6).",
+        "link": "Lien",
+        "linkHint": "Couleur des liens dans le contenu du corps. Exclut les boutons de navigation et les appels à l'action principaux.",
+        "action": "Action",
+        "actionHint": "Arrière-plans des appels à l'action principaux (Publier, Enregistrer, Soumettre, S'abonner).",
+        "actionFg": "Texte d'action",
+        "actionFgHint": "Couleur du texte à l'intérieur des boutons de couleur Action. Doit avoir un contraste suffisant avec la couleur Action.",
+        "focus": "Anneau de focus",
+        "focusHint": "Indicateur de focus visuel pour la navigation au clavier. Doit être visible sur les arrière-plans clairs et sombres.",
+        "surface": "Surface de carte",
+        "surfaceHint": "Arrière-plan des cartes, panneaux, barres latérales et autres zones de contenu qui se trouvent au-dessus de l'arrière-plan de la page.",
+        "border": "Bordure",
+        "borderHint": "Séparateurs et contours pour les cartes, les champs de formulaire et les cellules de tableau."
+      },
       "typography": "Typographie",
       "fontSans": "Police sans-serif",
       "fontSerif": "Police serif",
       "fontMono": "Police mono",
-      "fontHosting": "Hébergement des polices"
+      "fontHosting": "Hébergement des polices",
+      "resetSection": "Réinitialiser cette section",
+      "resetAll": "Réinitialiser toute l'identité visuelle",
+      "resetDone": "Section réinitialisée aux valeurs par défaut",
+      "reverted": "Identité visuelle restaurée depuis l'historique",
+      "savedWithWarnings": "enregistré (avec avertissements de contraste)",
+      "history": {
+        "title": "Historique enregistré",
+        "desc": "Jusqu'aux 10 derniers états d'identité visuelle. Restaurer remet en place un instantané — l'état actuel est enregistré d'abord pour vous permettre d'annuler.",
+        "revert": "Restaurer"
+      },
+      "contrast": {
+        "failTitle": "Contrôle de contraste échoué",
+        "failHint": "Ces paires de rôles ont trop peu de contraste pour être lisibles. L'enregistrement est bloqué jusqu'à ce qu'elles soient corrigées.",
+        "warnTitle": "Avertissements de contraste",
+        "warnHint": "Ces paires atteignent à peine les seuils de lisibilité — envisagez d'augmenter le contraste pour les visiteurs malvoyants."
+      }
+    },
+    "homepage": {
+      "title": "Accueil",
+      "description": "Configurez la mise en page de votre page d'accueil, les sections, les widgets de la barre latérale et le pied de page.",
+      "saved": "Configuration enregistrée avec succès. Actualisez votre page d'accueil pour voir les modifications.",
+      "save": "Enregistrer la configuration",
+      "presets": {
+        "title": "Démarrage rapide",
+        "description": "Choisissez un modèle pour configurer rapidement votre page d'accueil. Vous pouvez la personnaliser davantage ci-dessous.",
+        "apply": "Appliquer",
+        "active": "Actif",
+        "custom": "Personnalisé",
+        "customDescription": "Votre propre mise en page personnalisée"
+      },
+      "layout": {
+        "title": "Mise en page",
+        "singleColumn": "Colonne unique",
+        "twoColumn": "Deux colonnes avec barre latérale",
+        "fullWidthHero": "Hero pleine largeur + Grille"
+      },
+      "hero": {
+        "title": "Section Hero",
+        "enabled": "Afficher la section hero avec les informations sur l'auteur",
+        "showSocial": "Afficher les liens sociaux dans le hero"
+      },
+      "sections": {
+        "title": "Sections de contenu",
+        "description": "Ajoutez et organisez les sections qui apparaissent dans la zone de contenu principal.",
+        "add": "Ajouter une section",
+        "empty": "Aucune section configurée. Ajoutez des sections depuis le sélecteur ci-dessous."
+      },
+      "sidebar": {
+        "title": "Widgets de la barre latérale",
+        "description": "Configurez les widgets qui apparaissent dans la barre latérale (visible uniquement avec la mise en page à deux colonnes).",
+        "add": "Ajouter un widget",
+        "empty": "Aucun widget configuré. Ajoutez des widgets depuis le sélecteur ci-dessous."
+      },
+      "footer": {
+        "title": "Pied de page (3 colonnes)",
+        "description": "Une zone responsive à 3 colonnes sous le contenu principal — ajoutez jusqu'à 3 blocs (un par colonne). Idéal pour les webrings, liens ou contenu personnalisé.",
+        "add": "Ajouter une colonne de pied de page",
+        "empty": "Aucune colonne de pied de page configurée.",
+        "full": "Les 3 colonnes de pied de page sont remplies."
+      },
+      "customContent": {
+        "editTitle": "Modifier le contenu personnalisé",
+        "titleLabel": "Titre (facultatif)",
+        "contentLabel": "Contenu (HTML ou texte)",
+        "save": "Appliquer",
+        "cancel": "Annuler"
+      }
+    },
+    "blog": {
+      "title": "Mise en page du blog",
+      "blogListingSidebar": {
+        "title": "Barre latérale des listes de blog",
+        "description": "Configurez les widgets qui apparaissent dans la barre latérale des pages de listes de blog (/blog/, /notes/, /articles/...). Laissez vide pour utiliser les widgets par défaut.",
+        "add": "Ajouter un widget",
+        "empty": "Aucun widget configuré — utilisation de la barre latérale par défaut."
+      },
+      "blogPostSidebar": {
+        "title": "Barre latérale des articles",
+        "description": "Configurez les widgets qui apparaissent dans la barre latérale des pages d'articles individuels. Laissez vide pour utiliser les widgets par défaut.",
+        "add": "Ajouter un widget",
+        "empty": "Aucun widget configuré — utilisation de la barre latérale par défaut."
+      },
+      "customContent": {
+        "editTitle": "Modifier le contenu personnalisé",
+        "titleLabel": "Titre (facultatif)",
+        "contentLabel": "Contenu (HTML ou texte)",
+        "save": "Appliquer",
+        "cancel": "Annuler"
+      }
+    },
+    "navigation": {
+      "title": "Navigation",
+      "description": "Liens du menu d'en-tête du site. Laissez les lignes vides — elles seront ignorées lors de l'enregistrement."
     },
     "layout": {
       "title": "Mise en page",
@@ -45,11 +222,6 @@
     "features": {
       "title": "Fonctionnalités",
       "empty": "Aucun plugin ne déclare encore de drapeau de fonctionnalité."
-    },
-    "common": {
-      "save": "Enregistrer",
-      "saved": "Enregistré",
-      "preview": "Aperçu en direct"
     }
   }
 }
