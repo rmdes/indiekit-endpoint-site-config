@@ -1,0 +1,587 @@
+{% extends "document.njk" %}
+
+{% block content %}
+<style>
+  .hp-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl, 2rem);
+  }
+
+  .hp-section {
+    background: var(--color-offset, #f5f5f5);
+    border-radius: var(--border-radius-small, 0.5rem);
+    padding: var(--space-m, 1.5rem);
+  }
+
+  .hp-section h2 {
+    font: var(--font-heading, bold 1.25rem/1.4 sans-serif);
+    margin-block-end: var(--space-s, 0.75rem);
+    padding-block-end: var(--space-xs, 0.5rem);
+    border-block-end: 1px solid var(--color-outline-variant, #ddd);
+  }
+
+  .hp-section__desc {
+    color: var(--color-on-offset, #666);
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    margin-block-end: var(--space-s, 0.75rem);
+  }
+
+  .hp-sections-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs, 0.5rem);
+  }
+
+  .hp-section-item {
+    background: var(--color-background, #fff);
+    border: 1px solid var(--color-outline-variant, #ddd);
+    border-radius: var(--border-radius-small, 0.25rem);
+    padding: var(--space-s, 0.75rem);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-s, 0.75rem);
+  }
+
+  .hp-section-item--has-edit {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-block-end: 0;
+  }
+
+  .hp-section-item__info { flex: 1; }
+  .hp-section-item__name { font-weight: 600; }
+  .hp-section-item__type {
+    color: var(--color-on-offset, #666);
+    font: var(--font-caption, 0.75rem/1.4 sans-serif);
+  }
+
+  .hp-section-item__preview {
+    color: var(--color-on-offset, #888);
+    font: var(--font-caption, 0.75rem/1.4 sans-serif);
+    margin-block-start: 0.125rem;
+    max-width: 40ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hp-section-item__actions {
+    display: flex;
+    gap: var(--space-2xs, 0.25rem);
+    flex-shrink: 0;
+  }
+
+  .hp-section-item__drag {
+    cursor: grab;
+    color: var(--color-on-offset, #999);
+    padding: 0 0.25rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .hp-section-item__drag:active { cursor: grabbing; }
+
+  .hp-section-item.sortable-ghost {
+    opacity: 0.4;
+    background: var(--color-primary-container, #e6f0ff);
+  }
+
+  .hp-section-item.sortable-chosen {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+
+  .hp-edit-panel {
+    background: var(--color-background, #fff);
+    border: 1px solid var(--color-primary, #0066cc);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius-small, 0.25rem) var(--border-radius-small, 0.25rem);
+    padding: var(--space-s, 0.75rem);
+    margin-block-end: var(--space-xs, 0.5rem);
+  }
+
+  .hp-edit-panel summary { display: none; }
+
+  .hp-edit-panel .field { margin-block-end: var(--space-xs, 0.5rem); }
+
+  .hp-edit-panel .field__label {
+    display: block;
+    font: var(--font-caption, 0.75rem/1.4 sans-serif);
+    font-weight: 600;
+    margin-block-end: 0.25rem;
+  }
+
+  .hp-edit-panel .field__input {
+    width: 100%;
+    padding: var(--space-2xs, 0.375rem) var(--space-xs, 0.5rem);
+    border: 1px solid var(--color-outline-variant, #ccc);
+    border-radius: var(--border-radius-small, 0.25rem);
+    font: var(--font-body, 0.875rem/1.5 sans-serif);
+    background: var(--color-background, #fff);
+    color: var(--color-on-surface, inherit);
+  }
+
+  .hp-edit-panel textarea.field__input {
+    resize: vertical;
+    min-height: 6rem;
+    font-family: monospace;
+    font-size: 0.8125rem;
+  }
+
+  .hp-edit-panel__buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-block-start: var(--space-xs, 0.5rem);
+  }
+
+  .hp-section-picker {
+    margin-block-start: var(--space-m, 1rem);
+    padding: var(--space-s, 0.75rem);
+    background: var(--color-background, #fff);
+    border: 1px dashed var(--color-outline-variant, #ddd);
+    border-radius: var(--border-radius-small, 0.25rem);
+  }
+
+  .hp-section-picker h3 {
+    font: var(--font-subhead, bold 1rem/1.4 sans-serif);
+    margin-block-end: var(--space-xs, 0.5rem);
+  }
+
+  .hp-section-picker__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--space-xs, 0.5rem);
+  }
+
+  .hp-section-picker__item {
+    background: var(--color-offset, #f5f5f5);
+    border: 1px solid var(--color-outline-variant, #ddd);
+    border-radius: var(--border-radius-small, 0.25rem);
+    padding: var(--space-xs, 0.5rem);
+    cursor: pointer;
+    text-align: center;
+    font: var(--font-caption, 0.875rem/1.4 sans-serif);
+  }
+
+  .hp-section-picker__item:hover {
+    background: var(--color-primary-container, #e6f0ff);
+    border-color: var(--color-primary, #0066cc);
+  }
+
+  .hp-section-picker__heading {
+    grid-column: 1 / -1;
+    font-weight: bold;
+    margin-top: 0.5rem;
+    font: var(--font-caption, 0.8rem/1.4 sans-serif);
+    color: var(--color-on-offset, #555);
+  }
+
+  .hp-empty {
+    color: var(--color-on-offset, #666);
+    font: var(--font-caption, 0.875rem/1.4 sans-serif);
+    text-align: center;
+    padding: var(--space-m, 1rem);
+  }
+
+  .hp-success {
+    background: var(--color-success-container, #d4edda);
+    border: 1px solid var(--color-success, #28a745);
+    border-radius: var(--border-radius-small, 0.25rem);
+    padding: var(--space-s, 0.75rem);
+    margin-block-end: var(--space-m, 1rem);
+  }
+</style>
+
+<header class="page-header">
+  <h1 class="page-header__title">{{ __("siteConfig.title") }}</h1>
+  <p class="page-header__description">{{ __("siteConfig.description") }}</p>
+</header>
+
+{% include "partials/tab-strip.njk" %}
+
+{% if request.query.saved %}
+<div class="hp-success">
+  <p>{{ __("siteConfig.common.saved") }}</p>
+</div>
+{% endif %}
+
+<form method="post" action="/site-config/blog" class="hp-dashboard" id="hp-form">
+  {# Blog Listing Sidebar #}
+  <section class="hp-section">
+    <h2>{{ __("siteConfig.blog.blogListingSidebar.title") }}</h2>
+    <p class="hp-section__desc">{{ __("siteConfig.blog.blogListingSidebar.description") }}</p>
+
+    <ul class="hp-sections-list" id="blog-listing-sidebar-list"></ul>
+
+    <div class="hp-section-picker">
+      <h3>{{ __("siteConfig.blog.blogListingSidebar.add") }}</h3>
+      <div class="hp-section-picker__grid">
+        {% for widget in availableWidgets %}
+        <div class="hp-section-picker__item" data-add-blog-listing-widget="{{ widget.id }}">
+          {{ widget.label }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <input type="hidden" name="blogListingSidebar" id="blog-listing-sidebar-json" value='{{ homepage.blogListingSidebar | dump }}'>
+  </section>
+
+  {# Blog Post Sidebar #}
+  <section class="hp-section">
+    <h2>{{ __("siteConfig.blog.blogPostSidebar.title") }}</h2>
+    <p class="hp-section__desc">{{ __("siteConfig.blog.blogPostSidebar.description") }}</p>
+
+    <ul class="hp-sections-list" id="blog-post-sidebar-list"></ul>
+
+    <div class="hp-section-picker">
+      <h3>{{ __("siteConfig.blog.blogPostSidebar.add") }}</h3>
+      <div class="hp-section-picker__grid">
+        <div class="hp-section-picker__heading">Post Widgets</div>
+        {% for widget in availableBlogPostWidgets %}
+        {% if widget.id in ["author-card-compact", "post-navigation", "toc", "post-categories", "webmentions", "share", "subscribe"] %}
+        <div class="hp-section-picker__item" data-add-blog-post-widget="{{ widget.id }}">
+          {{ widget.label }}
+        </div>
+        {% endif %}
+        {% endfor %}
+        <div class="hp-section-picker__heading">Universal Widgets</div>
+        {% for widget in availableBlogPostWidgets %}
+        {% if widget.id not in ["author-card-compact", "post-navigation", "toc", "post-categories", "webmentions", "share", "subscribe"] %}
+        <div class="hp-section-picker__item" data-add-blog-post-widget="{{ widget.id }}">
+          {{ widget.label }}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <input type="hidden" name="blogPostSidebar" id="blog-post-sidebar-json" value='{{ homepage.blogPostSidebar | dump }}'>
+  </section>
+
+  {# Save Button #}
+  <div class="button-group">
+    <button type="submit" class="button button--primary">{{ __("siteConfig.common.save") }}</button>
+  </div>
+</form>
+
+<script>
+  // Label lookup maps
+  var widgetLabels = {
+    {% for widget in availableWidgets %}'{{ widget.id }}': '{{ widget.label }}'{% if not loop.last %}, {% endif %}{% endfor %}
+  };
+  var blogPostWidgetLabels = {
+    {% for widget in availableBlogPostWidgets %}'{{ widget.id }}': '{{ widget.label }}'{% if not loop.last %}, {% endif %}{% endfor %}
+  };
+  var allLabels = Object.assign({}, widgetLabels, blogPostWidgetLabels);
+
+  var nextKey = 0;
+
+  var blogListingSidebar = JSON.parse(document.getElementById('blog-listing-sidebar-json').value || '[]');
+  var blogPostSidebar = JSON.parse(document.getElementById('blog-post-sidebar-json').value || '[]');
+
+  blogListingSidebar.forEach(function(s) { s._key = nextKey++; });
+  blogPostSidebar.forEach(function(s) { s._key = nextKey++; });
+
+  function stripKeys(items) {
+    return items.map(function(item) {
+      var copy = {};
+      for (var k in item) {
+        if (k !== '_key') copy[k] = item[k];
+      }
+      return copy;
+    });
+  }
+
+  function createDragHandle() {
+    var drag = document.createElement('span');
+    drag.className = 'hp-section-item__drag drag-handle';
+    drag.title = 'Drag to reorder';
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '16');
+    svg.setAttribute('height', '16');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'currentColor');
+    var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M8 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm8-16a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4z');
+    svg.appendChild(path);
+    drag.appendChild(svg);
+    return drag;
+  }
+
+  function createItemElement(item, labels, removeFn, editFn) {
+    var isCustom = (item.type === 'custom-html');
+    var container = document.createDocumentFragment();
+
+    var li = document.createElement('li');
+    li.className = 'hp-section-item' + (isCustom ? ' hp-section-item--has-edit' : '');
+    li.dataset.key = item._key;
+    li.dataset.type = item.type;
+
+    li.appendChild(createDragHandle());
+
+    var info = document.createElement('div');
+    info.className = 'hp-section-item__info';
+
+    var name = document.createElement('span');
+    name.className = 'hp-section-item__name';
+    name.textContent = labels[item.type] || item.type;
+    info.appendChild(name);
+
+    var typeSpan = document.createElement('span');
+    typeSpan.className = 'hp-section-item__type';
+    typeSpan.textContent = ' ' + item.type;
+    info.appendChild(typeSpan);
+
+    if (isCustom && item.config && item.config.content) {
+      var preview = document.createElement('div');
+      preview.className = 'hp-section-item__preview';
+      var previewText = item.config.title ? item.config.title + ': ' : '';
+      previewText += item.config.content.replace(/<[^>]*>/g, '').substring(0, 60);
+      preview.textContent = previewText;
+      info.appendChild(preview);
+    }
+
+    li.appendChild(info);
+
+    var actions = document.createElement('div');
+    actions.className = 'hp-section-item__actions';
+
+    if (isCustom) {
+      var editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'button button--small';
+      editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', function() {
+        var panel = li.nextElementSibling;
+        if (panel && panel.tagName === 'DETAILS') {
+          panel.open = !panel.open;
+        }
+      });
+      actions.appendChild(editBtn);
+    }
+
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'button button--small button--secondary';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', function() { removeFn(item._key); });
+    actions.appendChild(removeBtn);
+
+    li.appendChild(actions);
+    container.appendChild(li);
+
+    if (isCustom) {
+      var details = document.createElement('details');
+      details.className = 'hp-edit-panel';
+
+      var summary = document.createElement('summary');
+      details.appendChild(summary);
+
+      var titleField = document.createElement('div');
+      titleField.className = 'field';
+      var titleLabel = document.createElement('label');
+      titleLabel.className = 'field__label';
+      titleLabel.textContent = '{{ __("siteConfig.blog.customContent.titleLabel") }}';
+      var titleInput = document.createElement('input');
+      titleInput.className = 'field__input';
+      titleInput.type = 'text';
+      titleInput.placeholder = 'e.g. Webring, Links';
+      titleInput.value = (item.config && item.config.title) || '';
+      titleField.appendChild(titleLabel);
+      titleField.appendChild(titleInput);
+      details.appendChild(titleField);
+
+      var contentField = document.createElement('div');
+      contentField.className = 'field';
+      var contentLabel = document.createElement('label');
+      contentLabel.className = 'field__label';
+      contentLabel.textContent = '{{ __("siteConfig.blog.customContent.contentLabel") }}';
+      var contentInput = document.createElement('textarea');
+      contentInput.className = 'field__input';
+      contentInput.rows = 6;
+      contentInput.placeholder = '<p>Your HTML here...</p>';
+      contentInput.value = (item.config && item.config.content) || '';
+      contentField.appendChild(contentLabel);
+      contentField.appendChild(contentInput);
+      details.appendChild(contentField);
+
+      var buttons = document.createElement('div');
+      buttons.className = 'hp-edit-panel__buttons';
+
+      var saveBtn = document.createElement('button');
+      saveBtn.type = 'button';
+      saveBtn.className = 'button button--primary button--small';
+      saveBtn.textContent = '{{ __("siteConfig.blog.customContent.save") }}';
+      saveBtn.addEventListener('click', function() {
+        editFn(item._key, {
+          title: titleInput.value,
+          content: contentInput.value
+        });
+        details.open = false;
+      });
+
+      var cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'button button--small button--secondary';
+      cancelBtn.textContent = '{{ __("siteConfig.blog.customContent.cancel") }}';
+      cancelBtn.addEventListener('click', function() { details.open = false; });
+
+      buttons.appendChild(saveBtn);
+      buttons.appendChild(cancelBtn);
+      details.appendChild(buttons);
+
+      container.appendChild(details);
+    }
+
+    return container;
+  }
+
+  function renderList(listEl, items, labels, removeFn, editFn, emptyText) {
+    listEl.textContent = '';
+    if (items.length === 0) {
+      var li = document.createElement('li');
+      li.className = 'hp-empty';
+      li.textContent = emptyText;
+      listEl.appendChild(li);
+    } else {
+      items.forEach(function(item) {
+        listEl.appendChild(createItemElement(item, labels, removeFn, editFn));
+      });
+    }
+  }
+
+  // --- Blog Listing Sidebar ---
+  function addBlogListingWidget(id) {
+    var item = { type: id, config: {}, _key: nextKey++ };
+    blogListingSidebar.push(item);
+    updateBlogListingSidebar();
+    if (id === 'custom-html') {
+      var list = document.getElementById('blog-listing-sidebar-list');
+      var lastPanel = list.querySelector('details.hp-edit-panel:last-of-type');
+      if (lastPanel) lastPanel.open = true;
+    }
+  }
+
+  function removeBlogListingWidget(key) {
+    blogListingSidebar = blogListingSidebar.filter(function(w) { return w._key !== key; });
+    updateBlogListingSidebar();
+  }
+
+  function editBlogListingWidget(key, config) {
+    var item = blogListingSidebar.find(function(s) { return s._key === key; });
+    if (item) item.config = config;
+    updateBlogListingSidebar();
+  }
+
+  function updateBlogListingSidebar() {
+    document.getElementById('blog-listing-sidebar-json').value = JSON.stringify(stripKeys(blogListingSidebar));
+    renderList(
+      document.getElementById('blog-listing-sidebar-list'),
+      blogListingSidebar, allLabels, removeBlogListingWidget, editBlogListingWidget,
+      '{{ __("siteConfig.blog.blogListingSidebar.empty") }}'
+    );
+    initSortable();
+  }
+
+  // --- Blog Post Sidebar ---
+  function addBlogPostWidget(id) {
+    var item = { type: id, config: {}, _key: nextKey++ };
+    blogPostSidebar.push(item);
+    updateBlogPostSidebar();
+    if (id === 'custom-html') {
+      var list = document.getElementById('blog-post-sidebar-list');
+      var lastPanel = list.querySelector('details.hp-edit-panel:last-of-type');
+      if (lastPanel) lastPanel.open = true;
+    }
+  }
+
+  function removeBlogPostWidget(key) {
+    blogPostSidebar = blogPostSidebar.filter(function(w) { return w._key !== key; });
+    updateBlogPostSidebar();
+  }
+
+  function editBlogPostWidget(key, config) {
+    var item = blogPostSidebar.find(function(s) { return s._key === key; });
+    if (item) item.config = config;
+    updateBlogPostSidebar();
+  }
+
+  function updateBlogPostSidebar() {
+    document.getElementById('blog-post-sidebar-json').value = JSON.stringify(stripKeys(blogPostSidebar));
+    renderList(
+      document.getElementById('blog-post-sidebar-list'),
+      blogPostSidebar, allLabels, removeBlogPostWidget, editBlogPostWidget,
+      '{{ __("siteConfig.blog.blogPostSidebar.empty") }}'
+    );
+    initSortable();
+  }
+
+  // --- Sync after drag ---
+  function syncFromDom(listEl, dataArray) {
+    var items = listEl.querySelectorAll('.hp-section-item');
+    var ordered = [];
+    items.forEach(function(el) {
+      var key = parseInt(el.dataset.key, 10);
+      var item = dataArray.find(function(s) { return s._key === key; });
+      if (item) ordered.push(item);
+    });
+    return ordered;
+  }
+
+  function syncBlogListingSidebarFromDom() {
+    blogListingSidebar = syncFromDom(document.getElementById('blog-listing-sidebar-list'), blogListingSidebar);
+    document.getElementById('blog-listing-sidebar-json').value = JSON.stringify(stripKeys(blogListingSidebar));
+  }
+
+  function syncBlogPostSidebarFromDom() {
+    blogPostSidebar = syncFromDom(document.getElementById('blog-post-sidebar-list'), blogPostSidebar);
+    document.getElementById('blog-post-sidebar-json').value = JSON.stringify(stripKeys(blogPostSidebar));
+  }
+
+  // --- Event listeners ---
+  document.querySelectorAll('[data-add-blog-listing-widget]').forEach(function(el) {
+    el.addEventListener('click', function() { addBlogListingWidget(el.dataset.addBlogListingWidget); });
+  });
+  document.querySelectorAll('[data-add-blog-post-widget]').forEach(function(el) {
+    el.addEventListener('click', function() { addBlogPostWidget(el.dataset.addBlogPostWidget); });
+  });
+
+  // --- SortableJS ---
+  function initSortable() {
+    if (typeof Sortable === 'undefined') return;
+
+    var lists = [
+      { el: 'blog-listing-sidebar-list', sync: syncBlogListingSidebarFromDom },
+      { el: 'blog-post-sidebar-list', sync: syncBlogPostSidebarFromDom }
+    ];
+
+    lists.forEach(function(cfg) {
+      var el = document.getElementById(cfg.el);
+      if (!el) return;
+      if (el._sortable) el._sortable.destroy();
+      el._sortable = new Sortable(el, {
+        handle: '.drag-handle',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        draggable: '.hp-section-item',
+        onEnd: cfg.sync
+      });
+    });
+  }
+
+  var sortableScript = document.createElement('script');
+  sortableScript.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js';
+  sortableScript.onload = function() { initSortable(); };
+  document.head.appendChild(sortableScript);
+
+  // --- Initial render ---
+  updateBlogListingSidebar();
+  updateBlogPostSidebar();
+</script>
+{% endblock %}
