@@ -15,7 +15,7 @@ import {
   ACCENT_SUGGESTIONS,
   SURFACE_PRESET_OPTIONS,
 } from "../lib/controllers/branding.js";
-import { ROLE_KEYS } from "../lib/storage/defaults.js";
+import { ROLE_KEYS } from "../lib/storage/defaults-site.js";
 
 // ─── Form parsing — happy paths ────────────────────────────────────────
 

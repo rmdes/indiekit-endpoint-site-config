@@ -20,7 +20,7 @@ import {
   RESET_SECTIONS,
 } from "../lib/controllers/branding.js";
 import { renderSiteJson } from "../lib/render/write-site-json.js";
-import { ROLE_KEYS, DEFAULTS } from "../lib/storage/defaults.js";
+import { ROLE_KEYS, DEFAULTS } from "../lib/storage/defaults-site.js";
 import { mergeWithDefaults } from "../lib/storage/get-site-config.js";
 
 // ─── helpers ──────────────────────────────────────────────────────────

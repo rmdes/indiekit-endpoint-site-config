@@ -213,7 +213,8 @@ test("renderSiteJson emits the structure Eleventy templates expect", () => {
   const json = JSON.parse(renderSiteJson(config));
   assert.equal(json.identity.name, "rmendes.net");
   assert.equal(json.branding.typography.sans, "Inter");
-  assert.ok(json.layout !== null && typeof json.layout === "object");
+  assert.ok(json.navigation !== null && typeof json.navigation === "object");
+  assert.ok(Array.isArray(json.navigation.items));
   assert.ok(json.features !== null && typeof json.features === "object");
 });
 
@@ -229,8 +230,8 @@ test("renderSiteJson strips updatedBy but keeps updatedAt", () => {
   assert.equal(json.updatedAt, "2026-01-15T12:00:00.000Z");
 });
 
-test("renderSiteJson preserves schemaVersion 2 in v2 schema", () => {
+test("renderSiteJson preserves schemaVersion 3 in v3 schema", () => {
   const config = mergeWithDefaults({});
   const json = JSON.parse(renderSiteJson(config));
-  assert.equal(json.schemaVersion, 2);
+  assert.equal(json.schemaVersion, 3);
 });

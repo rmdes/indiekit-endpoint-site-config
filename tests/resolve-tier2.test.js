@@ -6,7 +6,7 @@ import {
 } from "../lib/render/resolve-tier2.js";
 import { SURFACE_PRESETS } from "../lib/render/surface-presets.js";
 import { derivePaletteFromBase } from "../lib/render/derive-palette.js";
-import { ROLE_KEYS, emptyRoles } from "../lib/storage/defaults.js";
+import { ROLE_KEYS, emptyRoles } from "../lib/storage/defaults-site.js";
 
 const warmStone = SURFACE_PRESETS["warm-stone"];
 const amber = derivePaletteFromBase("#b45309");

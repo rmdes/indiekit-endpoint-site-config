@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mergeWithDefaults } from "../lib/storage/get-site-config.js";
-import { DEFAULTS, ROLE_KEYS, emptyRoles } from "../lib/storage/defaults.js";
+import { DEFAULTS, ROLE_KEYS, emptyRoles } from "../lib/storage/defaults-site.js";
 
 test("mergeWithDefaults returns defaults when input is empty", () => {
   const result = mergeWithDefaults({});
-  assert.equal(result.schemaVersion, 2);
+  assert.equal(result.schemaVersion, 3);
   assert.equal(result.identity.locale, "en");
   assert.equal(result.branding.surfacePreset, "warm-stone");
   assert.equal(result.branding.mode, "auto");
@@ -43,19 +43,19 @@ test("mergeWithDefaults preserves explicit null source values", () => {
 
 test("mergeWithDefaults replaces arrays rather than concatenating", () => {
   const result = mergeWithDefaults({
-    layout: {
-      navItems: [{ label: "About", url: "/about/", external: false }],
+    navigation: {
+      items: [{ label: "About", url: "/about/", external: false }],
     },
   });
-  assert.equal(result.layout.navItems.length, 1);
-  assert.equal(result.layout.navItems[0].label, "About");
+  assert.equal(result.navigation.items.length, 1);
+  assert.equal(result.navigation.items[0].label, "About");
 });
 
-test("DEFAULTS exposes schemaVersion 2", () => {
-  assert.equal(DEFAULTS.schemaVersion, 2);
+test("DEFAULTS exposes schemaVersion 3", () => {
+  assert.equal(DEFAULTS.schemaVersion, 3);
 });
 
-test("DEFAULTS.branding has the v2 shape — no flat colors block", () => {
+test("DEFAULTS.branding has the v3 shape — no flat colors block", () => {
   // Verify the old v1 `colors` block is gone
   assert.equal(DEFAULTS.branding.colors, undefined);
   // Verify the new v2 keys are present
