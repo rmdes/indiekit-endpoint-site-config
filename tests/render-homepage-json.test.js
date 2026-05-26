@@ -1,0 +1,54 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { writeHomepageJson } from "../lib/render/write-homepage-json.js";
+
+function tempPath() {
+  const dir = mkdtempSync(join(tmpdir(), "site-config-test-"));
+  return { dir, file: join(dir, "homepage.json"), cleanup: () => rmSync(dir, { recursive: true }) };
+}
+
+test("writeHomepageJson writes composition shape to file", async () => {
+  const { file, cleanup } = tempPath();
+  try {
+    const config = {
+      layout: "two-column",
+      hero: { enabled: true, showSocial: false },
+      sections: [{ type: "hero", config: {} }],
+      sidebar: [],
+      blogListingSidebar: [],
+      blogPostSidebar: [],
+      footer: [],
+      updatedAt: "2026-05-26T00:00:00.000Z",
+    };
+    await writeHomepageJson(config, file);
+    const written = JSON.parse(readFileSync(file, "utf8"));
+    assert.equal(written.layout, "two-column");
+    assert.equal(written.hero.showSocial, false);
+    assert.equal(written.sections.length, 1);
+    assert.equal(written.updatedAt, "2026-05-26T00:00:00.000Z");
+  } finally {
+    cleanup();
+  }
+});
+
+test("writeHomepageJson omits MongoDB-only fields", async () => {
+  const { file, cleanup } = tempPath();
+  try {
+    await writeHomepageJson({
+      _id: "homepage",
+      updatedBy: "rick",
+      layout: "single-column",
+      hero: { enabled: false, showSocial: false },
+      sections: [], sidebar: [], blogListingSidebar: [],
+      blogPostSidebar: [], footer: [],
+    }, file);
+    const written = JSON.parse(readFileSync(file, "utf8"));
+    assert.equal(written._id, undefined);
+    assert.equal(written.updatedBy, undefined);
+  } finally {
+    cleanup();
+  }
+});
