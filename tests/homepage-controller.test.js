@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseHomepageBody, parseEntryArray } from "../lib/controllers/homepage.js";
+import { parseHomepageBody, parseEntryArray, detectActivePreset } from "../lib/controllers/homepage.js";
 
 test("parseEntryArray handles JSON string from hidden input", () => {
   const json = JSON.stringify([{ type: "hero", config: {} }]);
@@ -65,4 +65,33 @@ test("parseHomepageBody coerces invalid layout to default", () => {
   };
   const result = parseHomepageBody(body);
   assert.equal(result.layout, "two-column");
+});
+
+test("detectActivePreset matches a config to a preset by layout+sections+sidebar", () => {
+  const presets = [
+    {
+      id: "blog",
+      layout: "two-column",
+      sections: [{ type: "hero" }, { type: "recent-posts" }],
+      sidebar: [{ type: "search" }, { type: "author-card" }],
+    },
+    {
+      id: "cv",
+      layout: "full-width-hero",
+      sections: [{ type: "hero" }, { type: "cv-experience" }],
+      sidebar: [{ type: "author-card" }],
+    },
+  ];
+  const matching = {
+    layout: "two-column",
+    sections: [{ type: "hero" }, { type: "recent-posts" }],
+    sidebar:  [{ type: "search" }, { type: "author-card" }],
+  };
+  assert.equal(detectActivePreset(matching, presets), "blog");
+});
+
+test("detectActivePreset returns null when no preset matches", () => {
+  const presets = [{ id: "blog", layout: "two-column", sections: [{ type: "hero" }], sidebar: [] }];
+  const custom = { layout: "single-column", sections: [{ type: "custom-html" }], sidebar: [] };
+  assert.equal(detectActivePreset(custom, presets), null);
 });

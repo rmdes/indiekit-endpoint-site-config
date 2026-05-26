@@ -390,13 +390,13 @@
     <h2>{{ __("siteConfig.homepage.hero.title") }}</h2>
     <div class="field">
       <label class="field__label">
-        <input type="checkbox" name="hero[enabled]" value="true" {% if homepage.hero.enabled %}checked{% endif %}>
+        <input type="checkbox" name="heroEnabled" {% if homepage.hero.enabled %}checked{% endif %}>
         {{ __("siteConfig.homepage.hero.enabled") }}
       </label>
     </div>
     <div class="field">
       <label class="field__label">
-        <input type="checkbox" name="hero[showSocial]" value="true" {% if homepage.hero.showSocial %}checked{% endif %}>
+        <input type="checkbox" name="heroShowSocial" {% if homepage.hero.showSocial %}checked{% endif %}>
         {{ __("siteConfig.homepage.hero.showSocial") }}
       </label>
     </div>
@@ -929,20 +929,6 @@
   });
   document.querySelectorAll('[data-add-footer]').forEach(function(el) {
     el.addEventListener('click', function() { addFooter(el.dataset.addFooter); });
-  });
-
-  // --- Hero checkboxes → JSON on submit ---
-  document.getElementById('hp-form').addEventListener('submit', function(e) {
-    var heroEnabled = document.querySelector('input[name="hero[enabled]"]').checked;
-    var heroShowSocial = document.querySelector('input[name="hero[showSocial]"]').checked;
-
-    var heroInput = document.createElement('input');
-    heroInput.type = 'hidden';
-    heroInput.name = 'hero';
-    heroInput.value = JSON.stringify({ enabled: heroEnabled, showSocial: heroShowSocial });
-    this.appendChild(heroInput);
-
-    document.querySelectorAll('input[name^="hero["]').forEach(function(i) { i.name = ''; });
   });
 
   // --- SortableJS ---
