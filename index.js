@@ -13,6 +13,7 @@ import { apiRouter        } from "./lib/controllers/api.js";
 import { getSiteConfig     } from "./lib/storage/get-site-config.js";
 import { getHomepageConfig } from "./lib/storage/get-homepage-config.js";
 import { maybeSeedFromEnv  } from "./lib/storage/seed-from-env.js";
+import { maybeBackfillIdentity } from "./lib/storage/backfill-identity.js";
 
 import { writeThemeCss    } from "./lib/render/write-theme-css.js";
 import { writeCriticalCss } from "./lib/render/write-critical-css.js";
@@ -84,6 +85,7 @@ export default class SiteConfigEndpoint {
     // First-boot seed + initial file write
     try {
       await maybeSeedFromEnv(Indiekit);
+      await maybeBackfillIdentity(Indiekit);
       const config   = await getSiteConfig(Indiekit);
       const homepage = await getHomepageConfig(Indiekit);
       await writeThemeCss(config);

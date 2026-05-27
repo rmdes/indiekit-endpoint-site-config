@@ -224,34 +224,34 @@
     <h2>{{ __("siteConfig.identity.profile.legend") }}</h2>
     <div class="hp-field-grid">
       <div class="field">
-        <label class="field__label" for="identity-name">{{ __("siteConfig.identity.profile.name.label") }}</label>
-        <input class="field__input" type="text" id="identity-name" name="identity-name" value="{{ config.identity.name or '' }}">
+        <label class="field__label" for="name">{{ __("siteConfig.identity.profile.name.label") }}</label>
+        <input class="field__input" type="text" id="name" name="name" value="{{ config.identity.name or '' }}">
         <p class="field__hint">{{ __("siteConfig.identity.profile.name.hint") }}</p>
       </div>
       <div class="field">
-        <label class="field__label" for="identity-title">{{ __("siteConfig.identity.profile.title.label") }}</label>
-        <input class="field__input" type="text" id="identity-title" name="identity-title" value="{{ config.identity.title or '' }}">
+        <label class="field__label" for="title">{{ __("siteConfig.identity.profile.title.label") }}</label>
+        <input class="field__input" type="text" id="title" name="title" value="{{ config.identity.title or '' }}">
         <p class="field__hint">{{ __("siteConfig.identity.profile.title.hint") }}</p>
       </div>
       <div class="field field--full">
-        <label class="field__label" for="identity-avatar">{{ __("siteConfig.identity.profile.avatar.label") }}</label>
-        <input class="field__input" type="url" id="identity-avatar" name="identity-avatar" value="{{ config.identity.avatar or '' }}">
+        <label class="field__label" for="avatar">{{ __("siteConfig.identity.profile.avatar.label") }}</label>
+        <input class="field__input" type="url" id="avatar" name="avatar" value="{{ config.identity.avatar or '' }}">
         <p class="field__hint">{{ __("siteConfig.identity.profile.avatar.hint") }}</p>
       </div>
       <div class="field">
-        <label class="field__label" for="identity-pronoun">{{ __("siteConfig.identity.profile.pronoun.label") }}</label>
-        <input class="field__input" type="text" id="identity-pronoun" name="identity-pronoun" value="{{ config.identity.pronoun or '' }}">
+        <label class="field__label" for="pronoun">{{ __("siteConfig.identity.profile.pronoun.label") }}</label>
+        <input class="field__input" type="text" id="pronoun" name="pronoun" value="{{ config.identity.pronoun or '' }}">
         <p class="field__hint">{{ __("siteConfig.identity.profile.pronoun.hint") }}</p>
       </div>
       <div class="field"></div>
       <div class="field field--full">
-        <label class="field__label" for="identity-bio">{{ __("siteConfig.identity.profile.bio.label") }}</label>
-        <textarea class="field__input" id="identity-bio" name="identity-bio" rows="3">{{ config.identity.bio or '' }}</textarea>
+        <label class="field__label" for="bio">{{ __("siteConfig.identity.profile.bio.label") }}</label>
+        <textarea class="field__input" id="bio" name="bio" rows="3">{{ config.identity.bio or '' }}</textarea>
         <p class="field__hint">{{ __("siteConfig.identity.profile.bio.hint") }}</p>
       </div>
       <div class="field field--full">
-        <label class="field__label" for="identity-description">{{ __("siteConfig.identity.profile.description.label") }}</label>
-        <textarea class="field__input" id="identity-description" name="identity-description" rows="3">{{ config.identity.description or '' }}</textarea>
+        <label class="field__label" for="description">{{ __("siteConfig.identity.profile.description.label") }}</label>
+        <textarea class="field__input" id="description" name="description" rows="3">{{ config.identity.description or '' }}</textarea>
         <p class="field__hint">{{ __("siteConfig.identity.profile.description.hint") }}</p>
       </div>
     </div>
@@ -262,17 +262,17 @@
     <h2>{{ __("siteConfig.identity.location.legend") }}</h2>
     <div class="hp-field-grid">
       <div class="field">
-        <label class="field__label" for="identity-locality">{{ __("siteConfig.identity.location.locality.label") }}</label>
-        <input class="field__input" type="text" id="identity-locality" name="identity-locality" value="{{ config.identity.locality or '' }}">
+        <label class="field__label" for="locality">{{ __("siteConfig.identity.location.locality.label") }}</label>
+        <input class="field__input" type="text" id="locality" name="locality" value="{{ config.identity.locality or '' }}">
         <p class="field__hint">{{ __("siteConfig.identity.location.locality.hint") }}</p>
       </div>
       <div class="field">
-        <label class="field__label" for="identity-country">{{ __("siteConfig.identity.location.country.label") }}</label>
-        <input class="field__input" type="text" id="identity-country" name="identity-country" value="{{ config.identity.country or '' }}">
+        <label class="field__label" for="country">{{ __("siteConfig.identity.location.country.label") }}</label>
+        <input class="field__input" type="text" id="country" name="country" value="{{ config.identity.country or '' }}">
       </div>
       <div class="field">
-        <label class="field__label" for="identity-org">{{ __("siteConfig.identity.location.org.label") }}</label>
-        <input class="field__input" type="text" id="identity-org" name="identity-org" value="{{ config.identity.org or '' }}">
+        <label class="field__label" for="org">{{ __("siteConfig.identity.location.org.label") }}</label>
+        <input class="field__input" type="text" id="org" name="org" value="{{ config.identity.org or '' }}">
         <p class="field__hint">{{ __("siteConfig.identity.location.org.hint") }}</p>
       </div>
     </div>
@@ -283,17 +283,17 @@
     <h2>{{ __("siteConfig.identity.contact.legend") }}</h2>
     <div class="hp-field-grid">
       <div class="field field--full">
-        <label class="field__label" for="identity-url">{{ __("siteConfig.identity.contact.url.label") }}</label>
-        <input class="field__input" type="url" id="identity-url" name="identity-url" value="{{ config.identity.url or '' }}">
+        <label class="field__label" for="url">{{ __("siteConfig.identity.contact.url.label") }}</label>
+        <input class="field__input" type="url" id="url" name="url" value="{{ config.identity.url or '' }}">
         <p class="field__hint">{{ __("siteConfig.identity.contact.url.hint") }}</p>
       </div>
       <div class="field">
-        <label class="field__label" for="identity-email">{{ __("siteConfig.identity.contact.email.label") }}</label>
-        <input class="field__input" type="email" id="identity-email" name="identity-email" value="{{ config.identity.email or '' }}">
+        <label class="field__label" for="email">{{ __("siteConfig.identity.contact.email.label") }}</label>
+        <input class="field__input" type="email" id="email" name="email" value="{{ config.identity.email or '' }}">
       </div>
       <div class="field">
-        <label class="field__label" for="identity-keyUrl">{{ __("siteConfig.identity.contact.keyUrl.label") }}</label>
-        <input class="field__input" type="url" id="identity-keyUrl" name="identity-keyUrl" value="{{ config.identity.keyUrl or '' }}">
+        <label class="field__label" for="keyUrl">{{ __("siteConfig.identity.contact.keyUrl.label") }}</label>
+        <input class="field__input" type="url" id="keyUrl" name="keyUrl" value="{{ config.identity.keyUrl or '' }}">
         <p class="field__hint">{{ __("siteConfig.identity.contact.keyUrl.hint") }}</p>
       </div>
     </div>
@@ -303,8 +303,8 @@
   <section class="hp-section">
     <h2>{{ __("siteConfig.identity.categories.legend") }}</h2>
     <div class="field">
-      <label class="field__label" for="identity-categories">{{ __("siteConfig.identity.categories.tags.label") }}</label>
-      <input class="field__input" type="text" id="identity-categories" name="identity-categories" value="{{ config.identity.categories | join(', ') if config.identity.categories else '' }}">
+      <label class="field__label" for="categories">{{ __("siteConfig.identity.categories.tags.label") }}</label>
+      <input class="field__input" type="text" id="categories" name="categories" value="{{ config.identity.categories | join(', ') if config.identity.categories else '' }}">
       <p class="field__hint">{{ __("siteConfig.identity.categories.tags.hint") }}</p>
     </div>
   </section>
