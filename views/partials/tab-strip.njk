@@ -1,5 +1,5 @@
 {# Tab navigation for site-config admin - server-rendered URL tabs #}
-{# Expects: activeTab (string, one of identity|branding|homepage|blog|navigation|features) #}
+{# Expects: activeTab (string, one of identity|branding|homepage|blog|navigation) #}
 <style>
   .sc-tab-nav {
     display: flex;
@@ -31,8 +31,7 @@
     {key: 'branding',   href: '/site-config/branding'},
     {key: 'homepage',   href: '/site-config/homepage'},
     {key: 'blog',       href: '/site-config/blog'},
-    {key: 'navigation', href: '/site-config/navigation'},
-    {key: 'features',   href: '/site-config/features'}
+    {key: 'navigation', href: '/site-config/navigation'}
   ] %}
   {% for tab in tabs %}
     <a href="{{ tab.href }}"

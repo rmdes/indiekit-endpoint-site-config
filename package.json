@@ -1,8 +1,8 @@
 {
   "name": "@rmdes/indiekit-endpoint-site-config",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "type": "module",
-  "description": "Site identity, branding, layout, and feature flag configuration for Indiekit",
+  "description": "Site identity, branding, and navigation configuration for Indiekit",
   "main": "index.js",
   "exports": {
     ".": "./index.js"

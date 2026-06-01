@@ -9,7 +9,6 @@ test("mergeWithDefaults returns defaults when input is empty", () => {
   assert.equal(result.identity.locale, "en");
   assert.equal(result.branding.surfacePreset, "warm-stone");
   assert.equal(result.branding.mode, "auto");
-  assert.equal(result.features.webmentions, true);
 });
 
 test("mergeWithDefaults overrides only provided values", () => {

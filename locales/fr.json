@@ -7,8 +7,7 @@
       "branding": "Identité visuelle",
       "homepage": "Accueil",
       "blog": "Blog",
-      "navigation": "Navigation",
-      "features": "Fonctionnalités"
+      "navigation": "Navigation"
     },
     "common": {
       "save": "Enregistrer",
@@ -218,10 +217,6 @@
       "sidebarEnabled": "Barre latérale activée",
       "sidebarSide": "Côté de la barre latérale",
       "navItems": "Éléments de navigation"
-    },
-    "features": {
-      "title": "Fonctionnalités",
-      "empty": "Aucun plugin ne déclare encore de drapeau de fonctionnalité."
     }
   }
 }

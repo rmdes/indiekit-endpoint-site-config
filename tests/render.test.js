@@ -215,7 +215,7 @@ test("renderSiteJson emits the structure Eleventy templates expect", () => {
   assert.equal(json.branding.typography.sans, "Inter");
   assert.ok(json.navigation !== null && typeof json.navigation === "object");
   assert.ok(Array.isArray(json.navigation.items));
-  assert.ok(json.features !== null && typeof json.features === "object");
+  assert.equal(json.features, undefined, "features subtree removed in v3.x");
 });
 
 test("renderSiteJson strips updatedBy but keeps updatedAt", () => {
@@ -244,7 +244,7 @@ test("renderSiteJson drops legacy top-level keys (e.g. v2 layout) when present",
     identity: { name: "Rick" },
     branding: { surfacePreset: "warm-stone" },
     navigation: { items: [] },
-    features: { rss: true },
+    features: { rss: true },                                            // legacy v3.0 cruft (dropped in v3.x)
     layout: { preset: "blog", sidebarEnabled: true, navItems: [] },     // legacy v2 cruft
     extraJunk: "hello",                                                 // arbitrary stray key
   };

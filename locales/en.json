@@ -7,8 +7,7 @@
       "branding": "Branding",
       "homepage": "Homepage",
       "blog": "Blog",
-      "navigation": "Navigation",
-      "features": "Feature Flags"
+      "navigation": "Navigation"
     },
     "common": {
       "save": "Save",
@@ -218,10 +217,6 @@
       "sidebarEnabled": "Sidebar enabled",
       "sidebarSide": "Sidebar side",
       "navItems": "Navigation items"
-    },
-    "features": {
-      "title": "Feature Flags",
-      "empty": "No plugins declare a feature flag yet."
     }
   }
 }
