@@ -334,6 +334,12 @@
   <section class="hp-section">
     <h2>{{ __('siteConfig.identity.preferences.legend') }}</h2>
     <div class="hp-field-grid">
+      <div class="field field--full">
+        <label class="field__label" for="siteName">{{ __('siteConfig.identity.siteName.label') }}</label>
+        <input class="field__input" type="text" id="siteName" name="siteName"
+               value="{{ config.identity.siteName or '' }}">
+        <p class="field__hint">{{ __('siteConfig.identity.siteName.hint') }}</p>
+      </div>
       <div class="field">
         <label class="field__label" for="locale">{{ __('siteConfig.identity.locale') }}</label>
         <input class="field__input" type="text" id="locale" name="locale"

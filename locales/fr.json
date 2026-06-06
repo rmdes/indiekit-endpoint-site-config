@@ -21,7 +21,7 @@
       "saved": "Identité enregistrée avec succès. Actualisez votre site pour voir les modifications.",
       "profile": {
         "legend": "Profil",
-        "name":        { "label": "Nom",            "hint": "Votre nom tel qu'il apparaît dans la h-card et les métadonnées OG" },
+        "name":        { "label": "Nom",            "hint": "Le nom de la personne, affiché dans la h-card, le hero et les cartes d'auteur. Pour le titre du site/de la marque, utilisez Titre du site ci-dessous." },
         "title":       { "label": "Titre",          "hint": "Intitulé de poste ou slogan (ex. « Ingénieur middleware »)" },
         "avatar":      { "label": "URL de l'avatar","hint": "URL de votre photo de profil pour la h-card" },
         "pronoun":     { "label": "Pronoms",        "hint": "ex. elle, il, iel" },
@@ -55,7 +55,7 @@
       "preferences": {
         "legend": "Préférences du site"
       },
-      "name":            "Nom du site",
+      "siteName":        { "label": "Titre du site", "hint": "Affiché dans l'en-tête du site, l'onglet du navigateur et les aperçus de liens. Laissez vide pour utiliser votre Nom ci-dessus (pour les sites mono-auteur où la marque est la personne)." },
       "description":     "Description",
       "tagline":         "Slogan",
       "defaultOgImage":  "Image OpenGraph par défaut",

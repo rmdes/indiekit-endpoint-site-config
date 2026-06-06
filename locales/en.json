@@ -21,7 +21,7 @@
       "saved": "Identity saved successfully. Refresh your site to see changes.",
       "profile": {
         "legend": "Profile",
-        "name":        { "label": "Name",        "hint": "Your name as shown in the h-card and OG metadata" },
+        "name":        { "label": "Name",        "hint": "The person's name, shown in the h-card, hero, and author cards. For the site/brand title, use Site title below." },
         "title":       { "label": "Title",       "hint": "Job title or tagline (e.g. 'Middleware Engineer')" },
         "avatar":      { "label": "Avatar URL",  "hint": "URL of your profile photo for the h-card" },
         "pronoun":     { "label": "Pronouns",    "hint": "e.g. she/her, he/him, they/them" },
@@ -55,7 +55,7 @@
       "preferences": {
         "legend": "Site preferences"
       },
-      "name":            "Site name",
+      "siteName":        { "label": "Site title", "hint": "Shown in the site header, browser tab, and link previews. Leave blank to use your Name above (for single-author sites where the brand is the person)." },
       "description":     "Description",
       "tagline":         "Tagline",
       "defaultOgImage":  "Default OpenGraph image URL",

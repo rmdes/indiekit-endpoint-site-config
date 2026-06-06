@@ -8,7 +8,7 @@ test("DEFAULTS_SITE has schemaVersion 3", () => {
 
 test("DEFAULTS_SITE.identity has the rich field set", () => {
   const id = DEFAULTS_SITE.identity;
-  for (const key of ["name", "avatar", "title", "pronoun", "bio", "description",
+  for (const key of ["name", "siteName", "avatar", "title", "pronoun", "bio", "description",
                      "locality", "country", "org", "url", "email", "keyUrl"]) {
     assert.ok(key in id, `identity missing key: ${key}`);
   }

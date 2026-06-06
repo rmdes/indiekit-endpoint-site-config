@@ -5,6 +5,7 @@ import { parseIdentityBody } from "../lib/controllers/identity.js";
 test("parseIdentityBody picks up rich fields", () => {
   const body = {
     name: "Ricardo Mendes",
+    siteName: "Node on the web",
     avatar: "https://rmendes.net/me.jpg",
     title: "Middleware Engineer",
     pronoun: "he/him",
@@ -24,6 +25,7 @@ test("parseIdentityBody picks up rich fields", () => {
   };
   const id = parseIdentityBody(body);
   assert.equal(id.name, "Ricardo Mendes");
+  assert.equal(id.siteName, "Node on the web", "site title is distinct from the person name");
   assert.equal(id.email, "rick@example.com");
   assert.deepEqual(id.categories, ["indieweb", "devops", "brussels"]);
   assert.equal(id.locale, "en");
