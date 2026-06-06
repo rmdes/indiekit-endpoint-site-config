@@ -78,7 +78,7 @@
         "advancedDesc": "La plupart des sites devraient laisser ces options telles quelles — la palette les dérive déjà. Ne les remplacez qu'avec une bonne raison."
       },
       "surfacePreset": "Palette de fond",
-      "surfacePresetHint": "Choisissez une palette neutre de base. Warm Stone est crème/brun. Cool Slate est bleu-gris. Neutral Zinc est un gris pur. Custom vous permet de définir manuellement les 11 tons.",
+      "surfacePresetHint": "Choisissez une palette de base. Warm Stone est crème/brun, Clay est terracotta/rosé, Stone est un gris pur, Cool Slate est bleu-gris, Sage est teinté vert. Custom vous permet de définir manuellement les 11 tons.",
       "surfacePresetCustom": "Personnalisé (avancé)",
       "surfaceCustom": "Tons personnalisés",
       "surfaceCustomHint": "11 tons du plus clair (50) au plus sombre (950). Appliqué uniquement lorsque la palette de fond ci-dessus est définie sur Personnalisé.",

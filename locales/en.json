@@ -78,7 +78,7 @@
         "advancedDesc": "Most sites should leave these alone — the palette already derives them. Override only if you have a strong reason."
       },
       "surfacePreset": "Surface preset",
-      "surfacePresetHint": "Pick a neutral base palette. Warm Stone is cream/brown. Cool Slate is blue-gray. Neutral Zinc is a pure gray. Custom lets you define all 11 tones manually.",
+      "surfacePresetHint": "Pick a base palette. Warm Stone is cream/brown, Clay is terracotta/rose, Stone is a pure gray, Cool Slate is blue-gray, Sage is green-tinted. Custom lets you define all 11 tones manually.",
       "surfacePresetCustom": "Custom (advanced)",
       "surfaceCustom": "Custom surface tones",
       "surfaceCustomHint": "11 tones from lightest (50) to darkest (950). Applied only when the surface preset above is set to Custom.",

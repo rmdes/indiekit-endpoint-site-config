@@ -122,6 +122,32 @@
     background: color-mix(in srgb, var(--color-primary, #0066cc) 8%, var(--color-background, #fff));
   }
 
+  /* Surface preset options with a tone-ramp preview */
+  .sc-preset-option {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2xs, 0.375rem);
+    min-width: 9rem;
+  }
+
+  .sc-preset-option__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2xs, 0.375rem);
+  }
+
+  .sc-preset-ramp {
+    display: flex;
+    height: 0.85rem;
+    border-radius: 0.2rem;
+    overflow: hidden;
+    border: 1px solid var(--color-outline-variant, #ddd);
+  }
+
+  .sc-preset-chip {
+    flex: 1 1 0;
+  }
+
   /* Generic color picker (palette inputs) */
   .sc-color-picker {
     display: flex;
@@ -495,10 +521,19 @@
         <p class="field__hint">{{ __("siteConfig.branding.surfacePresetHint") }}</p>
         <div class="sc-radio-group">
           {% for preset in surfacePresets %}
-            <label class="sc-radio-label">
-              <input type="radio" name="surfacePreset" value="{{ preset.slug }}"
-                     {% if config.branding.surfacePreset == preset.slug %}checked{% endif %}>
-              {{ preset.label }}
+            <label class="sc-radio-label sc-preset-option">
+              <span class="sc-preset-option__head">
+                <input type="radio" name="surfacePreset" value="{{ preset.slug }}"
+                       {% if config.branding.surfacePreset == preset.slug %}checked{% endif %}>
+                {{ preset.label }}
+              </span>
+              {% if preset.ramp %}
+              <span class="sc-preset-ramp" aria-hidden="true">
+                {% for tone in preset.ramp %}
+                  <span class="sc-preset-chip" style="background-color: {{ tone }};"></span>
+                {% endfor %}
+              </span>
+              {% endif %}
             </label>
           {% endfor %}
           <label class="sc-radio-label">

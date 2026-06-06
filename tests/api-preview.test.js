@@ -109,20 +109,22 @@ test("GET /preview gracefully handles a totally bad query (still 200, falls back
   assert.match(res.body, /Preview parse error/i);
 });
 
-test("GET /preview honors previewMode query for the inlined theme.css", async () => {
+test("GET /preview always ships both .light and .dark blocks (class-driven toggle)", async () => {
   const app = makeApp(makeFakeIndiekit(null));
-  // Default mode is "auto" — when previewMode=dark, theme.css emits ONLY dark
+  // Even when previewMode=dark, the iframe must still carry the light block so
+  // the operator can toggle back. The preview is class-driven, not mode-locked.
   const res = await fetchAgainst(app, "/site-config/api/preview?previewMode=dark");
   assert.equal(res.status, 200);
-  // mode=dark output has no @media (prefers-color-scheme: dark) block — only :root
-  assert.ok(!res.body.includes("@media (prefers-color-scheme: dark)"));
+  assert.match(res.body, /\.light\s*\{/);
+  assert.match(res.body, /\.dark\s*\{/);
 });
 
-test("GET /preview default previewMode (auto) emits the @media dark block", async () => {
+test("GET /preview is OS-independent (no prefers-color-scheme media query)", async () => {
   const app = makeApp(makeFakeIndiekit(null));
   const res = await fetchAgainst(app, "/site-config/api/preview");
   assert.equal(res.status, 200);
-  assert.match(res.body, /@media \(prefers-color-scheme: dark\)/);
+  // Operator's explicit toggle wins over host OS — no media query in preview.
+  assert.ok(!res.body.includes("@media (prefers-color-scheme: dark)"));
 });
 
 test("GET /preview surfaces a fail-state contrast warning banner on the iframe", async () => {

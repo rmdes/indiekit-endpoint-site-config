@@ -31,11 +31,12 @@ test("getSurfacePalette returns preset", () => {
 });
 
 test("getSurfacePalette exposes the Phase 2c presets warm-gray and stone", () => {
-  // warm-gray = Tailwind "stone" (warm-leaning), distinct from warm-stone
+  // warm-gray slug now carries the Clay (terracotta/rose) palette — re-skinned
+  // 2026-06-06 so it is visibly distinct from the other neutrals.
   const warmGray = getSurfacePalette("warm-gray");
   assert.match(warmGray[500], /^#[0-9a-f]{6}$/);
-  assert.equal(warmGray[50], "#fafaf9");
-  assert.equal(warmGray[950], "#0c0a09");
+  assert.equal(warmGray[50], "#faf4f1");
+  assert.equal(warmGray[950], "#1a0f0b");
 
   // stone = Tailwind "neutral" — pure gray
   const stone = getSurfacePalette("stone");
