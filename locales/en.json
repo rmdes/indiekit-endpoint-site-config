@@ -170,7 +170,15 @@
       "hero": {
         "title": "Hero Section",
         "enabled": "Show hero section with author info",
-        "showSocial": "Show social links in hero"
+        "showSocial": "Show social links in hero",
+        "ctaText": {
+          "label": "“Read more” link text",
+          "hint": "Text for the call-to-action shown after the site description (e.g. “Read more”, “À propos”, “En savoir plus”)."
+        },
+        "ctaUrl": {
+          "label": "“Read more” link target",
+          "hint": "Where the hero “read more” link points. Defaults to /about; use any path (e.g. /apropos) or a full URL."
+        }
       },
       "sections": {
         "title": "Content Sections",

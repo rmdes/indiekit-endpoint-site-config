@@ -170,7 +170,15 @@
       "hero": {
         "title": "Section Hero",
         "enabled": "Afficher la section hero avec les informations sur l'auteur",
-        "showSocial": "Afficher les liens sociaux dans le hero"
+        "showSocial": "Afficher les liens sociaux dans le hero",
+        "ctaText": {
+          "label": "Texte du lien « en savoir plus »",
+          "hint": "Texte de l'appel à l'action affiché après la description du site (ex. « À propos », « En savoir plus »)."
+        },
+        "ctaUrl": {
+          "label": "Cible du lien « en savoir plus »",
+          "hint": "Destination du lien « en savoir plus » du hero. Par défaut /about ; utilisez un chemin (ex. /apropos) ou une URL complète."
+        }
       },
       "sections": {
         "title": "Sections de contenu",

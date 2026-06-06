@@ -400,6 +400,18 @@
         {{ __("siteConfig.homepage.hero.showSocial") }}
       </label>
     </div>
+    <div class="field">
+      <label class="field__label" for="heroCtaText">{{ __("siteConfig.homepage.hero.ctaText.label") }}</label>
+      <input class="field__input" type="text" id="heroCtaText" name="heroCtaText"
+             value="{{ homepage.hero.ctaText or 'Read more' }}" placeholder="Read more">
+      <p class="field__hint">{{ __("siteConfig.homepage.hero.ctaText.hint") }}</p>
+    </div>
+    <div class="field">
+      <label class="field__label" for="heroCtaUrl">{{ __("siteConfig.homepage.hero.ctaUrl.label") }}</label>
+      <input class="field__input" type="text" id="heroCtaUrl" name="heroCtaUrl"
+             value="{{ homepage.hero.ctaUrl or '/about' }}" placeholder="/about">
+      <p class="field__hint">{{ __("siteConfig.homepage.hero.ctaUrl.hint") }}</p>
+    </div>
   </section>
 
   {# Content Sections #}
