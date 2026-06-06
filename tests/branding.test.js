@@ -356,9 +356,9 @@ test("SURFACE_PRESET_OPTIONS exposes the 5 v2 Phase 2c presets", () => {
   const slugs = SURFACE_PRESET_OPTIONS.map((p) => p.slug);
   assert.deepEqual(slugs, [
     "warm-stone",
-    "warm-gray",
+    "clay",
     "stone",
     "cool-slate",
-    "neutral-zinc",
+    "sage",
   ]);
 });

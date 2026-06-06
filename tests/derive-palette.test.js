@@ -30,13 +30,12 @@ test("getSurfacePalette returns preset", () => {
   assert.notEqual(slate[500], stone[500]);
 });
 
-test("getSurfacePalette exposes the Phase 2c presets warm-gray and stone", () => {
-  // warm-gray slug now carries the Clay (terracotta/rose) palette — re-skinned
-  // 2026-06-06 so it is visibly distinct from the other neutrals.
-  const warmGray = getSurfacePalette("warm-gray");
-  assert.match(warmGray[500], /^#[0-9a-f]{6}$/);
-  assert.equal(warmGray[50], "#faf4f1");
-  assert.equal(warmGray[950], "#1a0f0b");
+test("getSurfacePalette exposes the clay and stone presets", () => {
+  // clay = terracotta/rose-tinted warm, distinct from the other neutrals.
+  const clay = getSurfacePalette("clay");
+  assert.match(clay[500], /^#[0-9a-f]{6}$/);
+  assert.equal(clay[50], "#faf4f1");
+  assert.equal(clay[950], "#1a0f0b");
 
   // stone = Tailwind "neutral" — pure gray
   const stone = getSurfacePalette("stone");
@@ -44,7 +43,7 @@ test("getSurfacePalette exposes the Phase 2c presets warm-gray and stone", () =>
   assert.equal(stone[950], "#0a0a0a");
 
   // All five presets distinct at mid-tone
-  const presets = ["warm-stone", "warm-gray", "stone", "cool-slate", "neutral-zinc"];
+  const presets = ["warm-stone", "clay", "stone", "cool-slate", "sage"];
   const mid500s = presets.map((p) => getSurfacePalette(p)[500]);
   assert.equal(new Set(mid500s).size, presets.length, "mid-tones should all differ");
 });

@@ -163,7 +163,7 @@ test("surface presets diverge meaningfully at the mid tone (500)", () => {
       const [slugA, a] = presets[i];
       const [slugB, b] = presets[j];
       const d = dist(a[500], b[500]);
-      // Threshold 10: the original bug had warm-gray/neutral-zinc within ~4 of
+      // Threshold 10: the original bug had the redundant grays within ~4 of
       // their neighbours. The closest LEGITIMATE pair is warm-stone vs stone
       // (~11.4) — an intentional "warm neutral vs true neutral" distinction.
       assert.ok(
@@ -174,9 +174,9 @@ test("surface presets diverge meaningfully at the mid tone (500)", () => {
   }
 });
 
-test("SURFACE_PRESET_OPTIONS keeps the 5 stable slugs (persistence-safe)", () => {
+test("SURFACE_PRESET_OPTIONS exposes the 5 presets, each resolving to a palette", () => {
   const slugs = SURFACE_PRESET_OPTIONS.map((o) => o.slug).sort();
-  assert.deepEqual(slugs, ["cool-slate", "neutral-zinc", "stone", "warm-gray", "warm-stone"]);
+  assert.deepEqual(slugs, ["clay", "cool-slate", "sage", "stone", "warm-stone"]);
   // Every offered preset must resolve to a real palette.
   for (const o of SURFACE_PRESET_OPTIONS) {
     assert.ok(SURFACE_PRESETS[o.slug], `option ${o.slug} has no palette`);
