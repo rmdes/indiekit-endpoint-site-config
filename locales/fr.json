@@ -7,7 +7,8 @@
       "branding": "Identité visuelle",
       "homepage": "Accueil",
       "blog": "Blog",
-      "navigation": "Navigation"
+      "navigation": "Navigation",
+      "general": "Général"
     },
     "common": {
       "save": "Enregistrer",
@@ -15,6 +16,19 @@
       "cancel": "Annuler",
       "reset": "Réinitialiser",
       "preview": "Aperçu en direct"
+    },
+    "general": {
+      "aiTransparency": {
+        "title": "Transparence IA",
+        "description": "Afficher une mention d'utilisation de l'IA sur les billets et les pages. À activer uniquement si vous utilisez l'IA pour rédiger du contenu — désactivé, aucune mention IA n'apparaît sur le site.",
+        "label": "Afficher la mention d'utilisation de l'IA",
+        "hint": "Une fois activé, chaque billet et page affiche son utilisation de l'IA (niveau texte/code et outils) en bas de page.",
+        "urlLabel": "Lien « en savoir plus »"
+      },
+      "aiTransparencyUrl": {
+        "label": "Lien « en savoir plus »",
+        "hint": "Cible du lien « en savoir plus sur l'utilisation de l'IA ». Par défaut /ai ; utilisez un chemin (ex. /about/ai) ou une URL complète."
+      }
     },
     "identity": {
       "title": "Identité",

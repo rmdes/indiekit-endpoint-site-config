@@ -7,6 +7,7 @@ import { brandingRouter   } from "./lib/controllers/branding.js";
 import { homepageRouter   } from "./lib/controllers/homepage.js";
 import { blogRouter       } from "./lib/controllers/blog.js";
 import { navigationRouter } from "./lib/controllers/navigation.js";
+import { generalRouter    } from "./lib/controllers/general.js";
 import { apiRouter        } from "./lib/controllers/api.js";
 
 import { getSiteConfig     } from "./lib/storage/get-site-config.js";
@@ -77,6 +78,7 @@ export default class SiteConfigEndpoint {
     protectedRouter.use("/homepage",   homepageRouter(Indiekit));
     protectedRouter.use("/blog",       blogRouter(Indiekit));
     protectedRouter.use("/navigation", navigationRouter(Indiekit));
+    protectedRouter.use("/general",    generalRouter(Indiekit));
 
     this.routes = protectedRouter;
 

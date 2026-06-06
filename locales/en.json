@@ -7,7 +7,8 @@
       "branding": "Branding",
       "homepage": "Homepage",
       "blog": "Blog",
-      "navigation": "Navigation"
+      "navigation": "Navigation",
+      "general": "General"
     },
     "common": {
       "save": "Save",
@@ -15,6 +16,19 @@
       "cancel": "Cancel",
       "reset": "Reset",
       "preview": "Live preview"
+    },
+    "general": {
+      "aiTransparency": {
+        "title": "AI transparency",
+        "description": "Show an AI usage disclosure on posts and pages. Turn this on only if you use AI to help draft or write content — when off, no AI disclosure is shown anywhere on the site.",
+        "label": "Show AI usage disclosure",
+        "hint": "When enabled, every post and page shows its AI usage (text/code level and tools) at the bottom.",
+        "urlLabel": "Learn-more link"
+      },
+      "aiTransparencyUrl": {
+        "label": "“Learn more” link",
+        "hint": "Where the “Learn more about AI usage” link points. Defaults to /ai; use any path (e.g. /about/ai) or full URL."
+      }
     },
     "identity": {
       "title": "Identity",
