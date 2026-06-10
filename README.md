@@ -6,17 +6,24 @@ Provides an admin UI for configuring a multi-tenant Indiekit deployment from a s
 
 ## Status
 
-`1.0.0-alpha.7` — usable, in production on [rmendes.net](https://rmendes.net). API may still shift before `1.0.0`.
+Stable, in production. See `package.json` for version. Core tier plugin in `indiekit-cloudron` (cannot be disabled per-site).
 
 ## Features
 
-- **12-control admin UI** for site theming (palette presets, semantic role overrides, mode preference)
+- **Admin UI** (tabs: identity, branding, homepage, blog, navigation, general)
+  - Identity: name, domain, author, language
+  - Branding: 12-control theming (palette presets, semantic role overrides, mode preference)
+  - Homepage: hero, layout, featured sections from plugins, widget discovery
+  - Blog: post listing config, pagination
+  - Navigation: menu items, site structure
+  - General: publication settings
 - **Runtime CSS generation** — writes `theme.css` and `critical.css` to disk on each save; Eleventy picks them up via `inlineFile` filter on next rebuild
 - **APCA Lc contrast validation** — blocks saves with unreadable color combinations (Lc < 30 hard, < 45 warn)
 - **Version history** — last 10 saves snapshot to MongoDB; one-click revert
 - **Reset per-section + global** — undo any subsection or all branding back to defaults
 - **Live preview iframe** — pending form state previewed before save via query-param-driven endpoint
 - **Mode-aware preview toggle** — preview light or dark mode independently of OS preference
+- **Plugin discovery** — scans registered plugins for `homepageSections`, `homepageWidgets`, `blogPostWidgets`; exposes them via public API for UI composition
 
 ## Architecture — 3-Tier Token System
 
@@ -55,9 +62,35 @@ export default {
 
 ## Storage
 
-- MongoDB collection: `siteConfig`
-- Document `_id`: `"primary"` (singleton per deployment)
-- Schema version: `2` (Path D, Phase 2a+)
+Two MongoDB collections:
+
+1. **`siteConfig`** — singleton document `_id: "primary"` storing all site identity, branding, navigation, blog config (schema version 3)
+2. **`homepageConfig`** — homepage builder state: hero, layout, sections, widgets (discovered from plugins at init() time)
+
+## Routes
+
+### Admin (Protected by Indiekit session)
+
+| Path | Controller | Purpose |
+|------|-----------|---------|
+| `/site-config` | identity | Site name, domain, author, language |
+| `/site-config/branding` | branding | Palette, semantic tokens, mode preferences, APCA validation |
+| `/site-config/homepage` | homepage | Hero, layout, featured sections (from plugins), widgets |
+| `/site-config/blog` | blog | Post listing config, pagination settings |
+| `/site-config/navigation` | navigation | Menu items, navigation structure |
+| `/site-config/general` | general | General publication settings |
+
+### Public API
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/preview` | Live preview of current form state (renders theme.css with pending changes) |
+| GET | `/api/sections` | List of available homepage sections (discovered from registered plugins) |
+| GET | `/api/widgets` | List of available homepage widgets (discovered from plugins) |
+| GET | `/api/blog-widgets` | List of available blog post widgets (discovered from plugins) |
+| GET | `/api/homepage.json` | Rendered homepage config (consumed by theme or client-side builds) |
+
+These endpoints enable the theme's admin UI to offer live previews and dynamic plugin discovery without exposing sensitive config data.
 
 ## Theme integration
 
@@ -78,13 +111,19 @@ Three states: `light`, `dark`, `auto`. In `auto` mode the plugin emits both `@me
 npm test
 ```
 
-Currently 159 tests covering schema, storage, palette derivation, semantic resolution, contrast validation, history snapshotting, reset paths, and form parsing.
+Run with Node's test runner. Coverage includes schema validation, storage operations, palette derivation, semantic color resolution, APCA contrast validation, history management, reset functionality, and form parsing.
 
 ## Dependencies
 
 - `apca-w3` + `colorparsley` — APCA Lc contrast calculation
 - `culori` — OKLCH palette derivation
 - `@indiekit/error`, `@indiekit/frontend`, `express@^5`
+
+## Plugin Origin
+
+**ORIGINAL plugin** — no upstream `@indiekit/endpoint-site-config` equivalent. This is a custom `@rmdes/*` plugin created as the successor to (and replacement for) an earlier `@indiekit/endpoint-homepage`.
+
+**Registry status:** Core tier in `indiekit-cloudron` — always installed, cannot be disabled per-site.
 
 ## Development
 
