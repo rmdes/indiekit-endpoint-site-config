@@ -95,3 +95,21 @@ test("detectActivePreset returns null when no preset matches", () => {
   const custom = { layout: "single-column", sections: [{ type: "custom-html" }], sidebar: [] };
   assert.equal(detectActivePreset(custom, presets), null);
 });
+
+test("caps each zone at 24 entries", () => {
+  const many = JSON.stringify(Array.from({ length: 40 }, () => ({ type: "recent-posts", config: {} })));
+  const out = parseHomepageBody({ sections: many, sidebar: "[]", footer: "[]" });
+  assert.equal(out.sections.length, 24);
+});
+
+test("coerces a non-string custom-html title to a bounded string", () => {
+  const sections = JSON.stringify([{ type: "custom-html", config: { title: { evil: 1 }, content: "<p>ok</p>" } }]);
+  const out = parseHomepageBody({ sections, sidebar: "[]", footer: "[]" });
+  assert.equal(typeof out.sections[0].config.title, "string");
+});
+
+test("still strips scripts from custom-html content after coercion (Task 3 preserved)", () => {
+  const sections = JSON.stringify([{ type: "custom-html", config: { content: "<p>ok</p><script>alert(1)</script>" } }]);
+  const out = parseHomepageBody({ sections, sidebar: "[]", footer: "[]" });
+  assert.equal(out.sections[0].config.content.includes("<script"), false);
+});
