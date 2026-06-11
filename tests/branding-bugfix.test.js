@@ -20,7 +20,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { renderThemeCss } from "../lib/render/write-theme-css.js";
 import { renderPreviewHtml } from "../lib/controllers/api.js";
-import { apiRouter } from "../lib/controllers/api.js";
+import { publicApiRouter } from "../lib/controllers/api.js";
 import { SURFACE_PRESETS } from "../lib/render/surface-presets.js";
 import { SURFACE_PRESET_OPTIONS } from "../lib/controllers/branding.js";
 import { mergeWithDefaults } from "../lib/storage/get-site-config.js";
@@ -106,7 +106,7 @@ function makeApp(initial) {
           },
         };
   const app = express();
-  app.use("/site-config/api", apiRouter(Indiekit));
+  app.use("/site-config/api", publicApiRouter(Indiekit));
   return app;
 }
 
