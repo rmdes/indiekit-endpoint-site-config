@@ -226,6 +226,34 @@ test("renderCriticalCss honors role overrides", () => {
   assert.match(css, /body\{background-color:rgb\(17, 34, 51\)/);
 });
 
+test("renderCriticalCss body font follows typography.sans (no Inter FOUC)", () => {
+  const config = mergeWithDefaults({
+    branding: { mode: "light", typography: { sans: "Lato" } },
+  });
+  const css = renderCriticalCss(config);
+  assert.match(css, /body\{margin:0;font-family:"Lato",/);
+  // A non-Inter sans must NOT ship the Inter @font-face block.
+  assert.doesNotMatch(css, /@font-face[^}]*Inter/);
+});
+
+test("renderCriticalCss ships Inter @font-face when Inter is self-hosted", () => {
+  const config = mergeWithDefaults({
+    branding: { mode: "light", typography: { sans: "Inter", hosting: "self" } },
+  });
+  const css = renderCriticalCss(config);
+  assert.match(css, /body\{margin:0;font-family:"Inter",/);
+  assert.match(css, /@font-face[^}]*Inter/);
+});
+
+test("renderCriticalCss uses bare system stack for system-ui sans", () => {
+  const config = mergeWithDefaults({
+    branding: { mode: "light", typography: { sans: "system-ui" } },
+  });
+  const css = renderCriticalCss(config);
+  assert.match(css, /body\{margin:0;font-family:system-ui,-apple-system,/);
+  assert.doesNotMatch(css, /@font-face[^}]*Inter/);
+});
+
 // ─── site-config.json writer ────────────────────────────────────────────
 
 test("renderSiteJson emits the structure Eleventy templates expect", () => {
