@@ -261,11 +261,23 @@ test("renderSiteJson emits the structure Eleventy templates expect", () => {
     identity: { name: "rmendes.net", description: "Personal site" },
   });
   const json = JSON.parse(renderSiteJson(config));
+  // The v3 artifact contract: schemaVersion, identity, branding (no history),
+  // navigation, features, and updatedAt when present. `updatedAt` is omitted
+  // here because mergeWithDefaults({}) leaves it undefined (JSON drops it).
+  assert.deepEqual(
+    Object.keys(json).sort(),
+    ["branding", "features", "identity", "navigation", "schemaVersion"],
+  );
   assert.equal(json.identity.name, "rmendes.net");
   assert.equal(json.branding.typography.sans, "Inter");
+  assert.equal(json.branding.history, undefined, "history stripped from artifact");
   assert.ok(json.navigation !== null && typeof json.navigation === "object");
   assert.ok(Array.isArray(json.navigation.items));
-  assert.equal(json.features, undefined, "features subtree removed in v3.x");
+  // `features` IS a real v3 field (per defaults-site.js): the AI-transparency
+  // toggle the theme reads. It must be serialized with its real shape.
+  assert.equal(typeof json.features, "object");
+  assert.equal(json.features.aiTransparency, false);
+  assert.equal(json.features.aiTransparencyUrl, "/ai");
 });
 
 test("renderSiteJson strips updatedBy but keeps updatedAt", () => {
@@ -286,6 +298,15 @@ test("renderSiteJson preserves schemaVersion 3 in v3 schema", () => {
   assert.equal(json.schemaVersion, 3);
 });
 
+test("renderSiteJson drops branding.history from the artifact", () => {
+  const json = renderSiteJson({
+    schemaVersion: 3,
+    branding: { mode: "auto", history: [{ ts: "x", snapshot: {} }] },
+    identity: {}, navigation: {}, features: {}, updatedAt: "x",
+  });
+  assert.equal(JSON.parse(json).branding.history, undefined);
+});
+
 test("renderSiteJson drops legacy top-level keys (e.g. v2 layout) when present", () => {
   // Simulate a legacy v2 MongoDB document leaking the layout subtree
   // through deep-merge. The writer should NOT serialize it.
@@ -294,7 +315,7 @@ test("renderSiteJson drops legacy top-level keys (e.g. v2 layout) when present",
     identity: { name: "Rick" },
     branding: { surfacePreset: "warm-stone" },
     navigation: { items: [] },
-    features: { rss: true },                                            // legacy v3.0 cruft (dropped in v3.x)
+    features: { aiTransparency: true },                                // whitelisted v3 field — kept
     layout: { preset: "blog", sidebarEnabled: true, navItems: [] },     // legacy v2 cruft
     extraJunk: "hello",                                                 // arbitrary stray key
   };
@@ -305,4 +326,5 @@ test("renderSiteJson drops legacy top-level keys (e.g. v2 layout) when present",
   assert.equal(json.schemaVersion, 3);
   assert.equal(json.identity.name, "Rick");
   assert.equal(json.navigation.items.length, 0);
+  assert.equal(json.features.aiTransparency, true, "features is a whitelisted v3 field");
 });

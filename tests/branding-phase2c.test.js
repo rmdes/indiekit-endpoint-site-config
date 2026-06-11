@@ -325,9 +325,15 @@ test("prependHistory handles undefined/non-array existing history", () => {
   assert.equal(prependHistory("not an array", snap).length, 1);
 });
 
-// ─── renderSiteJson strips savedBy from history (PII) ──────────────────
+// ─── renderSiteJson drops history entirely (PII + artifact bloat) ──────
+//
+// Task 8 supersedes the earlier "strip savedBy from each history entry"
+// contract: the whole `branding.history` array is now excluded from the
+// public artifact. That removes both the design-iteration history bloat and
+// any per-entry PII (savedBy) in one move — no history means no savedBy to
+// leak. The PRIVATE_KEYS replacer still guards savedBy/updatedBy elsewhere.
 
-test("renderSiteJson strips savedBy from every history entry", () => {
+test("renderSiteJson drops branding.history entirely (no savedBy can leak)", () => {
   const config = mergeWithDefaults({
     branding: {
       history: [
@@ -338,12 +344,9 @@ test("renderSiteJson strips savedBy from every history entry", () => {
   });
   const json = renderSiteJson(config);
   const parsed = JSON.parse(json);
-  assert.ok(parsed.branding.history.length === 2);
-  for (const entry of parsed.branding.history) {
-    assert.equal(entry.savedBy, undefined, "savedBy must be stripped");
-    assert.ok(entry.savedAt, "savedAt must be preserved");
-    assert.ok(entry.snapshot, "snapshot must be preserved");
-  }
+  assert.equal(parsed.branding.history, undefined, "history must be absent from the artifact");
+  assert.ok(!json.includes("user@example.com"), "no savedBy PII may leak");
+  assert.ok(!json.includes("rick@rmendes.net"), "no savedBy PII may leak");
 });
 
 test("renderSiteJson still strips updatedBy (regression)", () => {
