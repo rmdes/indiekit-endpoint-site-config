@@ -199,8 +199,10 @@ test("resetBrandingSection('interaction') only clears interaction roles", () => 
   const after = resetBrandingSection(before, "interaction");
   assert.equal(after.roles.link, null);
   assert.equal(after.roles.action, null);
-  assert.equal(after.roles.actionFg, null);
   assert.equal(after.roles.focus, null);
+  // actionFg is owned by the "advanced" section (it's only shown in the
+  // advanced panel), so resetting "interaction" must NOT null it.
+  assert.deepEqual(after.roles.actionFg, { light: "#ffffff", dark: "#000000" });
   // Heading preserved
   assert.deepEqual(after.roles.heading, { light: "#001a33", dark: "#e6f0ff" });
 });
