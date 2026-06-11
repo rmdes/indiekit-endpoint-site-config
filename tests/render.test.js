@@ -96,21 +96,43 @@ test("renderThemeCss emits Tier 3 alert tokens (success/warning/danger + -fg)", 
 
 // ─── theme.css generator (mode handling) ────────────────────────────────
 
-test("renderThemeCss mode=light emits only :root with no dark blocks", () => {
+test("renderThemeCss mode=light emits :root + a .dark toggle override, no @media", () => {
   const config = mergeWithDefaults({ branding: { mode: "light" } });
   const css = renderThemeCss(config);
   assert.match(css, /:root\s*\{/);
+  // Explicit modes must not honor the OS preference; only the JS toggle class.
   assert.doesNotMatch(css, /@media \(prefers-color-scheme: dark\)/);
-  assert.doesNotMatch(css, /^\.dark\s*\{/m);
+  // The .dark override block makes the header toggle work (Task 6 fix).
+  assert.match(css, /^\.dark\s*\{/m);
 });
 
-test("renderThemeCss mode=dark emits dark values in :root, no @media/.dark", () => {
+test("renderThemeCss mode=dark emits dark :root + a .light toggle override, no @media", () => {
   const config = mergeWithDefaults({ branding: { mode: "dark" } });
   const css = renderThemeCss(config);
   assert.match(css, /:root\s*\{/);
   assert.doesNotMatch(css, /@media \(prefers-color-scheme: dark\)/);
   // bg (dark) → surface-950 = #0f0e0d = 15 14 13
   assert.match(css, /--c-bg:\s+15 14 13;/);
+  // The .light override block makes the header toggle work (Task 6 fix).
+  assert.match(css, /^\.light\s*\{/m);
+});
+
+test("light mode still emits a .dark override block so the toggle works", () => {
+  const config = mergeWithDefaults({ branding: { mode: "light" } });
+  const css = renderThemeCss(config);
+  assert.ok(
+    css.includes(".dark {") || css.includes(".dark{"),
+    "expected a .dark override block in light mode",
+  );
+});
+
+test("dark mode still emits a .light override block so the toggle works", () => {
+  const config = mergeWithDefaults({ branding: { mode: "dark" } });
+  const css = renderThemeCss(config);
+  assert.ok(
+    css.includes(".light {") || css.includes(".light{"),
+    "expected a .light override block in dark mode",
+  );
 });
 
 test("renderThemeCss mode=auto emits both @media and .dark blocks", () => {
