@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeHomepageJson } from "../lib/render/write-homepage-json.js";
@@ -51,4 +51,20 @@ test("writeHomepageJson omits MongoDB-only fields", async () => {
   } finally {
     cleanup();
   }
+});
+
+test("writeHomepageJson writes valid JSON and leaves no tmp files behind", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "hp-"));
+  const out = join(dir, "homepage.json");
+  await writeHomepageJson({ layout: "two-column", sections: [], updatedAt: "2026-06-11T00:00:00.000Z" }, out);
+  const parsed = JSON.parse(readFileSync(out, "utf8"));
+  assert.equal(parsed.layout, "two-column");
+  assert.equal(readdirSync(dir).filter((f) => f.endsWith(".tmp")).length, 0);
+});
+
+test("writeHomepageJson never serializes updatedBy", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "hp-"));
+  const out = join(dir, "homepage.json");
+  await writeHomepageJson({ layout: "single-column", updatedBy: "https://me.example/", updatedAt: "x" }, out);
+  assert.equal(readFileSync(out, "utf8").includes("updatedBy"), false);
 });
