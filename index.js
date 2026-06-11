@@ -8,7 +8,7 @@ import { homepageRouter   } from "./lib/controllers/homepage.js";
 import { blogRouter       } from "./lib/controllers/blog.js";
 import { navigationRouter } from "./lib/controllers/navigation.js";
 import { generalRouter    } from "./lib/controllers/general.js";
-import { apiRouter        } from "./lib/controllers/api.js";
+import { publicApiRouter, adminApiRouter } from "./lib/controllers/api.js";
 
 import { getSiteConfig     } from "./lib/storage/get-site-config.js";
 import { getHomepageConfig } from "./lib/storage/get-homepage-config.js";
@@ -69,7 +69,7 @@ export default class SiteConfigEndpoint {
 
     Indiekit.config.application.contentDir = this.options.contentDir;
 
-    this._apiRouter = apiRouter(Indiekit);
+    this._publicApiRouter = publicApiRouter(Indiekit);
 
     const protectedRouter = express.Router();
     protectedRouter.get("/", (req, res) => res.redirect(`${this.mountPath}/identity`));
@@ -79,6 +79,7 @@ export default class SiteConfigEndpoint {
     protectedRouter.use("/blog",       blogRouter(Indiekit));
     protectedRouter.use("/navigation", navigationRouter(Indiekit));
     protectedRouter.use("/general",    generalRouter(Indiekit));
+    protectedRouter.use("/api",        adminApiRouter(Indiekit));
 
     this.routes = protectedRouter;
 
@@ -109,8 +110,8 @@ export default class SiteConfigEndpoint {
 
   get routesPublic() {
     const router = express.Router();
-    if (this._apiRouter) {
-      router.use("/api", this._apiRouter);
+    if (this._publicApiRouter) {
+      router.use("/api", this._publicApiRouter);
     }
     return router;
   }

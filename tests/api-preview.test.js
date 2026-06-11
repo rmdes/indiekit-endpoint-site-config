@@ -10,7 +10,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
-import { apiRouter } from "../lib/controllers/api.js";
+import { publicApiRouter } from "../lib/controllers/api.js";
 import { renderPreviewHtml } from "../lib/controllers/api.js";
 import { renderThemeCss } from "../lib/render/write-theme-css.js";
 import { mergeWithDefaults } from "../lib/storage/get-site-config.js";
@@ -34,7 +34,7 @@ function makeFakeIndiekit(initial = null) {
 
 function makeApp(Indiekit) {
   const app = express();
-  app.use("/site-config/api", apiRouter(Indiekit));
+  app.use("/site-config/api", publicApiRouter(Indiekit));
   return app;
 }
 

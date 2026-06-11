@@ -96,21 +96,43 @@ test("renderThemeCss emits Tier 3 alert tokens (success/warning/danger + -fg)", 
 
 // ─── theme.css generator (mode handling) ────────────────────────────────
 
-test("renderThemeCss mode=light emits only :root with no dark blocks", () => {
+test("renderThemeCss mode=light emits :root + a .dark toggle override, no @media", () => {
   const config = mergeWithDefaults({ branding: { mode: "light" } });
   const css = renderThemeCss(config);
   assert.match(css, /:root\s*\{/);
+  // Explicit modes must not honor the OS preference; only the JS toggle class.
   assert.doesNotMatch(css, /@media \(prefers-color-scheme: dark\)/);
-  assert.doesNotMatch(css, /^\.dark\s*\{/m);
+  // The .dark override block makes the header toggle work (Task 6 fix).
+  assert.match(css, /^\.dark\s*\{/m);
 });
 
-test("renderThemeCss mode=dark emits dark values in :root, no @media/.dark", () => {
+test("renderThemeCss mode=dark emits dark :root + a .light toggle override, no @media", () => {
   const config = mergeWithDefaults({ branding: { mode: "dark" } });
   const css = renderThemeCss(config);
   assert.match(css, /:root\s*\{/);
   assert.doesNotMatch(css, /@media \(prefers-color-scheme: dark\)/);
   // bg (dark) → surface-950 = #0f0e0d = 15 14 13
   assert.match(css, /--c-bg:\s+15 14 13;/);
+  // The .light override block makes the header toggle work (Task 6 fix).
+  assert.match(css, /^\.light\s*\{/m);
+});
+
+test("light mode still emits a .dark override block so the toggle works", () => {
+  const config = mergeWithDefaults({ branding: { mode: "light" } });
+  const css = renderThemeCss(config);
+  assert.ok(
+    css.includes(".dark {") || css.includes(".dark{"),
+    "expected a .dark override block in light mode",
+  );
+});
+
+test("dark mode still emits a .light override block so the toggle works", () => {
+  const config = mergeWithDefaults({ branding: { mode: "dark" } });
+  const css = renderThemeCss(config);
+  assert.ok(
+    css.includes(".light {") || css.includes(".light{"),
+    "expected a .light override block in dark mode",
+  );
 });
 
 test("renderThemeCss mode=auto emits both @media and .dark blocks", () => {
@@ -204,6 +226,34 @@ test("renderCriticalCss honors role overrides", () => {
   assert.match(css, /body\{background-color:rgb\(17, 34, 51\)/);
 });
 
+test("renderCriticalCss body font follows typography.sans (no Inter FOUC)", () => {
+  const config = mergeWithDefaults({
+    branding: { mode: "light", typography: { sans: "Lato" } },
+  });
+  const css = renderCriticalCss(config);
+  assert.match(css, /body\{margin:0;font-family:"Lato",/);
+  // A non-Inter sans must NOT ship the Inter @font-face block.
+  assert.doesNotMatch(css, /@font-face[^}]*Inter/);
+});
+
+test("renderCriticalCss ships Inter @font-face when Inter is self-hosted", () => {
+  const config = mergeWithDefaults({
+    branding: { mode: "light", typography: { sans: "Inter", hosting: "self" } },
+  });
+  const css = renderCriticalCss(config);
+  assert.match(css, /body\{margin:0;font-family:"Inter",/);
+  assert.match(css, /@font-face[^}]*Inter/);
+});
+
+test("renderCriticalCss uses bare system stack for system-ui sans", () => {
+  const config = mergeWithDefaults({
+    branding: { mode: "light", typography: { sans: "system-ui" } },
+  });
+  const css = renderCriticalCss(config);
+  assert.match(css, /body\{margin:0;font-family:system-ui,-apple-system,/);
+  assert.doesNotMatch(css, /@font-face[^}]*Inter/);
+});
+
 // ─── site-config.json writer ────────────────────────────────────────────
 
 test("renderSiteJson emits the structure Eleventy templates expect", () => {
@@ -211,11 +261,23 @@ test("renderSiteJson emits the structure Eleventy templates expect", () => {
     identity: { name: "rmendes.net", description: "Personal site" },
   });
   const json = JSON.parse(renderSiteJson(config));
+  // The v3 artifact contract: schemaVersion, identity, branding (no history),
+  // navigation, features, and updatedAt when present. `updatedAt` is omitted
+  // here because mergeWithDefaults({}) leaves it undefined (JSON drops it).
+  assert.deepEqual(
+    Object.keys(json).sort(),
+    ["branding", "features", "identity", "navigation", "schemaVersion"],
+  );
   assert.equal(json.identity.name, "rmendes.net");
   assert.equal(json.branding.typography.sans, "Inter");
+  assert.equal(json.branding.history, undefined, "history stripped from artifact");
   assert.ok(json.navigation !== null && typeof json.navigation === "object");
   assert.ok(Array.isArray(json.navigation.items));
-  assert.equal(json.features, undefined, "features subtree removed in v3.x");
+  // `features` IS a real v3 field (per defaults-site.js): the AI-transparency
+  // toggle the theme reads. It must be serialized with its real shape.
+  assert.equal(typeof json.features, "object");
+  assert.equal(json.features.aiTransparency, false);
+  assert.equal(json.features.aiTransparencyUrl, "/ai");
 });
 
 test("renderSiteJson strips updatedBy but keeps updatedAt", () => {
@@ -236,6 +298,15 @@ test("renderSiteJson preserves schemaVersion 3 in v3 schema", () => {
   assert.equal(json.schemaVersion, 3);
 });
 
+test("renderSiteJson drops branding.history from the artifact", () => {
+  const json = renderSiteJson({
+    schemaVersion: 3,
+    branding: { mode: "auto", history: [{ ts: "x", snapshot: {} }] },
+    identity: {}, navigation: {}, features: {}, updatedAt: "x",
+  });
+  assert.equal(JSON.parse(json).branding.history, undefined);
+});
+
 test("renderSiteJson drops legacy top-level keys (e.g. v2 layout) when present", () => {
   // Simulate a legacy v2 MongoDB document leaking the layout subtree
   // through deep-merge. The writer should NOT serialize it.
@@ -244,7 +315,7 @@ test("renderSiteJson drops legacy top-level keys (e.g. v2 layout) when present",
     identity: { name: "Rick" },
     branding: { surfacePreset: "warm-stone" },
     navigation: { items: [] },
-    features: { rss: true },                                            // legacy v3.0 cruft (dropped in v3.x)
+    features: { aiTransparency: true },                                // whitelisted v3 field — kept
     layout: { preset: "blog", sidebarEnabled: true, navItems: [] },     // legacy v2 cruft
     extraJunk: "hello",                                                 // arbitrary stray key
   };
@@ -255,4 +326,5 @@ test("renderSiteJson drops legacy top-level keys (e.g. v2 layout) when present",
   assert.equal(json.schemaVersion, 3);
   assert.equal(json.identity.name, "Rick");
   assert.equal(json.navigation.items.length, 0);
+  assert.equal(json.features.aiTransparency, true, "features is a whitelisted v3 field");
 });

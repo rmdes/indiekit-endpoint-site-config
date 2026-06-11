@@ -20,7 +20,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { renderThemeCss } from "../lib/render/write-theme-css.js";
 import { renderPreviewHtml } from "../lib/controllers/api.js";
-import { apiRouter } from "../lib/controllers/api.js";
+import { publicApiRouter } from "../lib/controllers/api.js";
 import { SURFACE_PRESETS } from "../lib/render/surface-presets.js";
 import { SURFACE_PRESET_OPTIONS } from "../lib/controllers/branding.js";
 import { mergeWithDefaults } from "../lib/storage/get-site-config.js";
@@ -60,14 +60,25 @@ test("renderThemeCss({preview}) does NOT depend on the prefers-color-scheme medi
   assert.doesNotMatch(css, /@media \(prefers-color-scheme: dark\)/);
 });
 
-// ─── Production path is UNCHANGED (regression guard) ───────────────────────
+// ─── Production path: explicit modes emit an opposite-mode toggle override ──
+// (Task 6 fix — the header's Light/Dark toggle adds .dark/.light to <html>, so
+// an explicit mode that emitted only :root left the toggle inert. Production
+// explicit modes still must NOT honor the OS prefers-color-scheme query.)
 
-test("renderThemeCss() production mode=light still emits ONLY :root (no dark blocks)", () => {
+test("renderThemeCss() production mode=light emits :root + a .dark toggle override, no @media", () => {
   const config = mergeWithDefaults({ branding: { mode: "light" } });
   const css = renderThemeCss(config);
   assert.match(css, /:root\s*\{/);
   assert.doesNotMatch(css, /@media \(prefers-color-scheme: dark\)/);
-  assert.doesNotMatch(css, /^\.dark\s*\{$/m);
+  assert.match(css, /^\.dark\s*\{/m, "light mode must emit a .dark override so the toggle works");
+});
+
+test("renderThemeCss() production mode=dark emits :root + a .light toggle override, no @media", () => {
+  const config = mergeWithDefaults({ branding: { mode: "dark" } });
+  const css = renderThemeCss(config);
+  assert.match(css, /:root\s*\{/);
+  assert.doesNotMatch(css, /@media \(prefers-color-scheme: dark\)/);
+  assert.match(css, /^\.light\s*\{/m, "dark mode must emit a .light override so the toggle works");
 });
 
 test("renderThemeCss() production mode=auto unchanged (keeps @media + .dark)", () => {
@@ -106,7 +117,7 @@ function makeApp(initial) {
           },
         };
   const app = express();
-  app.use("/site-config/api", apiRouter(Indiekit));
+  app.use("/site-config/api", publicApiRouter(Indiekit));
   return app;
 }
 

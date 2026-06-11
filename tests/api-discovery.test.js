@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { apiRouter } from "../lib/controllers/api.js";
+import { publicApiRouter, adminApiRouter } from "../lib/controllers/api.js";
 
 // Stub Indiekit with pre-populated discovered fields and a mock DB
 function makeIndiekit() {
@@ -42,26 +42,26 @@ async function callRoute(router, method, path) {
 }
 
 test("GET /api/sections returns discoveredSections", async () => {
-  const router = apiRouter(makeIndiekit());
+  const router = adminApiRouter(makeIndiekit());
   const res = await callRoute(router, "get", "/sections");
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body, [{ id: "hero", label: "Hero" }]);
 });
 
 test("GET /api/widgets returns discoveredWidgets", async () => {
-  const router = apiRouter(makeIndiekit());
+  const router = adminApiRouter(makeIndiekit());
   const res = await callRoute(router, "get", "/widgets");
   assert.deepEqual(res.body, [{ id: "search", label: "Search" }]);
 });
 
 test("GET /api/blog-widgets returns discoveredBlogPostWidgets", async () => {
-  const router = apiRouter(makeIndiekit());
+  const router = adminApiRouter(makeIndiekit());
   const res = await callRoute(router, "get", "/blog-widgets");
   assert.equal(res.body.length, 2);
 });
 
 test("GET /api/homepage.json returns the homepage config (public)", async () => {
-  const router = apiRouter(makeIndiekit());
+  const router = publicApiRouter(makeIndiekit());
   const res = await callRoute(router, "get", "/homepage.json");
   assert.equal(res.body.layout, "two-column");
 });

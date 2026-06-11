@@ -212,11 +212,16 @@ test("partitionContrastResults buckets entries by status", () => {
   assert.equal(passes.length, 2);
 });
 
-test("CRITICAL_PAIRS exposes the 4 required pairs from spec §11.1", () => {
-  assert.equal(CRITICAL_PAIRS.length, 4);
+test("CRITICAL_PAIRS exposes the 5 required pairs from spec §11.1", () => {
+  assert.equal(CRITICAL_PAIRS.length, 5);
   const labels = CRITICAL_PAIRS.map((p) => `${p.text} vs ${p.bg}`);
   assert.ok(labels.includes("fg vs bg"));
   assert.ok(labels.includes("heading vs bg"));
   assert.ok(labels.includes("link vs bg"));
   assert.ok(labels.includes("actionFg vs action"));
+  assert.ok(labels.includes("fgMuted vs bg"));
+});
+
+test("fgMuted is contrast-checked against bg", () => {
+  assert.equal(CRITICAL_PAIRS.some((p) => p.text === "fgMuted" && p.bg === "bg"), true);
 });
