@@ -14,6 +14,7 @@ import { getSiteConfig     } from "./lib/storage/get-site-config.js";
 import { getHomepageConfig } from "./lib/storage/get-homepage-config.js";
 import { maybeSeedFromEnv  } from "./lib/storage/seed-from-env.js";
 import { maybeBackfillIdentity } from "./lib/storage/backfill-identity.js";
+import { migrateV3toV4 } from "./lib/storage/migrate-v3-to-v4.js";
 
 import { writeThemeCss    } from "./lib/render/write-theme-css.js";
 import { writeCriticalCss } from "./lib/render/write-critical-css.js";
@@ -106,11 +107,45 @@ export default class SiteConfigEndpoint {
     // we only warn — same posture as the initial render above.
     const self = this;
     process.nextTick(async () => {
+      let catalog;
       try {
-        const { catalog } = scanPlugins(Indiekit, self);
+        ({ catalog } = scanPlugins(Indiekit, self));
         await writeBlockCatalogJson(catalog);
       } catch (error) {
         console.warn("[site-config] plugin discovery failed:", error?.message ?? String(error));
+      }
+
+      // Dual-running v3 → v4 migration (spec §7). SAFE BY CONSTRUCTION on
+      // every boot: seed-if-absent never touches the v3 doc and never
+      // overwrites existing compositions. This is the migrator's single
+      // sanctioned non-dry caller (see the TOCTOU precondition there).
+      //
+      // Separate try/catch — deliberately granular so a migration failure
+      // logs distinctly from a discovery failure (and, like discovery,
+      // never crashes boot). `catalog` survives a failed artifact write
+      // above (it is destructured before writeBlockCatalogJson), so an
+      // unwritable /app/data doesn't block the DB seed; only a failed SCAN
+      // leaves it undefined, in which case there is nothing to validate
+      // against and the migration is skipped.
+      if (!catalog) return;
+      try {
+        const db = Indiekit.database;
+        if (db) {
+          const { report } = await migrateV3toV4(db, catalog, { dryRun: false });
+          if (report.skipped) {
+            console.log("[site-config] v4 migration: no v3 source, skipped");
+          } else {
+            // skippedExisting vs seeded is the single most important
+            // diagnostic distinction — log the ids, not just counts.
+            console.log(
+              `[site-config] v4 migration: seeded=[${report.seeded}] ` +
+                `existing=[${report.skippedExisting}] valid=${report.valid}` +
+                (report.errors.length ? " errors=" + report.errors.join(" | ") : ""),
+            );
+          }
+        }
+      } catch (error) {
+        console.warn("[site-config] v4 migration failed:", error?.message ?? String(error));
       }
     });
   }
