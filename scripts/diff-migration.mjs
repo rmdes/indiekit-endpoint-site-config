@@ -31,7 +31,7 @@
  * Read-only: never touches a database; safe against production (public,
  * unauthenticated artifact).
  */
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 import { buildHomepageTree } from "../lib/storage/migrate-v3-to-v4.js";
 import { validateComposition } from "../lib/validators/composition.js";
@@ -42,6 +42,11 @@ const extraBlocksIndex = args.indexOf("--extra-blocks");
 let extraBlocksFile = null;
 if (extraBlocksIndex !== -1) {
   [, extraBlocksFile] = args.splice(extraBlocksIndex, 2);
+}
+const emitIndex = args.indexOf("--emit");
+let emitFile = null;
+if (emitIndex !== -1) {
+  [, emitFile] = args.splice(emitIndex, 2);
 }
 const [source] = args;
 if (!source || (extraBlocksIndex !== -1 && !extraBlocksFile)) {
@@ -119,6 +124,11 @@ const doc = {
   tree,
 };
 const result = validateComposition(doc, catalog, { stripUnknown: true });
+
+if (emitFile) {
+  await writeFile(emitFile, `${JSON.stringify(doc, null, 2)}\n`);
+  console.log(`emitted v4 doc: ${emitFile}`);
+}
 
 /**
  * Flatten the migrated tree into zone → ordered type list. A section's zone
