@@ -196,10 +196,8 @@ test("throw-free on hostile plain-data input", () => {
   assert.ok(result.errors.some((e) => /widget/.test(e)));
 });
 
-test("children must be an array when present; non-array degrades to empty with error-free walk", () => {
-  // The reference treats non-array children as [] — that silently accepts a
-  // malformed container. We error instead: a container with corrupted
-  // children is a structural problem, not an empty layout.
+test("present non-array children is a structural error; absent children is a valid empty container", () => {
+  // PRESENT corrupted children is a structural problem, not an empty layout…
   const doc = {
     schemaVersion: 4, kind: "homepage",
     tree: { block: "container", as: "stack", role: "root", children: "oops" },
@@ -207,4 +205,14 @@ test("children must be an array when present; non-array degrades to empty with e
   const result = validateComposition(doc, CATALOG);
   assert.equal(result.ok, false);
   assert.ok(result.errors.some((e) => /children/.test(e)));
+});
+
+test("a container with no children key is a legitimate empty container", () => {
+  const childless = {
+    schemaVersion: 4, kind: "homepage",
+    tree: { block: "container", as: "stack", role: "root" },
+  };
+  const result = validateComposition(childless, CATALOG);
+  assert.equal(result.ok, true, result.errors.join("; "));
+  assert.deepEqual(result.value.tree.children, []);
 });
