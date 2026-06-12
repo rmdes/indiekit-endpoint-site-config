@@ -463,21 +463,21 @@
 
 {% include "partials/tab-strip.njk" %}
 
-{% if request.query.saved %}
+{% if saved %}
 <div class="hp-success">
-  <p>{{ __("siteConfig.common.saved") }}{% if request.query.warn %} — {{ __("siteConfig.branding.savedWithWarnings") }}{% endif %}</p>
+  <p>{{ __("siteConfig.common.saved") }}{% if warn %} — {{ __("siteConfig.branding.savedWithWarnings") }}{% endif %}</p>
 </div>
 {% endif %}
 
-{% if request.query.reverted %}
+{% if reverted %}
 <div class="hp-success">
   <p>{{ __("siteConfig.branding.reverted") }}</p>
 </div>
 {% endif %}
 
-{% if request.query.reset %}
+{% if reset %}
 <div class="hp-success">
-  <p>{{ __("siteConfig.branding.resetDone") }}{% if request.query.section %} ({{ request.query.section }}){% endif %}</p>
+  <p>{{ __("siteConfig.branding.resetDone") }}{% if resetSection %} ({{ resetSection }}){% endif %}</p>
 </div>
 {% endif %}
 

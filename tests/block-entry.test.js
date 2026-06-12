@@ -49,6 +49,36 @@ test("rejects bad ids, regions, sources, renderers", () => {
   }
 });
 
+test("defaultConfig must validate against the entry's own schema", () => {
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      maxItems: { type: "integer", title: "Max items", minimum: 1, maximum: 50 },
+    },
+  };
+  // Valid defaultConfig passes
+  assert.equal(
+    validBlockEntry({ ...GOOD_BLOCK, schema, defaultConfig: { maxItems: 5 } }).ok,
+    true,
+  );
+  // Absent defaultConfig is fine (builtins omit it)
+  assert.equal(validBlockEntry({ ...GOOD_BLOCK, schema }).ok, true);
+  // Unknown key, type mismatch, constraint violation, non-object — all rejected
+  for (const defaultConfig of [
+    { unknown: 1 },        // unknown config key
+    { maxItems: "five" },  // type mismatch
+    { maxItems: 999 },     // violates maximum
+    "evil",                // non-object (validateConfigAgainstSchema leniency bypass)
+    ["evil"],              // array
+    null,                  // null
+  ]) {
+    const r = validBlockEntry({ ...GOOD_BLOCK, schema, defaultConfig });
+    assert.equal(r.ok, false, JSON.stringify(defaultConfig));
+    assert.match(r.errors.join(" "), /defaultConfig does not validate against schema/);
+  }
+});
+
 test("aliases must be an array of kebab ids when present", () => {
   assert.equal(validBlockEntry({ ...GOOD_BLOCK, aliases: ["old-name"] }).ok, true);
   assert.equal(validBlockEntry({ ...GOOD_BLOCK, aliases: "old-name" }).ok, false);

@@ -1,0 +1,67 @@
+{% extends "document.njk" %}
+
+{% from "badge/macro.njk" import badge with context %}
+{% from "button/macro.njk" import button with context %}
+
+{% block content %}
+<link rel="stylesheet" href="/assets/@rmdes-indiekit-endpoint-site-config/editor.css">
+
+<header class="page-header">
+  <h1 class="page-header__title">{{ __("siteConfig.design.title") }}</h1>
+  <p class="page-header__description">{{ __("siteConfig.design.description") }}</p>
+</header>
+
+{% include "partials/tab-strip.njk" %}
+
+<div class="sc-hub-grid">
+  {% for surface in surfaces %}
+  <article class="sc-hub-card{% if not surface.enabled %} sc-hub-card--disabled{% endif %}">
+    <div class="sc-hub-card__thumb" aria-hidden="true">
+      {% if surface.key == "homepage" %}
+      <svg viewBox="0 0 64 44" class="sc-thumb">
+        <rect x="4" y="4" width="56" height="8" rx="1"/>
+        <rect x="4" y="16" width="36" height="24" rx="1"/>
+        <rect x="44" y="16" width="16" height="24" rx="1" opacity="0.6"/>
+      </svg>
+      {% elif surface.key == "listing" %}
+      <svg viewBox="0 0 64 44" class="sc-thumb">
+        <rect x="4" y="4" width="56" height="10" rx="1"/>
+        <rect x="4" y="18" width="56" height="10" rx="1" opacity="0.7"/>
+        <rect x="4" y="32" width="56" height="10" rx="1" opacity="0.4"/>
+      </svg>
+      {% elif surface.key == "posttype" %}
+      <svg viewBox="0 0 64 44" class="sc-thumb">
+        <rect x="4" y="4" width="40" height="6" rx="1"/>
+        <rect x="4" y="14" width="56" height="26" rx="1" opacity="0.5"/>
+      </svg>
+      {% else %}
+      <svg viewBox="0 0 64 44" class="sc-thumb">
+        <rect x="14" y="4" width="36" height="36" rx="2" opacity="0.5"/>
+        <rect x="20" y="10" width="24" height="4" rx="1"/>
+        <rect x="20" y="18" width="24" height="2" rx="1"/>
+        <rect x="20" y="23" width="18" height="2" rx="1"/>
+      </svg>
+      {% endif %}
+    </div>
+    <h2 class="sc-hub-card__title">
+      {{ __("siteConfig.design.hub.surfaces." + surface.key) }}
+      {% if surface.enabled and surface.hasDraft %}
+      {{ badge({ color: "purple", text: __("siteConfig.design.hub.draftBadge") }) }}
+      {% endif %}
+    </h2>
+    {% if surface.enabled %}
+      {% if surface.updatedAt %}
+      <p class="sc-hub-card__meta">{{ __("siteConfig.design.hub.lastEdited") }} {{ surface.updatedAt | date("PPp") }}</p>
+      {% endif %}
+      {{ button({
+        href: surface.href,
+        classes: "button--small",
+        text: __("siteConfig.design.hub.edit")
+      }) }}
+    {% else %}
+      <p class="sc-hub-card__meta">{{ __("siteConfig.design.hub.comingSoon") }}</p>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}

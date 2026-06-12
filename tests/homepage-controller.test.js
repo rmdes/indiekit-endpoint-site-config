@@ -1,6 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseHomepageBody, parseEntryArray, detectActivePreset } from "../lib/controllers/homepage.js";
+import {
+  homepageRouter,
+  parseEntryArray,
+  sanitizeEntries,
+  cap,
+} from "../lib/controllers/homepage.js";
+
+// Phase 4: the v3 homepage tab handlers (parseHomepageBody, detectActivePreset,
+// GET render, POST save, apply-preset) are deleted — their tests went with
+// them. What survives here: the shared zone-entry helpers blog.js consumes
+// (also exercised end-to-end via tests/blog-controller.test.js) and the
+// legacy-URL redirect.
+
+// ---- parseEntryArray (surviving export, consumed by blog.js) ----
 
 test("parseEntryArray handles JSON string from hidden input", () => {
   const json = JSON.stringify([{ type: "hero", config: {} }]);
@@ -30,86 +43,49 @@ test("parseEntryArray returns empty array for missing/invalid", () => {
   assert.deepEqual(parseEntryArray("not json"), []);
 });
 
-test("parseHomepageBody extracts layout, hero, sections, sidebar, footer", () => {
-  const body = {
-    layout: "two-column",
-    heroEnabled: "on",
-    heroShowSocial: "on",
-    sections: JSON.stringify([{ type: "hero", config: {} }]),
-    sidebar: JSON.stringify([{ type: "search", config: {} }]),
-    footer: JSON.stringify([]),
-  };
-  const result = parseHomepageBody(body);
-  assert.equal(result.layout, "two-column");
-  assert.equal(result.hero.enabled, true);
-  assert.equal(result.hero.showSocial, true);
-  assert.equal(result.sections.length, 1);
-  assert.equal(result.sidebar.length, 1);
-  assert.deepEqual(result.footer, []);
-});
+// ---- sanitizeEntries / cap (surviving exports, consumed by blog.js) ----
 
-test("parseHomepageBody hero unchecked checkbox = false", () => {
-  const body = {
-    layout: "single-column",
-    sections: "[]", sidebar: "[]", footer: "[]",
-  };
-  const result = parseHomepageBody(body);
-  assert.equal(result.hero.enabled, false);
-  assert.equal(result.hero.showSocial, false);
-});
-
-test("parseHomepageBody coerces invalid layout to default", () => {
-  const body = {
-    layout: "spaceship",
-    sections: "[]", sidebar: "[]", footer: "[]",
-  };
-  const result = parseHomepageBody(body);
-  assert.equal(result.layout, "two-column");
-});
-
-test("detectActivePreset matches a config to a preset by layout+sections+sidebar", () => {
-  const presets = [
-    {
-      id: "blog",
-      layout: "two-column",
-      sections: [{ type: "hero" }, { type: "recent-posts" }],
-      sidebar: [{ type: "search" }, { type: "author-card" }],
-    },
-    {
-      id: "cv",
-      layout: "full-width-hero",
-      sections: [{ type: "hero" }, { type: "cv-experience" }],
-      sidebar: [{ type: "author-card" }],
-    },
+test("sanitizeEntries strips scripts and bounds custom-html content", () => {
+  const entries = [
+    { type: "custom-html", config: { content: "<p>ok</p><script>alert(1)</script>" } },
+    { type: "custom-html", config: { content: "a".repeat(30000) } },
   ];
-  const matching = {
-    layout: "two-column",
-    sections: [{ type: "hero" }, { type: "recent-posts" }],
-    sidebar:  [{ type: "search" }, { type: "author-card" }],
-  };
-  assert.equal(detectActivePreset(matching, presets), "blog");
+  const out = sanitizeEntries(entries);
+  assert.equal(out[0].config.content.includes("<script"), false);
+  assert.ok(out[1].config.content.length <= 20000);
 });
 
-test("detectActivePreset returns null when no preset matches", () => {
-  const presets = [{ id: "blog", layout: "two-column", sections: [{ type: "hero" }], sidebar: [] }];
-  const custom = { layout: "single-column", sections: [{ type: "custom-html" }], sidebar: [] };
-  assert.equal(detectActivePreset(custom, presets), null);
+test("sanitizeEntries coerces a non-string title to a bounded string", () => {
+  const out = sanitizeEntries([{ type: "search", config: { title: { evil: 1 } } }]);
+  assert.equal(typeof out[0].config.title, "string");
+  assert.ok(out[0].config.title.length <= 200);
 });
 
-test("caps each zone at 24 entries", () => {
-  const many = JSON.stringify(Array.from({ length: 40 }, () => ({ type: "recent-posts", config: {} })));
-  const out = parseHomepageBody({ sections: many, sidebar: "[]", footer: "[]" });
-  assert.equal(out.sections.length, 24);
+test("cap limits a zone to 24 entries", () => {
+  const many = Array.from({ length: 40 }, () => ({ type: "recent-posts", config: {} }));
+  assert.equal(cap(many).length, 24);
 });
 
-test("coerces a non-string custom-html title to a bounded string", () => {
-  const sections = JSON.stringify([{ type: "custom-html", config: { title: { evil: 1 }, content: "<p>ok</p>" } }]);
-  const out = parseHomepageBody({ sections, sidebar: "[]", footer: "[]" });
-  assert.equal(typeof out.sections[0].config.title, "string");
+// ---- the retired tab redirects to the design editor ----
+
+test("GET /site-config/homepage → 303 to the design editor homepage surface", async () => {
+  const router = homepageRouter();
+  const result = await new Promise((resolve, reject) => {
+    const req = { method: "GET", url: "/", body: {} };
+    const res = { redirect(status, location) { resolve({ status, location }); } };
+    router.handle(req, res, (error) =>
+      reject(error ?? new Error("route fell through")),
+    );
+  });
+  assert.deepEqual(result, { status: 303, location: "/site-config/design/homepage" });
 });
 
-test("still strips scripts from custom-html content after coercion (Task 3 preserved)", () => {
-  const sections = JSON.stringify([{ type: "custom-html", config: { content: "<p>ok</p><script>alert(1)</script>" } }]);
-  const out = parseHomepageBody({ sections, sidebar: "[]", footer: "[]" });
-  assert.equal(out.sections[0].config.content.includes("<script"), false);
+test("POST /site-config/homepage no longer exists (falls through the router)", async () => {
+  const router = homepageRouter();
+  const fellThrough = await new Promise((resolve, reject) => {
+    const req = { method: "POST", url: "/", body: {} };
+    const res = { redirect() { reject(new Error("POST handler should be gone")); } };
+    router.handle(req, res, (error) => (error ? reject(error) : resolve(true)));
+  });
+  assert.equal(fellThrough, true);
 });

@@ -5,6 +5,7 @@
     "tabs": {
       "identity": "Identité",
       "branding": "Identité visuelle",
+      "design": "Design",
       "homepage": "Accueil",
       "blog": "Blog",
       "navigation": "Navigation",
@@ -146,6 +147,128 @@
         "failHint": "Ces paires de rôles ont trop peu de contraste pour être lisibles. L'enregistrement est bloqué jusqu'à ce qu'elles soient corrigées.",
         "warnTitle": "Avertissements de contraste",
         "warnHint": "Ces paires atteignent à peine les seuils de lisibilité — envisagez d'augmenter le contraste pour les visiteurs malvoyants."
+      }
+    },
+    "design": {
+      "title": "Design",
+      "description": "Composez les surfaces de votre site à partir de blocs — les brouillons restent privés jusqu'à publication.",
+      "hub": {
+        "surfaces": {
+          "homepage": "Page d'accueil",
+          "listing": "Liste du blog",
+          "posttype": "Types de publication",
+          "pages": "Pages"
+        },
+        "comingSoon": "Disponible dans une phase ultérieure.",
+        "lastEdited": "Dernière modification",
+        "draftBadge": "Brouillon",
+        "edit": "Modifier"
+      },
+      "editor": {
+        "title": "Design de la page d'accueil",
+        "description": "Organisez les blocs qui composent votre page d'accueil. Les modifications sont enregistrées comme brouillon jusqu'à publication."
+      },
+      "zones": {
+        "hero": "En-tête (hero)",
+        "main": "Contenu principal",
+        "sidebar": "Barre latérale",
+        "footer": "Pied de page",
+        "empty": "Aucun bloc dans cette zone pour l'instant."
+      },
+      "actions": {
+        "moveUp": "Monter",
+        "moveDown": "Descendre",
+        "moveTo": "Déplacer vers",
+        "edit": "Modifier les réglages",
+        "remove": "Supprimer",
+        "add": "Ajouter un bloc",
+        "undo": "Annuler",
+        "publish": "Publier",
+        "discard": "Abandonner le brouillon",
+        "close": "Fermer"
+      },
+      "confirms": {
+        "remove": "Supprimer « {{label}} » de votre page d'accueil ? Vous pourrez annuler juste après.",
+        "discard": "Abandonner le brouillon et revenir à la page d'accueil publiée ?"
+      },
+      "mode": {
+        "advanced": "Mode avancé",
+        "apply": "Appliquer"
+      },
+      "arrangement": {
+        "title": "Disposition",
+        "stack": "Une colonne",
+        "sidebarRight": "Barre latérale à droite",
+        "apply": "Appliquer la disposition"
+      },
+      "recipes": {
+        "title": "Modèles de démarrage",
+        "intro": "Partez d'une mise en page prête à l'emploi. Appliquer un modèle remplace votre brouillon actuel.",
+        "apply": "Utiliser ce modèle",
+        "confirmReplace": "Appliquer un modèle remplace votre brouillon actuel. Continuer ?"
+      },
+      "addBlock": {
+        "title": "Ajouter un bloc",
+        "builtIn": "Intégrés",
+        "search": "Rechercher des blocs",
+        "searchEmpty": "Aucun bloc ne correspond à votre recherche.",
+        "zone": "Zone",
+        "dormant": "Nécessite le plugin {{plugin}} — conservé en sécurité"
+      },
+      "block": {
+        "via": "via {{plugin}}",
+        "dormantBadge": "Inactif",
+        "unknownBadge": "Inconnu"
+      },
+      "fields": {
+        "tagsHint": "Valeurs séparées par des virgules"
+      },
+      "draftBar": {
+        "draft": "Brouillon",
+        "autosaved": "enregistré automatiquement",
+        "live": "En ligne — identique à la page d'accueil publiée."
+      },
+      "empty": {
+        "explainer": "Aucune composition de page d'accueil n'existe encore. Choisissez un modèle ci-dessous pour en créer une — vous pourrez tout réorganiser ensuite."
+      },
+      "custom": {
+        "notice": "Cette page d'accueil utilise une mise en page personnalisée que l'éditeur visuel ne peut pas modifier en toute sécurité.",
+        "hint": "La composition est en lecture seule ici. Appliquez un modèle depuis un état vide ou modifiez directement l'arborescence enregistrée."
+      },
+      "flash": {
+        "saved": "Réglages du bloc enregistrés dans le brouillon.",
+        "added": "Bloc ajouté au brouillon.",
+        "moved": "Bloc déplacé.",
+        "restored": "Bloc restauré.",
+        "recipe": "Modèle appliqué — le brouillon utilise la nouvelle mise en page.",
+        "published": "Page d'accueil publiée.",
+        "discarded": "Brouillon abandonné.",
+        "arranged": "Disposition mise à jour.",
+        "removed": "« {{label}} » supprimé.",
+        "sidebarMoved": "{{count}} bloc(s) de la barre latérale déplacé(s) vers la colonne principale.",
+        "undoUnavailable": "L'annulation n'est pas disponible pour cette suppression.",
+        "dismiss": "Fermer"
+      },
+      "errors": {
+        "invalid-zone": "Cette zone n'existe pas.",
+        "unknown-type": "Type de bloc inconnu.",
+        "placement": "Ce bloc ne peut pas être placé dans cette zone.",
+        "duplicate": "Ce bloc figure déjà sur la page d'accueil et ne peut apparaître qu'une seule fois.",
+        "hero-occupied": "L'emplacement héros est déjà occupé.",
+        "no-composition": "Aucune composition de page d'accueil n'existe encore — appliquez d'abord un modèle.",
+        "custom-tree": "Cette page d'accueil utilise une mise en page personnalisée et est en lecture seule dans l'éditeur.",
+        "not-found": "Ce bloc n'existe plus — la page est peut-être obsolète.",
+        "invalid-index": "Position invalide.",
+        "undo-invalid": "Ce lien d'annulation n'est plus valide.",
+        "invalid-arrangement": "Disposition inconnue.",
+        "unknown-recipe": "Modèle inconnu.",
+        "publish-invalid": "Le brouillon n'a pas passé la validation et n'a pas été publié.",
+        "conflict": "Le brouillon a changé pendant la publication — réessayez.",
+        "invalid-mode": "Mode d'éditeur inconnu.",
+        "config-invalid": "Certains réglages sont invalides — corrigez les champs signalés ci-dessous."
+      },
+      "preview": {
+        "title": "Aperçu de la mise en page"
       }
     },
     "homepage": {

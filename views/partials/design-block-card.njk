@@ -1,0 +1,63 @@
+{# One block card in a zone list.
+   Context: card (decorated block card), zone ({ name }), openBlockId,
+   fieldErrors, submittedConfig (the editor GET locals). #}
+{% from "badge/macro.njk" import badge with context %}
+{% set blockBase = "/site-config/design/homepage/blocks/" + card.id %}
+<article class="sc-block-card{% if card.dormant %} sc-block-card--dormant{% endif %}"
+  data-sc-block="{{ card.id }}">
+  <div class="sc-block-card__head">
+    <span class="sc-block-card__icon" aria-hidden="true">{{ icon(card.icon) or icon("note") }}</span>
+    <strong class="sc-block-card__label">{{ card.label }}</strong>
+    {% if card.sourcePlugin %}
+    <span class="sc-block-card__source">{{ __("siteConfig.design.block.via", { plugin: card.sourcePlugin }) }}</span>
+    {% endif %}
+    {% if card.dormant %}
+    {{ badge({ color: "yellow", text: __("siteConfig.design.block.dormantBadge") }) }}
+    {% endif %}
+    {% if card.unknown %}
+    {{ badge({ color: "red", text: __("siteConfig.design.block.unknownBadge") }) }}
+    {% endif %}
+  </div>
+  {% if card.config %}
+  <p class="sc-block-card__summary">
+    {%- for key, value in card.config %}
+      {%- if loop.index <= 2 and value %}
+    <span class="sc-block-card__summary-item">{{ key }}: {{ ((value | join(", ")) if value.join else value) | string | truncate(28) }}</span>
+      {%- endif %}
+    {%- endfor %}
+  </p>
+  {% endif %}
+  <div class="sc-block-card__actions">
+    <form method="post" action="{{ blockBase }}/move-up" class="sc-mini-form">
+      <button class="button button--small button--secondary" aria-label="{{ __('siteConfig.design.actions.moveUp') }} — {{ card.label }}">↑</button>
+    </form>
+    <form method="post" action="{{ blockBase }}/move-down" class="sc-mini-form">
+      <button class="button button--small button--secondary" aria-label="{{ __('siteConfig.design.actions.moveDown') }} — {{ card.label }}">↓</button>
+    </form>
+    {% if card.legalZones.length %}
+    <form method="post" action="{{ blockBase }}/move-to" class="sc-mini-form sc-block-card__moveto">
+      <label class="u-hidden-label" for="moveto-{{ card.id }}">{{ __("siteConfig.design.actions.moveTo") }} — {{ card.label }}</label>
+      <select name="zone" id="moveto-{{ card.id }}">
+        {% for legalZone in card.legalZones %}
+        <option value="{{ legalZone }}">{{ __("siteConfig.design.zones." + legalZone) }}</option>
+        {% endfor %}
+      </select>
+      <button class="button button--small button--secondary" aria-label="{{ __('siteConfig.design.actions.moveTo') }} — {{ card.label }}">{{ __("siteConfig.design.actions.moveTo") }}</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{{ blockBase }}/remove" class="sc-mini-form sc-block-card__remove"
+      onsubmit="return window.confirm(this.dataset.confirm)"
+      data-confirm="{{ __('siteConfig.design.confirms.remove', { label: card.label }) }}">
+      <button class="button button--small button--secondary" aria-label="{{ __('siteConfig.design.actions.remove') }} — {{ card.label }}">{{ __("siteConfig.design.actions.remove") }}</button>
+    </form>
+  </div>
+  {% if card.fields.length %}
+  <details class="sc-block-card__edit"{{ " open" if openBlockId == card.id }}>
+    <summary>{{ __("siteConfig.design.actions.edit") }}</summary>
+    <form method="post" action="{{ blockBase }}/config" class="sc-config-form">
+      {% include "partials/design-config-fields.njk" %}
+      <button class="button button--small button--primary">{{ __("siteConfig.common.save") }}</button>
+    </form>
+  </details>
+  {% endif %}
+</article>

@@ -189,6 +189,37 @@ Two writers keep it fresh:
 
 > **Phase 4 MUST remove the v3-save refresh hook** when the composition editor becomes the source of truth, else v3 saves clobber editor work.
 
+### Phase 4: Design hub + composition editor
+
+Phase 4 makes the composition editor the homepage source of truth (the v3 homepage tab and its v3-save refresh hook are gone — see the mandate above, now fulfilled).
+
+**Routes** (all under `/site-config/design`, session-protected):
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/design` | Design hub — surface cards (homepage active; listing/posttype/pages are visible-but-disabled Phase 6 placeholders) |
+| GET | `/design/homepage` | The two-pane composition editor (zones + structural preview) |
+| POST | `/design/homepage/blocks/add` | Add a block to a zone (catalog/placement/duplicate gated) |
+| POST | `/design/homepage/blocks/:blockId/move-up` · `/move-down` | Reorder within a zone (no-JS path) |
+| POST | `/design/homepage/blocks/:blockId/move-to` | Move to another legal zone |
+| POST | `/design/homepage/blocks/:blockId/move-to-index` | Positional move (drag-end target, JS enhancement) |
+| POST | `/design/homepage/blocks/:blockId/remove` | Remove (immediate, with a 10s undo token in the flash) |
+| POST | `/design/homepage/blocks/restore` | Undo a removal (token strictly re-validated) |
+| POST | `/design/homepage/blocks/:blockId/config` | Save a block's schema-generated config form |
+| POST | `/design/homepage/arrangement` | Stack ↔ sidebar-right (sidebar blocks are appended to main, never dropped) |
+| POST | `/design/homepage/apply-recipe` | Apply a layout preset (replaces the draft, confirm-guarded) |
+| POST | `/design/homepage/publish` | Publish the draft (validated against the catalog; writes the artifact) |
+| POST | `/design/homepage/discard` | Discard the draft |
+| POST | `/design/mode` | Toggle simple/advanced editing mode (per-site) |
+
+**Draft model** — every mutating action saves a **draft** tree (`draftTree` on the `compositions` doc); nothing reaches the published tree or the on-disk artifact until an explicit Publish. Publish validates the candidate against the block catalog (gate, never transform) and writes the artifact atomically; Discard drops the draft. The editor works end-to-end without JavaScript — drag-drop, the add dialog, and flash auto-dismiss are progressive enhancements.
+
+**v3 homepage tab redirect** — `GET /site-config/homepage` now 303-redirects to `/site-config/design/homepage` (old bookmarks land on the editor; the v3 GET/POST/apply-preset handlers are deleted). The blog tab's sidebar zones still edit the v3 `homepageConfig` doc until Phase 6.
+
+**Static assets** — the editor's CSS/JS (`assets/editor.css`, `assets/editor.js`, `assets/preview.css`, vendored `assets/vendor/Sortable.min.js`) are served by the Indiekit frontend's plugin-asset convention at `/assets/@rmdes-indiekit-endpoint-site-config/…` (no CDN dependency; CSP-friendly).
+
+**Phase 6 surfaces** — the hub already lists `listing`, `posttype`, and `pages` as disabled cards; their composition surfaces (and the blog sidebars' cutover off the v3 doc) land in Phase 6.
+
 ## Theme integration
 
 The companion Eleventy theme [`indiekit-eleventy-theme`](https://github.com/rmdes/indiekit-eleventy-theme) reads:
