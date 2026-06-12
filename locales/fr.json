@@ -283,6 +283,16 @@
         "buildingUnknown": "Construction de l'aperçu…",
         "ready": "L'aperçu est à jour.",
         "slow": "C'est plus long que d'habitude — l'aperçu apparaîtra à la fin de la construction. Utilisez « Recharger l'aperçu » pour vérifier."
+      },
+      "buildStatus": {
+        "building": "Reconstruction en cours — environ {{seconds}} s sur ce site. Votre site actuel reste en ligne.",
+        "buildingUnknown": "Reconstruction en cours — votre site actuel reste en ligne.",
+        "live": "En ligne · {{time}}",
+        "failed": "La construction a échoué — votre site en ligne est inchangé.",
+        "retryHint": "Republiez pour réessayer.",
+        "stuck": "C'est plus long que d'habitude. Republier réécrit la page d'accueil et débloque généralement une construction bloquée.",
+        "unknown": "Statut de construction indisponible — votre site en ligne est inchangé.",
+        "reloadNote": "Rechargez cette page pour actualiser le statut de construction."
       }
     },
     "homepage": {

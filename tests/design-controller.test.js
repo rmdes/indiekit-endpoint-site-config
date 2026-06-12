@@ -1,5 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   designRouter,
   parseAddBody,
@@ -8,7 +11,11 @@ import {
   encodeUndoPayload,
   parseUndoPayload,
   readFlash,
+  isStuckBuild,
+  mergeBuildStatus,
+  buildStatusHandler,
 } from "../lib/controllers/design.js";
+import { readBuildStatus } from "../lib/storage/read-build-status.js";
 import { treeToZones } from "../lib/editor/zones.js";
 import { BUILTIN_BLOCKS } from "../lib/presets/builtin-blocks.js";
 import { LAYOUT_PRESETS } from "../lib/presets/layout-presets.js";
@@ -187,6 +194,8 @@ function callRoute(router, method, url, body = {}, headers = {}) {
       rendered: null,
       body: null,
       jsonBody: null,
+      headers: {},
+      set(name, value) { this.headers[name] = value; return this; },
       status(code) { this.statusCode = code; return this; },
       send(payload) { this.body = payload; resolve(this); },
       json(payload) { this.jsonBody = payload; resolve(this); },
@@ -1009,6 +1018,145 @@ test("a preview-rotation failure after a successful publish still redirects publ
   } finally {
     console.warn = original;
   }
+});
+
+// ---- build-status API (Phase 5 S2) ----
+
+const T0 = Date.parse("2026-06-12T10:00:00.000Z");
+const atT0 = (offsetMs = 0) => () => T0 + offsetMs;
+const buildingStatus = (extra = {}) => ({
+  state: "building",
+  buildId: "b9",
+  startedAt: "2026-06-12T10:00:00.000Z",
+  ...extra,
+});
+
+const statusDir = () => mkdtemp(join(tmpdir(), "design-build-status-"));
+
+/** Invoke the standalone handler factory directly (no router). */
+function callHandler(handler) {
+  return new Promise((resolve, reject) => {
+    const res = {
+      headers: {},
+      jsonBody: null,
+      set(name, value) { this.headers[name] = value; return this; },
+      json(payload) { this.jsonBody = payload; resolve(this); },
+    };
+    handler({}, res, (error) => reject(error ?? new Error("unexpected next()")));
+  });
+}
+
+test("isStuckBuild: building past max(2*lastOk, 120)s is stuck, within it is not", () => {
+  // lastOk 27 → 2*27=54 < the 120s floor → threshold 120s (first post-boot
+  // builds are FULL — the floor prevents false stuck on them)
+  const fast = buildingStatus({ lastOkDurationSeconds: 27 });
+  assert.equal(isStuckBuild(fast, T0 + 119_000), false);
+  assert.equal(isStuckBuild(fast, T0 + 121_000), true);
+  // lastOk 300 → threshold 600s (the floor doesn't cap big sites)
+  const slow = buildingStatus({ lastOkDurationSeconds: 300 });
+  assert.equal(isStuckBuild(slow, T0 + 599_000), false);
+  assert.equal(isStuckBuild(slow, T0 + 601_000), true);
+});
+
+test("isStuckBuild: lastOkDurationSeconds absent or garbage defaults to 60 (→ 120s threshold)", () => {
+  for (const extra of [{}, { lastOkDurationSeconds: "27" }, { lastOkDurationSeconds: -5 }]) {
+    const status = buildingStatus(extra);
+    assert.equal(isStuckBuild(status, T0 + 119_000), false, JSON.stringify(extra));
+    assert.equal(isStuckBuild(status, T0 + 121_000), true, JSON.stringify(extra));
+  }
+});
+
+test("isStuckBuild: a building object missing or garbling startedAt is NEVER stuck", () => {
+  // start.sh's crash wrapper drops fields — tolerate everywhere
+  assert.equal(isStuckBuild({ state: "building" }, T0 + 999_999_000), false);
+  assert.equal(isStuckBuild(buildingStatus({ startedAt: "yesterday" }), T0 + 999_999_000), false);
+  assert.equal(isStuckBuild(buildingStatus({ startedAt: 12345 }), T0 + 999_999_000), false);
+});
+
+test("isStuckBuild: non-building states are never stuck", () => {
+  for (const state of ["ok", "failed", "unknown", "garbage", undefined]) {
+    assert.equal(isStuckBuild({ state, startedAt: "2026-06-12T10:00:00.000Z" }, T0 + 999_999_000), false, String(state));
+  }
+});
+
+test("mergeBuildStatus: null → unknown; otherwise raw fields + stuck ride together", () => {
+  assert.deepEqual(mergeBuildStatus(null, T0), { state: "unknown", stuck: false });
+  const status = buildingStatus({ lastOkDurationSeconds: 27, incremental: true });
+  assert.deepEqual(mergeBuildStatus(status, T0 + 130_000), { ...status, stuck: true });
+  assert.deepEqual(mergeBuildStatus(status, T0 + 10_000), { ...status, stuck: false });
+});
+
+test("GET /api/build-status responds the merged object with Cache-Control: no-store", async () => {
+  const status = {
+    state: "ok", buildId: "b1", startedAt: "2026-06-12T09:59:00.000Z",
+    finishedAt: "2026-06-12T10:00:00.000Z", durationSeconds: 27,
+    incremental: true, lastOkDurationSeconds: 27,
+  };
+  const router = makeRouter(makeIndiekit(), { readStatus: async () => status, now: atT0() });
+  const res = await callRoute(router, "get", "/api/build-status");
+  assert.deepEqual(res.jsonBody, { ...status, stuck: false });
+  assert.equal(res.headers["Cache-Control"], "no-store");
+});
+
+test("GET /api/build-status computes stuck for an overdue building state", async () => {
+  const status = buildingStatus({ lastOkDurationSeconds: 27 });
+  const router = makeRouter(makeIndiekit(), {
+    readStatus: async () => status,
+    now: atT0(130_000),
+  });
+  const res = await callRoute(router, "get", "/api/build-status");
+  assert.deepEqual(res.jsonBody, { ...status, stuck: true });
+});
+
+test("build-status handler: absent file → state unknown (fixture path, real reader)", async () => {
+  const path = join(await statusDir(), "build-status.json"); // never written
+  const handler = buildStatusHandler({ readStatus: () => readBuildStatus(path) });
+  const res = await callHandler(handler);
+  assert.deepEqual(res.jsonBody, { state: "unknown", stuck: false });
+  assert.equal(res.headers["Cache-Control"], "no-store");
+});
+
+test("build-status handler: corrupt file NEVER 500s → state unknown (fixture path)", async () => {
+  const path = join(await statusDir(), "build-status.json");
+  await writeFile(path, "{ this is not json", "utf8");
+  const handler = buildStatusHandler({ readStatus: () => readBuildStatus(path) });
+  const res = await callHandler(handler);
+  assert.deepEqual(res.jsonBody, { state: "unknown", stuck: false });
+});
+
+test("build-status handler: minimal failed-writer file (fields dropped) passes through", async () => {
+  // start.sh's crash wrapper writes ONLY {state, error, finishedAt}
+  const path = join(await statusDir(), "build-status.json");
+  const minimal = { state: "failed", error: "Eleventy exited 1", finishedAt: "2026-06-12T10:01:00.000Z" };
+  await writeFile(path, JSON.stringify(minimal), "utf8");
+  const handler = buildStatusHandler({ readStatus: () => readBuildStatus(path), now: atT0(999_000) });
+  const res = await callHandler(handler);
+  assert.deepEqual(res.jsonBody, { ...minimal, stuck: false });
+});
+
+test("GET /homepage?published=1 carries the merged build status in the locals (no-JS strip)", async () => {
+  const status = buildingStatus({ lastOkDurationSeconds: 27 });
+  const router = makeRouter(makeIndiekit(), {
+    readStatus: async () => status,
+    now: atT0(130_000),
+  });
+  const res = await callRoute(router, "get", "/homepage?published=1");
+  assert.equal(res.rendered.locals.success, "published");
+  assert.deepEqual(res.rendered.locals.buildStatus, { ...status, stuck: true });
+});
+
+test("GET /homepage?published=1 with no status file → buildStatus unknown in locals", async () => {
+  const router = makeRouter(makeIndiekit(), { readStatus: async () => null });
+  const res = await callRoute(router, "get", "/homepage?published=1");
+  assert.deepEqual(res.rendered.locals.buildStatus, { state: "unknown", stuck: false });
+});
+
+test("GET /homepage without ?published does not read the status file", async () => {
+  let calls = 0;
+  const router = makeRouter(makeIndiekit(), { readStatus: async () => { calls++; return null; } });
+  const res = await callRoute(router, "get", "/homepage");
+  assert.equal(calls, 0);
+  assert.equal(res.rendered.locals.buildStatus, undefined);
 });
 
 // ---- mode ----

@@ -283,6 +283,16 @@
         "buildingUnknown": "Building preview…",
         "ready": "Preview is up to date.",
         "slow": "This is taking longer than usual — the preview will appear once the build finishes. Use “Reload preview” to check again."
+      },
+      "buildStatus": {
+        "building": "Rebuilding — usually ~{{seconds}}s on this site. Your current site stays online.",
+        "buildingUnknown": "Rebuilding — your current site stays online.",
+        "live": "Live · {{time}}",
+        "failed": "Build failed — your live site is unchanged.",
+        "retryHint": "Republish to retry.",
+        "stuck": "This is taking longer than usual. Publishing again rewrites the homepage and usually unblocks a stalled build.",
+        "unknown": "Build status unavailable — your live site is unchanged.",
+        "reloadNote": "Reload this page to update the build status."
       }
     },
     "homepage": {
