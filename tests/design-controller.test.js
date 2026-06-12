@@ -252,6 +252,11 @@ test("readFlash surfaces query flags as success/error vars", () => {
   assert.equal(removed.success, "removed");
   assert.equal(removed.removedLabel, "Experience");
   assert.equal(removed.undoUnavailable, true);
+  // the arrangement redirect's sidebarMoved count rides along server-side
+  // (admin templates have no `request` — the view reads the local)
+  const arranged = readFlash({ arranged: "1", sidebarMoved: "2" });
+  assert.equal(arranged.success, "arranged");
+  assert.equal(arranged.sidebarMoved, "2");
   assert.deepEqual(readFlash({}), {});
 });
 
@@ -603,6 +608,38 @@ test("POST arrangement sidebar-right→stack moves sidebar blocks to main (never
   assert.equal(zones.arrangement, "stack");
   assert.deepEqual(zones.main.map((n) => n.id), ["b_m1", "b_m2", "b_s1"]);
   assert.deepEqual(zones.sidebar, []);
+});
+
+test("GET after the arrangement redirect carries sidebarMoved in the locals", async () => {
+  const ik = makeIndiekit();
+  const router = makeRouter(ik);
+  const res = await callRoute(router, "post", "/homepage/arrangement", { arrangement: "stack" });
+  const redirected = new URL(res.redirected.url, "http://x");
+  const get = await callRoute(router, "get", `/homepage${redirected.search}`);
+  assert.equal(get.rendered.locals.success, "arranged");
+  assert.equal(get.rendered.locals.sidebarMoved, "1");
+});
+
+test("stack arrangement hides the sidebar zone everywhere: add gated, legalZones and picker regions filtered", async () => {
+  const ik = makeIndiekit();
+  const router = makeRouter(ik);
+  await callRoute(router, "post", "/homepage/arrangement", { arrangement: "stack" });
+  // add into the hidden sidebar zone → invalid-zone flash, draft unchanged
+  const mainCount = draftZones(ik).main.length;
+  const add = await callRoute(router, "post", "/homepage/blocks/add",
+    { zone: "sidebar", type: "recent-posts" });
+  assert.equal(flag(add, "error"), "invalid-zone");
+  assert.equal(draftZones(ik).main.length, mainCount);
+  // sidebar never offered as a move-to target or picker zone under stack
+  const get = await callRoute(router, "get", "/homepage");
+  const { locals } = get.rendered;
+  assert.deepEqual(locals.blocks.main[0].legalZones, []); // recent-posts: main+sidebar → sidebar filtered
+  assert.deepEqual(locals.blocks.main[1].legalZones, ["footer"]); // custom-html keeps footer only
+  const groups = Object.fromEntries(locals.availableBlocks.map((g) => [g.group, g.blocks]));
+  const ghost = groups["Removed endpoint"].find((b) => b.id === "ghost-widget");
+  assert.deepEqual(ghost.regions, []); // sidebar-only block has nowhere to go (picker skips it)
+  const recent = groups["built-in"].find((b) => b.id === "recent-posts");
+  assert.deepEqual(recent.regions, ["main"]);
 });
 
 test("POST arrangement stack→sidebar-right and invalid values", async () => {

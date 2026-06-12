@@ -58,6 +58,9 @@
   }) }}
 
   {% elif field.type == "number" %}
+  {# minimum/maximum may legitimately be 0 — test definedness, and cast to
+     string so the frontend attributes() helper (which drops falsy values)
+     still emits min="0" #}
   {{ input({
     name: field.name,
     id: fieldId,
@@ -66,9 +69,9 @@
     hint: field.hint,
     value: fieldValue,
     inputmode: "numeric",
-    attributes: ({ min: field.minimum, max: field.maximum } if (field.minimum and field.maximum)
-      else ({ min: field.minimum } if field.minimum
-      else ({ max: field.maximum } if field.maximum))),
+    attributes: ({ min: field.minimum | string, max: field.maximum | string } if (field.minimum is defined and field.maximum is defined)
+      else ({ min: field.minimum | string } if field.minimum is defined
+      else ({ max: field.maximum | string } if field.maximum is defined))),
     errorMessage: { text: fieldErrorMsg } if fieldErrorMsg
   }) }}
 

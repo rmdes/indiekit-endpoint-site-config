@@ -34,7 +34,7 @@
   searchEmpty: __("siteConfig.design.addBlock.searchEmpty"),
   dismiss: __("siteConfig.design.flash.dismiss")
 } %}
-<script type="application/json" id="sc-editor-i18n">{{ editorI18n | dump | safe }}</script>
+<script type="application/json" id="sc-editor-i18n">{{ editorI18n | dump | replace("</", "<\\/") | safe }}</script>
 
 <header class="page-header">
   <h1 class="page-header__title">{{ __("siteConfig.design.editor.title") }}</h1>
@@ -64,8 +64,8 @@
     type: "success",
     text: __("siteConfig.design.flash." + success)
   }) }}
-  {% if success == "arranged" and request.query.sidebarMoved %}
-  <p class="sc-flash__note">{{ __("siteConfig.design.flash.sidebarMoved", { count: request.query.sidebarMoved }) }}</p>
+  {% if success == "arranged" and sidebarMoved %}
+  <p class="sc-flash__note">{{ __("siteConfig.design.flash.sidebarMoved", { count: sidebarMoved }) }}</p>
   {% endif %}
   {% endif %}
   {% if error %}
@@ -104,7 +104,9 @@
 {% set visibleZones = [] %}
 {% set _push = visibleZones.push({ name: "hero", cards: [blocks.hero] if blocks.hero else [] }) %}
 {% set _push = visibleZones.push({ name: "main", cards: blocks.main }) %}
-{% if zones.arrangement == "sidebar-right" %}
+{# Sidebar shows for sidebar-right, or whenever it still holds blocks under
+   stack (orphans stay visible and manageable — mirror the footer pattern). #}
+{% if zones.arrangement == "sidebar-right" or blocks.sidebar.length %}
   {% set _push = visibleZones.push({ name: "sidebar", cards: blocks.sidebar }) %}
 {% endif %}
 {% if mode == "advanced" or blocks.footer.length %}
@@ -255,7 +257,9 @@
       <strong>{{ entry.label }}</strong>
       <p>{{ __("siteConfig.design.addBlock.dormant", { plugin: group.group }) }}</p>
     </div>
-    {% else %}
+    {% elif entry.regions.length %}
+    {# entries whose every legal zone is hidden under the current arrangement
+       have empty regions and are skipped entirely #}
     <form method="post" action="/site-config/design/homepage/blocks/add" class="sc-add-entry"
       data-sc-label="{{ entry.label }}">
       <input type="hidden" name="type" value="{{ entry.id }}">
