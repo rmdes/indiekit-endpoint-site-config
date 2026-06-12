@@ -172,6 +172,23 @@ Diagnostics:
 - **Boot log** — look for `[site-config] v4 migration: seeded=[…] existing=[…] valid=true` (or `no v3 source, skipped`)
 - **`GET /site-config/api/migration-preview`** (authenticated admin API) — recomputes the migration as a dry run on every request and responds `{ docs, report, existing }`; it never writes
 
+### Phase 3: composition artifact + v3-save refresh
+
+Phase 3 publishes the homepage composition to disk — **the theme activation switch**:
+
+```
+/app/data/content/_data/compositions/homepage.json
+```
+
+When this file exists, the theme's Tier-0 renders the homepage from the v4 composition path; in its absence the legacy `homepage.json` path keeps rendering. The artifact carries only the published whitelist (`schemaVersion`, `kind`, `target`, `status`, `tree`, `updatedAt`) and is written atomically (tmp + rename). File naming: surface id with colons mapped to dashes (`collection:default` → `collection-default.json`).
+
+Two writers keep it fresh:
+
+- **Boot** — after the migration step, the stored `compositions` homepage doc (if any) is (re)written to disk, self-healing the artifact on every start (`[site-config] composition artifact written: homepage`).
+- **v3 homepage save** — the v3 admin remains the ONLY editor until Phase 4, so every save (and preset apply) rebuilds the v4 composition from the v3 doc, validates it against the block catalog, **overwrites** the stored composition, and rewrites the artifact. Invalid trees write nothing (never replace a good artifact with a bad one); a refresh failure never fails the v3 save (`[site-config] v4 refresh failed: …`). The doc is fully rebuilt with fresh node ids on each save, so id-keyed client state resets until Phase 4.
+
+> **Phase 4 MUST remove the v3-save refresh hook** when the composition editor becomes the source of truth, else v3 saves clobber editor work.
+
 ## Theme integration
 
 The companion Eleventy theme [`indiekit-eleventy-theme`](https://github.com/rmdes/indiekit-eleventy-theme) reads:

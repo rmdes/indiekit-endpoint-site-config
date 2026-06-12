@@ -21,6 +21,7 @@ import { writeCriticalCss } from "./lib/render/write-critical-css.js";
 import { writeSiteJson    } from "./lib/render/write-site-json.js";
 import { writeHomepageJson } from "./lib/render/write-homepage-json.js";
 import { writeBlockCatalogJson } from "./lib/render/write-block-catalog-json.js";
+import { writeCompositionJson } from "./lib/render/write-composition-json.js";
 
 import { scanPlugins } from "./lib/discovery/scan-plugins.js";
 
@@ -126,34 +127,57 @@ export default class SiteConfigEndpoint {
       // above (it is destructured before writeBlockCatalogJson), so an
       // unwritable /app/data doesn't block the DB seed; only a failed SCAN
       // leaves it undefined, in which case there is nothing to validate
-      // against and the migration is skipped.
-      if (!catalog) return;
-      try {
-        const db = Indiekit.database;
-        if (db) {
-          const { report } = await migrateV3toV4(db, catalog, { dryRun: false });
-          if (report.skipped) {
-            console.log("[site-config] v4 migration: no v3 source, skipped");
-          } else {
-            // skippedExisting vs seeded is the single most important
-            // diagnostic distinction — log the ids, not just counts.
-            const summary =
-              `[site-config] v4 migration: seeded=[${report.seeded}] ` +
-              `existing=[${report.skippedExisting}] valid=${report.valid}` +
-              (report.errors.length ? " errors=" + report.errors.join(" | ") : "") +
-              (report.warnings.length ? " warnings=" + report.warnings.join(" | ") : "");
-            if (report.valid) {
-              console.log(summary);
+      // against and the migration is skipped (the artifact write below does
+      // not need the catalog, so it still runs).
+      if (catalog) {
+        try {
+          const db = Indiekit.database;
+          if (db) {
+            const { report } = await migrateV3toV4(db, catalog, { dryRun: false });
+            if (report.skipped) {
+              console.log("[site-config] v4 migration: no v3 source, skipped");
             } else {
-              // One invalid legacy config blocks seeding of EVERY surface on
-              // every boot — the one failure operators must notice before
-              // Phase 3. warn-level so it stands apart from success lines.
-              console.warn(summary);
+              // skippedExisting vs seeded is the single most important
+              // diagnostic distinction — log the ids, not just counts.
+              const summary =
+                `[site-config] v4 migration: seeded=[${report.seeded}] ` +
+                `existing=[${report.skippedExisting}] valid=${report.valid}` +
+                (report.errors.length ? " errors=" + report.errors.join(" | ") : "") +
+                (report.warnings.length ? " warnings=" + report.warnings.join(" | ") : "");
+              if (report.valid) {
+                console.log(summary);
+              } else {
+                // One invalid legacy config blocks seeding of EVERY surface on
+                // every boot — the one failure operators must notice before
+                // Phase 3. warn-level so it stands apart from success lines.
+                console.warn(summary);
+              }
             }
           }
+        } catch (error) {
+          console.warn("[site-config] v4 migration failed:", error?.message ?? String(error));
+        }
+      }
+
+      // Phase 3 cutover: (re)write the composition artifact — THE theme
+      // activation switch (Tier-0 renders the homepage from the v4 path when
+      // compositions/homepage.json exists). Boot self-heals the artifact on
+      // every start; /app/data persists across restarts but we write anyway.
+      // Separate try/catch — an artifact failure logs distinctly from a
+      // migration failure and never crashes boot.
+      try {
+        const db = Indiekit.database;
+        const doc = db
+          ? await db.collection("compositions").findOne({ _id: "homepage" })
+          : null;
+        if (doc) {
+          await writeCompositionJson(doc);
+          console.log("[site-config] composition artifact written: homepage");
+        } else {
+          console.log("[site-config] composition artifact skipped: no homepage composition");
         }
       } catch (error) {
-        console.warn("[site-config] v4 migration failed:", error?.message ?? String(error));
+        console.warn("[site-config] composition artifact write failed:", error?.message ?? String(error));
       }
     });
   }
