@@ -30,17 +30,21 @@
    deferred classic scripts and modules both execute in document order. #}
 <script src="/assets/@rmdes-indiekit-endpoint-site-config/vendor/Sortable.min.js" defer></script>
 <script type="module" src="/assets/@rmdes-indiekit-endpoint-site-config/editor.js"></script>
+{# i18n's __() interpolates {{var}} at RENDER time (mustache: a missing
+   variable becomes an empty string). Strings whose placeholders are replaced
+   CLIENT-side by editor.js must be passed through as themselves
+   (e.g. { seconds: "{{seconds}}" }) so the literal placeholder survives. #}
 {% set editorI18n = {
   searchEmpty: __("siteConfig.design.addBlock.searchEmpty"),
   dismiss: __("siteConfig.design.flash.dismiss"),
-  previewBuilding: __("siteConfig.design.previewPane.building"),
+  previewBuilding: __("siteConfig.design.previewPane.building", { seconds: "{{seconds}}" }),
   previewBuildingUnknown: __("siteConfig.design.previewPane.buildingUnknown"),
   previewReady: __("siteConfig.design.previewPane.ready"),
   previewSlow: __("siteConfig.design.previewPane.slow"),
   previewFrameTitle: __("siteConfig.design.previewPane.frameTitle"),
-  buildBuilding: __("siteConfig.design.buildStatus.building"),
+  buildBuilding: __("siteConfig.design.buildStatus.building", { seconds: "{{seconds}}" }),
   buildBuildingUnknown: __("siteConfig.design.buildStatus.buildingUnknown"),
-  buildLive: __("siteConfig.design.buildStatus.live"),
+  buildLive: __("siteConfig.design.buildStatus.live", { time: "{{time}}" }),
   buildFailed: __("siteConfig.design.buildStatus.failed"),
   buildRetryHint: __("siteConfig.design.buildStatus.retryHint"),
   buildStuck: __("siteConfig.design.buildStatus.stuck"),
