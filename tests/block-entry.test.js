@@ -192,6 +192,43 @@ test("synthesizeLegacyEntry returns fresh placement objects per call", () => {
   assert.deepEqual(b.placement.surfaces, ["homepage"]);
 });
 
+test("renderer error message enumerates the allowed renderers", () => {
+  const r = validBlockEntry({ ...GOOD_BLOCK, render: { renderer: "carousel" } });
+  assert.equal(r.ok, false);
+  assert.match(r.errors.join(" "), new RegExp([...GENERIC_RENDERERS].join("\\|")));
+});
+
+test("convertMiniDsl drops non-finite min/max so output stays walker-valid", () => {
+  const schema = convertMiniDsl({
+    n: { type: "number", min: NaN },
+    m: { type: "number", min: -Infinity, max: Infinity },
+  });
+  assert.deepEqual(schema.properties.n, { type: "number" });
+  assert.deepEqual(schema.properties.m, { type: "number" });
+  const result = validateSchemaDefinition(schema);
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.ok, true);
+});
+
+test("synthesizeLegacyEntry clones defaultConfig — no reference sharing or bleed", () => {
+  const input = { maxItems: 5, tags: ["a", "b"] };
+  const legacy = { id: "cv-skills", label: "Skills", defaultConfig: input };
+  const entry = synthesizeLegacyEntry(legacy, "homepageSections");
+  assert.notEqual(entry.defaultConfig, input);
+  assert.notEqual(entry.defaultConfig.tags, input.tags);
+  assert.deepEqual(entry.defaultConfig, input);
+  entry.defaultConfig.maxItems = 99;
+  entry.defaultConfig.tags.push("c");
+  assert.equal(input.maxItems, 5);
+  assert.deepEqual(input.tags, ["a", "b"]);
+  // unclonable defaultConfig degrades to {} instead of throwing
+  const weird = synthesizeLegacyEntry(
+    { id: "x-y", label: "X", defaultConfig: { fn: () => {} } },
+    "homepageSections",
+  );
+  assert.deepEqual(weird.defaultConfig, {});
+});
+
 test("synthesizeLegacyEntry falls back to default placement for unknown origins", () => {
   const entry = synthesizeLegacyEntry({ id: "x-y", label: "X" }, "somethingElse");
   assert.deepEqual(entry.placement, { regions: ["main"], surfaces: ["homepage"] });
