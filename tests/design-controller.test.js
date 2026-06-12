@@ -50,14 +50,29 @@ function makeDb(seed = {}) {
               const inserted = { _id: filter._id };
               for (const [k, v] of Object.entries(update.$setOnInsert ?? {})) inserted[k] = v;
               for (const [k, v] of Object.entries(update.$set ?? {})) inserted[k] = v;
+              for (const [k, v] of Object.entries(update.$inc ?? {})) inserted[k] = (inserted[k] ?? 0) + v;
               store.set(filter._id, inserted);
               return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1 };
             }
             return { matchedCount: 0, modifiedCount: 0 };
           }
           for (const [k, v] of Object.entries(update.$set ?? {})) doc[k] = v;
+          for (const [k, v] of Object.entries(update.$inc ?? {})) doc[k] = (doc[k] ?? 0) + v;
           for (const k of Object.keys(update.$unset ?? {})) delete doc[k];
           return { matchedCount: 1, modifiedCount: 1 };
+        },
+        // preview-state's bumpRevision (driver v6 shape: returns the doc).
+        async findOneAndUpdate(filter, update, options = {}) {
+          let doc = store.get(filter._id);
+          if (!doc) {
+            if (!options.upsert) return null;
+            doc = { _id: filter._id };
+            for (const [k, v] of Object.entries(update.$setOnInsert ?? {})) doc[k] = v;
+            store.set(filter._id, doc);
+          }
+          for (const [k, v] of Object.entries(update.$set ?? {})) doc[k] = v;
+          for (const [k, v] of Object.entries(update.$inc ?? {})) doc[k] = (doc[k] ?? 0) + v;
+          return structuredClone(doc);
         },
         async replaceOne({ _id }, doc, options = {}) {
           if (name === "compositions") {
@@ -148,16 +163,22 @@ function makeIndiekit({ compositions = [homepageDoc()], siteConfig = [], catalog
 }
 
 function makeRouter(ik, overrides = {}) {
-  return designRouter(ik, { idFactory: makeIds(), ...overrides });
+  return designRouter(ik, {
+    idFactory: makeIds(),
+    // Tests must never write the real preview artifact to /app/data.
+    writePreviewArtifact: async () => {},
+    ...overrides,
+  });
 }
 
-function callRoute(router, method, url, body = {}) {
+function callRoute(router, method, url, body = {}, headers = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url, "http://localhost");
     const req = {
       method: method.toUpperCase(),
       url,
       body,
+      headers,
       query: Object.fromEntries(parsed.searchParams),
     };
     const res = {
@@ -165,8 +186,10 @@ function callRoute(router, method, url, body = {}) {
       redirected: null,
       rendered: null,
       body: null,
+      jsonBody: null,
       status(code) { this.statusCode = code; return this; },
       send(payload) { this.body = payload; resolve(this); },
+      json(payload) { this.jsonBody = payload; resolve(this); },
       redirect(status, target) {
         this.redirected = target === undefined
           ? { status: 302, url: status }
@@ -809,6 +832,183 @@ test("POST discard drops the draft", async () => {
   const res = await callRoute(makeRouter(ik), "post", "/homepage/discard");
   assert.equal(flag(res, "discarded"), "1");
   assert.equal("draftTree" in ik._db.stores.compositions.get("homepage"), false);
+});
+
+// ---- preview (Phase 5) ----
+
+const previewState = (ik) => {
+  const doc = ik._db.stores.siteConfig.get("primary") ?? {};
+  return { token: doc.previewToken, revision: doc.previewRevision };
+};
+
+test("POST preview (no-JS) writes the artifact and redirects with pane + revision", async () => {
+  const ik = makeIndiekit();
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  const res = await callRoute(router, "post", "/homepage/preview");
+  assert.equal(res.redirected.status, 303);
+  assert.equal(flag(res, "pane"), "preview");
+  assert.equal(flag(res, "previewing"), "1");
+  // token generated (16 bytes base64url ≈ 22 chars), revision bumped to 1
+  const state = previewState(ik);
+  assert.equal(state.token.length, 22);
+  assert.equal(state.revision, 1);
+  // artifact carries the PUBLISHED tree (no draft exists) + token + revision
+  assert.equal(previews.length, 1);
+  assert.deepEqual(previews[0], { tree: baseTree(), revision: 1, token: state.token });
+});
+
+test("POST preview uses the DRAFT tree when one exists", async () => {
+  const draft = baseTree();
+  draft.children[1].children[0].children[0].config = { maxItems: 42 };
+  const ik = makeIndiekit({ compositions: [homepageDoc({ draftTree: draft, draftUpdatedAt: "D" })] });
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  await callRoute(router, "post", "/homepage/preview");
+  assert.deepEqual(previews[0].tree, draft);
+});
+
+test("POST preview JSON branch (Accept: application/json) returns token/revision/expectedSeconds", async () => {
+  const ik = makeIndiekit();
+  const previews = [];
+  const router = makeRouter(ik, {
+    writePreviewArtifact: async (input) => previews.push(input),
+    readStatus: async () => ({ state: "ok", lastOkDurationSeconds: 27 }),
+  });
+  const res = await callRoute(router, "post", "/homepage/preview", {}, { accept: "application/json" });
+  assert.equal(res.redirected, null);
+  assert.equal(res.jsonBody.expectedSeconds, 27);
+  assert.equal(res.jsonBody.revision, 1);
+  assert.equal(res.jsonBody.token, previewState(ik).token);
+  assert.equal(previews.length, 1);
+});
+
+test("POST preview JSON: expectedSeconds null when build-status absent or malformed", async () => {
+  for (const status of [null, {}, { lastOkDurationSeconds: "27" }]) {
+    const ik = makeIndiekit();
+    const router = makeRouter(ik, { readStatus: async () => status });
+    const res = await callRoute(router, "post", "/homepage/preview", {}, { accept: "application/json" });
+    assert.equal(res.jsonBody.expectedSeconds, null, JSON.stringify(status));
+  }
+});
+
+test("repeated preview POSTs reuse the token and bump the revision monotonically", async () => {
+  const ik = makeIndiekit();
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  await callRoute(router, "post", "/homepage/preview");
+  const first = previewState(ik);
+  const res = await callRoute(router, "post", "/homepage/preview");
+  const second = previewState(ik);
+  assert.equal(second.token, first.token); // ensureToken never regenerates
+  assert.equal(second.revision, 2);
+  assert.equal(flag(res, "previewing"), "2");
+  assert.deepEqual(previews.map((p) => p.revision), [1, 2]);
+});
+
+test("POST preview ALLOWS custom trees (only the editor is read-only for them)", async () => {
+  const ik = makeIndiekit({ compositions: [homepageDoc({ tree: customTree() })] });
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  const res = await callRoute(router, "post", "/homepage/preview");
+  assert.equal(flag(res, "pane"), "preview"); // success, not a custom-tree flash
+  assert.deepEqual(previews[0].tree, customTree());
+});
+
+test("POST preview with no composition → no-composition flash, nothing written", async () => {
+  const ik = makeIndiekit({ compositions: [] });
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  const res = await callRoute(router, "post", "/homepage/preview");
+  assert.equal(flag(res, "error"), "no-composition");
+  assert.equal(previews.length, 0);
+  assert.equal(ik._db.stores.siteConfig.size, 0); // no token/revision minted either
+});
+
+test("POST preview with no database → 503", async () => {
+  const ik = makeIndiekit();
+  ik.database = null;
+  const res = await callRoute(makeRouter(ik), "post", "/homepage/preview");
+  assert.equal(res.statusCode, 503);
+});
+
+test("GET /homepage pane state: default structural, ?pane=preview selects preview", async () => {
+  const ik = makeIndiekit({ siteConfig: [{ _id: "primary", previewToken: "tok22", previewRevision: 4 }] });
+  const router = makeRouter(ik);
+  const structural = await callRoute(router, "get", "/homepage");
+  assert.equal(structural.rendered.locals.pane, "structural");
+  const preview = await callRoute(router, "get", "/homepage?pane=preview&previewing=4");
+  assert.equal(preview.rendered.locals.pane, "preview");
+  assert.deepEqual(preview.rendered.locals.preview, { token: "tok22", revision: 4 });
+  assert.equal(preview.rendered.locals.previewing, "4");
+  // garbage pane values fall back to structural
+  const garbage = await callRoute(router, "get", "/homepage?pane=banana");
+  assert.equal(garbage.rendered.locals.pane, "structural");
+});
+
+test("GET /homepage with no preview state yet → token null, revision 0", async () => {
+  const res = await callRoute(makeRouter(makeIndiekit()), "get", "/homepage");
+  assert.deepEqual(res.rendered.locals.preview, { token: null, revision: 0 });
+  assert.equal(res.rendered.locals.previewing, null);
+});
+
+test("publish rotates the token, bumps the revision, writes a FRESH preview-draft from the published tree", async () => {
+  const draft = baseTree();
+  draft.children[1].children[0].children[0].config = { maxItems: 42 };
+  const ik = makeIndiekit({
+    compositions: [homepageDoc({ draftTree: draft, draftUpdatedAt: "D1" })],
+    siteConfig: [{ _id: "primary", previewToken: "old-token", previewRevision: 5 }],
+  });
+  const previews = [];
+  const router = makeRouter(ik, {
+    writeArtifact: async () => {},
+    writePreviewArtifact: async (input) => previews.push(input),
+  });
+  const res = await callRoute(router, "post", "/homepage/publish");
+  assert.equal(flag(res, "published"), "1");
+  const state = previewState(ik);
+  assert.notEqual(state.token, "old-token"); // rotated unconditionally
+  assert.equal(state.token.length, 22);
+  assert.equal(state.revision, 6);
+  // fresh artifact: the NOW-PUBLISHED tree under the NEW token/revision
+  assert.equal(previews.length, 1);
+  assert.deepEqual(previews[0], { tree: draft, revision: 6, token: state.token });
+});
+
+test("rejected publish (invalid draft) does NOT rotate the token or write a preview", async () => {
+  const badTree = baseTree();
+  badTree.children[1].children[0].children[0].config = { maxItems: 999 };
+  const ik = makeIndiekit({
+    compositions: [homepageDoc({ draftTree: badTree, draftUpdatedAt: "D1" })],
+    siteConfig: [{ _id: "primary", previewToken: "old-token", previewRevision: 5 }],
+  });
+  const previews = [];
+  const router = makeRouter(ik, {
+    writeArtifact: async () => {},
+    writePreviewArtifact: async (input) => previews.push(input),
+  });
+  const res = await callRoute(router, "post", "/homepage/publish");
+  assert.equal(flag(res, "error"), "publish-invalid");
+  assert.deepEqual(previewState(ik), { token: "old-token", revision: 5 });
+  assert.equal(previews.length, 0);
+});
+
+test("a preview-rotation failure after a successful publish still redirects published=1", async () => {
+  const ik = makeIndiekit({ compositions: [homepageDoc({ draftTree: baseTree(), draftUpdatedAt: "D1" })] });
+  const warnings = [];
+  const original = console.warn;
+  console.warn = (...args) => warnings.push(args.join(" "));
+  try {
+    const router = makeRouter(ik, {
+      writeArtifact: async () => {},
+      writePreviewArtifact: async () => { throw new Error("disk full"); },
+    });
+    const res = await callRoute(router, "post", "/homepage/publish");
+    assert.equal(flag(res, "published"), "1"); // publish success is never masked
+    assert.ok(warnings.some((w) => w.includes("preview rotation after publish failed")));
+  } finally {
+    console.warn = original;
+  }
 });
 
 // ---- mode ----

@@ -32,7 +32,12 @@
 <script type="module" src="/assets/@rmdes-indiekit-endpoint-site-config/editor.js"></script>
 {% set editorI18n = {
   searchEmpty: __("siteConfig.design.addBlock.searchEmpty"),
-  dismiss: __("siteConfig.design.flash.dismiss")
+  dismiss: __("siteConfig.design.flash.dismiss"),
+  previewBuilding: __("siteConfig.design.previewPane.building"),
+  previewBuildingUnknown: __("siteConfig.design.previewPane.buildingUnknown"),
+  previewReady: __("siteConfig.design.previewPane.ready"),
+  previewSlow: __("siteConfig.design.previewPane.slow"),
+  previewFrameTitle: __("siteConfig.design.previewPane.frameTitle")
 } %}
 <script type="application/json" id="sc-editor-i18n">{{ editorI18n | dump | replace("</", "<\\/") | safe }}</script>
 
@@ -233,8 +238,23 @@
     </div>
   </div>
 
-  {# Right pane: structural preview #}
-  {% include "partials/design-preview.njk" %}
+  {# Right pane: Structural (Phase 4 skeleton, default) | Preview (Phase 5
+     true preview — the theme renders preview-draft.json through the
+     PRODUCTION renderer at /preview/<token>/). Pane choice is server state
+     (?pane=preview) via plain links, so no-JS toggles by full reload. #}
+  <div class="sc-design__pane">
+    <nav class="sc-pane-toggle" aria-label="{{ __('siteConfig.design.previewPane.toggleLabel') }}">
+      <a class="sc-pane-toggle__link" href="/site-config/design/homepage"
+        {%- if pane != "preview" %} aria-current="true"{% endif %}>{{ __("siteConfig.design.previewPane.structural") }}</a>
+      <a class="sc-pane-toggle__link" href="/site-config/design/homepage?pane=preview"
+        {%- if pane == "preview" %} aria-current="true"{% endif %}>{{ __("siteConfig.design.previewPane.live") }}</a>
+    </nav>
+    {% if pane == "preview" %}
+    {% include "partials/design-preview-live.njk" %}
+    {% else %}
+    {% include "partials/design-preview.njk" %}
+    {% endif %}
+  </div>
 </div>
 
 {# The shared add-block dialog (one per page; zone preset by editor.js) #}

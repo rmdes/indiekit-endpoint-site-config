@@ -147,8 +147,131 @@ function initUndoFlash(i18n) {
   flash.append(dismiss);
 }
 
+/** (5) True-preview pane (Phase 5). Enhancement over the plain
+ * Update-preview POST: fetch with `Accept: application/json`, then poll the
+ * same-origin iframe every 3s — reload it and read the theme page's
+ * `[data-preview-revision]` — until the just-written revision shows up.
+ * Status copy quotes the site's measured build time (expectedSeconds from
+ * build-status.json); polling caps at 3× that (90s floor when unknown),
+ * then shows "taking longer than usual" and leaves the manual reload
+ * button as the recovery affordance. The no-JS path (plain POST + full
+ * page reloads) works without any of this. */
+const PREVIEW_POLL_MS = 3000;
+const PREVIEW_DEFAULT_CAP_MS = 90_000;
+
+function initPreviewPane(i18n) {
+  const form = document.querySelector("[data-sc-preview-form]");
+  if (!form) return; // structural pane (or no editor) — nothing to enhance
+  const pane = form.closest(".sc-design__preview");
+  const status = pane.querySelector("[data-sc-preview-status]");
+  const reload = pane.querySelector("[data-sc-preview-reload]");
+  let timer = null;
+
+  const getFrame = () => pane.querySelector("[data-sc-preview-frame]");
+
+  const setStatus = (text) => {
+    if (status) status.textContent = text;
+  };
+
+  const reloadFrame = (iframe) => {
+    // Same-origin reload; re-assigning src is the fallback (also covers a
+    // frame that never finished its first load).
+    try {
+      iframe.contentWindow.location.reload();
+    } catch {
+      iframe.src = iframe.src;
+    }
+  };
+
+  /** First Update-preview on a fresh site: no token existed at render time,
+   * so the iframe wasn't server-rendered — create it from the response. */
+  const ensureFrame = (token) => {
+    let iframe = getFrame();
+    if (iframe) return iframe;
+    pane.querySelector("[data-sc-preview-empty]")?.remove();
+    iframe = document.createElement("iframe");
+    iframe.className = "sc-preview-frame";
+    iframe.setAttribute("data-sc-preview-frame", "");
+    iframe.title = i18n.previewFrameTitle || "";
+    iframe.src = `/preview/${encodeURIComponent(token)}/`;
+    pane.append(iframe);
+    return iframe;
+  };
+
+  const frameRevision = (iframe) => {
+    try {
+      return (
+        iframe.contentDocument
+          ?.querySelector("[data-preview-revision]")
+          ?.getAttribute("data-preview-revision") ?? null
+      );
+    } catch {
+      return null; // mid-load or cross-origin — keep polling
+    }
+  };
+
+  const stopPolling = () => {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  };
+
+  const startPolling = ({ token, revision, expectedSeconds }) => {
+    stopPolling();
+    const iframe = ensureFrame(token);
+    const expected =
+      typeof expectedSeconds === "number" && expectedSeconds > 0 ? expectedSeconds : null;
+    const capMs = expected ? expected * 3 * 1000 : PREVIEW_DEFAULT_CAP_MS;
+    const startedAt = Date.now();
+    setStatus(
+      expected
+        ? (i18n.previewBuilding || "").replace("{{seconds}}", String(Math.round(expected)))
+        : i18n.previewBuildingUnknown || "",
+    );
+    timer = setInterval(() => {
+      if (frameRevision(iframe) === String(revision)) {
+        stopPolling();
+        setStatus(i18n.previewReady || "");
+        return;
+      }
+      if (Date.now() - startedAt > capMs) {
+        stopPolling();
+        setStatus(i18n.previewSlow || "");
+        return;
+      }
+      reloadFrame(iframe);
+    }, PREVIEW_POLL_MS);
+  };
+
+  if (reload) {
+    reload.hidden = false;
+    reload.addEventListener("click", () => {
+      const iframe = getFrame();
+      if (iframe) reloadFrame(iframe);
+    });
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const response = await fetch(form.action, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      startPolling(await response.json());
+    } catch {
+      // Fall back to the plain POST (full reload) — the no-JS path.
+      stopPolling();
+      form.submit();
+    }
+  });
+}
+
 const i18n = readI18n();
 initSortable();
 initAddDialog();
 initSearchFilter(i18n);
 initUndoFlash(i18n);
+initPreviewPane(i18n);

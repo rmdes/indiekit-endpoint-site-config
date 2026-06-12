@@ -269,6 +269,20 @@
       },
       "preview": {
         "title": "Layout preview"
+      },
+      "previewPane": {
+        "toggleLabel": "Preview mode",
+        "structural": "Structural",
+        "live": "Preview",
+        "update": "Update preview",
+        "reload": "Reload preview",
+        "frameTitle": "Homepage preview",
+        "empty": "No preview yet — choose “Update preview” to build one.",
+        "requested": "Preview update requested — the site is rebuilding. Reload this page in a moment to refresh the preview.",
+        "building": "Building preview… (~{{seconds}}s on this site)",
+        "buildingUnknown": "Building preview…",
+        "ready": "Preview is up to date.",
+        "slow": "This is taking longer than usual — the preview will appear once the build finishes. Use “Reload preview” to check again."
       }
     },
     "homepage": {
