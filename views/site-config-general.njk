@@ -41,7 +41,7 @@
 
 {% include "partials/tab-strip.njk" %}
 
-{% if request.query.saved %}
+{% if saved %}
 <div class="notice notice--success" role="status">
   <p>{{ __("siteConfig.common.saved") }}</p>
 </div>

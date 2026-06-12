@@ -419,6 +419,20 @@
   flex-wrap: wrap;
 }
 
+/* ---- Focus visibility (WCAG 2.4.7) ----
+   Cards themselves aren't focusable; every interactive element inside the
+   editor, hub, and add dialog gets a visible focus ring. Same accent as the
+   other site-config views' :focus treatment. */
+
+.sc-design :is(button, summary, select, input, a):focus-visible,
+.sc-hub-card :is(button, summary, a):focus-visible,
+.sc-empty-state :is(button, a):focus-visible,
+.sc-add-entry :is(button, select):focus-visible,
+.sc-add-search input:focus-visible {
+  outline: 2px solid var(--color-primary, #0066cc);
+  outline-offset: 2px;
+}
+
 /* ---- Empty / custom states ---- */
 
 .sc-empty-state,

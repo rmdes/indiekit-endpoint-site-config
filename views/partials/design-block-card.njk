@@ -42,13 +42,13 @@
         <option value="{{ legalZone }}">{{ __("siteConfig.design.zones." + legalZone) }}</option>
         {% endfor %}
       </select>
-      <button class="button button--small button--secondary">{{ __("siteConfig.design.actions.moveTo") }}</button>
+      <button class="button button--small button--secondary" aria-label="{{ __('siteConfig.design.actions.moveTo') }} — {{ card.label }}">{{ __("siteConfig.design.actions.moveTo") }}</button>
     </form>
     {% endif %}
     <form method="post" action="{{ blockBase }}/remove" class="sc-mini-form sc-block-card__remove"
       onsubmit="return window.confirm(this.dataset.confirm)"
       data-confirm="{{ __('siteConfig.design.confirms.remove', { label: card.label }) }}">
-      <button class="button button--small button--secondary">{{ __("siteConfig.design.actions.remove") }}</button>
+      <button class="button button--small button--secondary" aria-label="{{ __('siteConfig.design.actions.remove') }} — {{ card.label }}">{{ __("siteConfig.design.actions.remove") }}</button>
     </form>
   </div>
   {% if card.fields.length %}
