@@ -220,6 +220,25 @@ Phase 4 makes the composition editor the homepage source of truth (the v3 homepa
 
 **Phase 6 surfaces** — the hub already lists `listing`, `posttype`, and `pages` as disabled cards; their composition surfaces (and the blog sidebars' cutover off the v3 doc) land in Phase 6.
 
+### Phase 5: True preview + build status
+
+Phase 5 adds a true preview (the draft rendered through the **production** theme renderer, zero drift) and a post-publish build-status surface.
+
+**Routes** (both on the session-protected design router):
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/design/homepage/preview` | Write the preview-draft artifact on demand (never per keystroke) |
+| GET | `/design/api/build-status` | Build-status API polled by the publish strip (`Cache-Control: no-store`) |
+
+**Preview-draft artifact** — the Update-preview POST writes `content/_data/compositions/preview-draft.json` (`{schemaVersion: 4, kind: "preview", tree, revision, token, generatedAt}`, atomic tmp + rename) from the draft tree (or the published tree when no draft exists). The theme renders it at `/preview/<token>/` — an unguessable 16-byte token stored on the `siteConfig` doc. Each preview write bumps a monotonic revision; the editor's preview pane polls the same-origin iframe until the new revision appears. **Publish rotates the token** (previously shared preview URLs expire) and rewrites a fresh preview-draft from the now-published tree — warn-only, a preview refresh failure never masks a successful publish.
+
+**Custom-tree scope (deliberate)** — the preview POST accepts custom (hand-built) trees, since they render through the same production renderer. But the editor view stays read-only for custom trees and offers **no preview pane affordance**; previewing a hand-built tree is its author's out-of-band concern.
+
+**Build-status API** — `GET /design/api/build-status` reads `/app/data/build-status.json` (written by the theme's build hooks as `{state: "building"|"ok", buildId, startedAt, finishedAt, durationSeconds, incremental, lastOkDurationSeconds}` and by start.sh's crash wrapper as a minimal `{state: "failed", error, finishedAt}`) and responds with the raw fields plus a computed `stuck` flag: a `building` state that has overrun `max(2 × lastOkDurationSeconds, 120)` seconds (the 120s floor absorbs full post-boot builds; 60 is the default when the duration is absent). The endpoint is tolerant by contract — an absent or corrupt file responds `{state: "unknown"}`, never a 500, and a `building` object missing `startedAt` is never stuck.
+
+**Publish-flow strip** — after a publish (`?published=1`) the draft bar's "Live" row gains a build-status strip. With JS, `editor.js` polls the API every 5s while a sessionStorage watch (stamped with the publish time) is active: `building` shows "Rebuilding — usually ~Xs on this site. Your current site stays online."; `ok` with `finishedAt` after the publish shows "Live · <time>" (terminal); `failed` shows the error excerpt plus a republish hint (terminal — the live site is unchanged); `stuck` explains that publishing again rewrites the homepage artifact (which also heals a missed watcher event). Without JS, the strip renders the last-known status server-side with a reload-to-update note (no meta-refresh).
+
 ## Theme integration
 
 The companion Eleventy theme [`indiekit-eleventy-theme`](https://github.com/rmdes/indiekit-eleventy-theme) reads:

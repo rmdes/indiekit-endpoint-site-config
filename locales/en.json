@@ -269,6 +269,30 @@
       },
       "preview": {
         "title": "Layout preview"
+      },
+      "previewPane": {
+        "toggleLabel": "Preview mode",
+        "structural": "Structural",
+        "live": "Preview",
+        "update": "Update preview",
+        "reload": "Reload preview",
+        "frameTitle": "Homepage preview",
+        "empty": "No preview yet — choose “Update preview” to build one.",
+        "requested": "Preview update requested — the site is rebuilding. Reload this page in a moment to refresh the preview.",
+        "building": "Building preview… (~{{seconds}}s on this site)",
+        "buildingUnknown": "Building preview…",
+        "ready": "Preview is up to date.",
+        "slow": "This is taking longer than usual — the preview will appear once the build finishes. Use “Reload preview” to check again."
+      },
+      "buildStatus": {
+        "building": "Rebuilding — usually ~{{seconds}}s on this site. Your current site stays online.",
+        "buildingUnknown": "Rebuilding — your current site stays online.",
+        "live": "Live · {{time}}",
+        "failed": "Build failed — your live site is unchanged.",
+        "retryHint": "Republish to retry.",
+        "stuck": "This is taking longer than usual. Publishing again rewrites the homepage and usually unblocks a stalled build.",
+        "unknown": "Build status unavailable — your live site is unchanged.",
+        "reloadNote": "Reload this page to update the build status."
       }
     },
     "homepage": {

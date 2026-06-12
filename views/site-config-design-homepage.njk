@@ -32,7 +32,19 @@
 <script type="module" src="/assets/@rmdes-indiekit-endpoint-site-config/editor.js"></script>
 {% set editorI18n = {
   searchEmpty: __("siteConfig.design.addBlock.searchEmpty"),
-  dismiss: __("siteConfig.design.flash.dismiss")
+  dismiss: __("siteConfig.design.flash.dismiss"),
+  previewBuilding: __("siteConfig.design.previewPane.building"),
+  previewBuildingUnknown: __("siteConfig.design.previewPane.buildingUnknown"),
+  previewReady: __("siteConfig.design.previewPane.ready"),
+  previewSlow: __("siteConfig.design.previewPane.slow"),
+  previewFrameTitle: __("siteConfig.design.previewPane.frameTitle"),
+  buildBuilding: __("siteConfig.design.buildStatus.building"),
+  buildBuildingUnknown: __("siteConfig.design.buildStatus.buildingUnknown"),
+  buildLive: __("siteConfig.design.buildStatus.live"),
+  buildFailed: __("siteConfig.design.buildStatus.failed"),
+  buildRetryHint: __("siteConfig.design.buildStatus.retryHint"),
+  buildStuck: __("siteConfig.design.buildStatus.stuck"),
+  buildUnknown: __("siteConfig.design.buildStatus.unknown")
 } %}
 <script type="application/json" id="sc-editor-i18n">{{ editorI18n | dump | replace("</", "<\\/") | safe }}</script>
 
@@ -229,12 +241,56 @@
       </form>
       {% else %}
       <p class="sc-draft-bar__status">{{ __("siteConfig.design.draftBar.live") }}</p>
+      {# Publish-flow build-status strip (Phase 5 S2): renders ONLY on the
+         publish flash (?published=1) with the LAST-KNOWN status server-side
+         (no-JS path; the noscript note says reload to update — no
+         meta-refresh). editor.js takes over with 5s polling of the
+         build-status API. Unrecognized states render the neutral copy. #}
+      {% if success == "published" %}
+      <div class="sc-build-status" data-sc-build-status aria-live="polite">
+        <p class="sc-build-status__text" data-sc-build-text>
+          {%- if buildStatus.state == "building" and buildStatus.stuck %}
+          {{ __("siteConfig.design.buildStatus.stuck") }}
+          {%- elif buildStatus.state == "building" %}
+          {%- if buildStatus.lastOkDurationSeconds is number and buildStatus.lastOkDurationSeconds > 0 %}
+          {{ __("siteConfig.design.buildStatus.building", { seconds: buildStatus.lastOkDurationSeconds | round }) }}
+          {%- else %}
+          {{ __("siteConfig.design.buildStatus.buildingUnknown") }}
+          {%- endif %}
+          {%- elif buildStatus.state == "ok" and buildStatus.finishedAt %}
+          <time datetime="{{ buildStatus.finishedAt }}">{{ __("siteConfig.design.buildStatus.live", { time: buildStatus.finishedAt | date("PPp") }) }}</time>
+          {%- elif buildStatus.state == "failed" %}
+          {{ __("siteConfig.design.buildStatus.failed") }}
+          {%- if buildStatus.error %} {{ buildStatus.error | truncate(140) }}{% endif %}
+          {{ __("siteConfig.design.buildStatus.retryHint") }}
+          {%- else %}
+          {{ __("siteConfig.design.buildStatus.unknown") }}
+          {%- endif %}
+        </p>
+        <noscript><p class="sc-build-status__note">{{ __("siteConfig.design.buildStatus.reloadNote") }}</p></noscript>
+      </div>
+      {% endif %}
       {% endif %}
     </div>
   </div>
 
-  {# Right pane: structural preview #}
-  {% include "partials/design-preview.njk" %}
+  {# Right pane: Structural (Phase 4 skeleton, default) | Preview (Phase 5
+     true preview — the theme renders preview-draft.json through the
+     PRODUCTION renderer at /preview/<token>/). Pane choice is server state
+     (?pane=preview) via plain links, so no-JS toggles by full reload. #}
+  <div class="sc-design__pane">
+    <nav class="sc-pane-toggle" aria-label="{{ __('siteConfig.design.previewPane.toggleLabel') }}">
+      <a class="sc-pane-toggle__link" href="/site-config/design/homepage"
+        {%- if pane != "preview" %} aria-current="true"{% endif %}>{{ __("siteConfig.design.previewPane.structural") }}</a>
+      <a class="sc-pane-toggle__link" href="/site-config/design/homepage?pane=preview"
+        {%- if pane == "preview" %} aria-current="true"{% endif %}>{{ __("siteConfig.design.previewPane.live") }}</a>
+    </nav>
+    {% if pane == "preview" %}
+    {% include "partials/design-preview-live.njk" %}
+    {% else %}
+    {% include "partials/design-preview.njk" %}
+    {% endif %}
+  </div>
 </div>
 
 {# The shared add-block dialog (one per page; zone preset by editor.js) #}

@@ -269,6 +269,30 @@
       },
       "preview": {
         "title": "Aperçu de la mise en page"
+      },
+      "previewPane": {
+        "toggleLabel": "Mode d'aperçu",
+        "structural": "Structure",
+        "live": "Aperçu",
+        "update": "Mettre à jour l'aperçu",
+        "reload": "Recharger l'aperçu",
+        "frameTitle": "Aperçu de la page d'accueil",
+        "empty": "Pas encore d'aperçu — choisissez « Mettre à jour l'aperçu » pour le générer.",
+        "requested": "Mise à jour de l'aperçu demandée — le site se reconstruit. Rechargez cette page dans un instant pour actualiser l'aperçu.",
+        "building": "Construction de l'aperçu… (~{{seconds}} s sur ce site)",
+        "buildingUnknown": "Construction de l'aperçu…",
+        "ready": "L'aperçu est à jour.",
+        "slow": "C'est plus long que d'habitude — l'aperçu apparaîtra à la fin de la construction. Utilisez « Recharger l'aperçu » pour vérifier."
+      },
+      "buildStatus": {
+        "building": "Reconstruction en cours — environ {{seconds}} s sur ce site. Votre site actuel reste en ligne.",
+        "buildingUnknown": "Reconstruction en cours — votre site actuel reste en ligne.",
+        "live": "En ligne · {{time}}",
+        "failed": "La construction a échoué — votre site en ligne est inchangé.",
+        "retryHint": "Republiez pour réessayer.",
+        "stuck": "C'est plus long que d'habitude. Republier réécrit la page d'accueil et débloque généralement une construction bloquée.",
+        "unknown": "Statut de construction indisponible — votre site en ligne est inchangé.",
+        "reloadNote": "Rechargez cette page pour actualiser le statut de construction."
       }
     },
     "homepage": {
