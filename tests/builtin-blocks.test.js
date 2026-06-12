@@ -6,6 +6,7 @@ import { BUILTIN_SECTIONS } from "../lib/presets/builtin-sections.js";
 import { BUILTIN_WIDGETS } from "../lib/presets/builtin-widgets.js";
 import { BUILTIN_BLOG_POST_WIDGETS } from "../lib/presets/builtin-blog-post-widgets.js";
 import { DEFAULTS_HOMEPAGE } from "../lib/storage/defaults-homepage.js";
+import { validateConfigAgainstSchema } from "../lib/validators/block-schema.js";
 
 test("hero schema accepts every v3 homepage-doc hero key (migrator stripUnknown guard)", () => {
   // Task 7's migrator pours DEFAULTS_HOMEPAGE-shaped hero objects into the
@@ -111,6 +112,22 @@ test("recent-posts maxItems default is the main/section variant value, within en
   assert.equal(def.minimum, 1);
   assert.equal(def.maximum, 50, "global maxItems cap is encoded in the schema");
   assert.ok(def.default >= def.minimum && def.default <= def.maximum);
+});
+
+test("recent-posts schema accepts the live rmendes config shape (production-diff regression)", () => {
+  // Phase 2 production diff against rmendes.net: the live v3 config carries
+  // excludeTypes (written by the v3 admin UI, never declared in the legacy
+  // mini-DSL). The schema must accept it with ZERO warnings, otherwise the
+  // migrator strips it and Phase 4's editor would drop it on re-save.
+  const recentPosts = BUILTIN_BLOCKS.find((e) => e.id === "recent-posts");
+  const result = validateConfigAgainstSchema(
+    { maxItems: 10, excludeTypes: ["reply"] },
+    recentPosts.schema,
+    { stripUnknown: true },
+  );
+  assert.equal(result.ok, true, result.errors.join("; "));
+  assert.deepEqual(result.warnings, [], "live config key must not warn");
+  assert.deepEqual(result.value.excludeTypes, ["reply"], "excludeTypes must survive");
 });
 
 test("table conformance spot checks", () => {
