@@ -578,6 +578,30 @@ test("POST config coerces + saves valid form bodies", async () => {
   assert.equal(node.id, "b_m1"); // id/type untouched
 });
 
+test("POST config sanitizes custom-html content at save time (stored-XSS control)", async () => {
+  const ik = makeIndiekit();
+  const res = await callRoute(makeRouter(ik), "post", "/homepage/blocks/b_m2/config",
+    { title: "Hi", content: "<p>ok</p><script>alert(1)</script>" });
+  assert.equal(flag(res, "saved"), "1");
+  const node = draftZones(ik).main[1]; // b_m2 is the custom-html block
+  assert.equal(node.config.content.includes("<script"), false);
+  assert.ok(node.config.content.includes("<p>ok</p>"));
+  assert.equal(node.config.title, "Hi"); // non-content fields untouched
+});
+
+test("POST restore sanitizes custom-html content in the undo payload", async () => {
+  const ik = makeIndiekit();
+  const token = encodeUndoPayload({
+    node: section("b_new", "custom-html", { content: "<p>ok</p><script>alert(1)</script>" }),
+    zone: "main", index: 0,
+  });
+  const res = await callRoute(makeRouter(ik), "post", "/homepage/blocks/restore", { u: token });
+  assert.equal(flag(res, "restored"), "1");
+  const restored = draftZones(ik).main[0];
+  assert.equal(restored.config.content.includes("<script"), false);
+  assert.ok(restored.config.content.includes("<p>ok</p>"));
+});
+
 test("POST config invalid → 200 re-render with fieldErrors + openBlockId, no save", async () => {
   const ik = makeIndiekit();
   const res = await callRoute(makeRouter(ik), "post", "/homepage/blocks/b_m1/config",
@@ -640,6 +664,42 @@ test("stack arrangement hides the sidebar zone everywhere: add gated, legalZones
   assert.deepEqual(ghost.regions, []); // sidebar-only block has nowhere to go (picker skips it)
   const recent = groups["built-in"].find((b) => b.id === "recent-posts");
   assert.deepEqual(recent.regions, ["main"]);
+});
+
+test("stack arrangement gates move-to into the hidden sidebar zone", async () => {
+  const ik = makeIndiekit();
+  const router = makeRouter(ik);
+  await callRoute(router, "post", "/homepage/arrangement", { arrangement: "stack" });
+  const mainIds = draftZones(ik).main.map((n) => n.id);
+  const res = await callRoute(router, "post", "/homepage/blocks/b_m1/move-to", { zone: "sidebar" });
+  assert.equal(flag(res, "error"), "invalid-zone");
+  assert.deepEqual(draftZones(ik).main.map((n) => n.id), mainIds); // draft unchanged
+  assert.deepEqual(draftZones(ik).sidebar, []);
+});
+
+test("stack arrangement gates move-to-index into the hidden sidebar zone", async () => {
+  const ik = makeIndiekit();
+  const router = makeRouter(ik);
+  await callRoute(router, "post", "/homepage/arrangement", { arrangement: "stack" });
+  const mainIds = draftZones(ik).main.map((n) => n.id);
+  const res = await callRoute(router, "post", "/homepage/blocks/b_m1/move-to-index",
+    { zone: "sidebar", index: "0" });
+  assert.equal(flag(res, "error"), "invalid-zone");
+  assert.deepEqual(draftZones(ik).main.map((n) => n.id), mainIds);
+  assert.deepEqual(draftZones(ik).sidebar, []);
+});
+
+test("stack arrangement gates restore into the hidden sidebar zone (undo across an arrangement switch)", async () => {
+  const ik = makeIndiekit();
+  const router = makeRouter(ik);
+  // Remove a sidebar block while sidebar-right, THEN switch to stack — the
+  // undo token still targets the (now hidden) sidebar zone.
+  const removed = await callRoute(router, "post", "/homepage/blocks/b_s1/remove");
+  const token = flag(removed, "u");
+  await callRoute(router, "post", "/homepage/arrangement", { arrangement: "stack" });
+  const res = await callRoute(router, "post", "/homepage/blocks/restore", { u: token });
+  assert.equal(flag(res, "error"), "invalid-zone");
+  assert.deepEqual(draftZones(ik).sidebar, []); // nothing restored into the hidden zone
 });
 
 test("POST arrangement stack→sidebar-right and invalid values", async () => {

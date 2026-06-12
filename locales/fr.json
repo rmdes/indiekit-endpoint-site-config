@@ -254,6 +254,7 @@
         "unknown-type": "Type de bloc inconnu.",
         "placement": "Ce bloc ne peut pas être placé dans cette zone.",
         "duplicate": "Ce bloc figure déjà sur la page d'accueil et ne peut apparaître qu'une seule fois.",
+        "hero-occupied": "L'emplacement héros est déjà occupé.",
         "no-composition": "Aucune composition de page d'accueil n'existe encore — appliquez d'abord un modèle.",
         "custom-tree": "Cette page d'accueil utilise une mise en page personnalisée et est en lecture seule dans l'éditeur.",
         "not-found": "Ce bloc n'existe plus — la page est peut-être obsolète.",

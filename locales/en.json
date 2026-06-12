@@ -254,6 +254,7 @@
         "unknown-type": "Unknown block type.",
         "placement": "That block can't be placed in that zone.",
         "duplicate": "That block is already on the homepage and can only appear once.",
+        "hero-occupied": "The hero slot is already occupied.",
         "no-composition": "No homepage composition exists yet — apply a recipe first.",
         "custom-tree": "This homepage uses a custom layout and is read-only in the editor.",
         "not-found": "That block no longer exists — the page may be out of date.",

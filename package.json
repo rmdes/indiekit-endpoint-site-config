@@ -12,6 +12,7 @@
     "lib/",
     "views/",
     "locales/",
+    "assets/",
     "README.md"
   ],
   "scripts": {
