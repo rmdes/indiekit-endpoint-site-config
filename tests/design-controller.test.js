@@ -222,6 +222,24 @@ test("undo payload round-trips; oversized/garbage tokens → null", () => {
   assert.equal(parseUndoPayload(badZone), null);
 });
 
+test("parseUndoPayload structurally rejects non-object configs (schema-gate leniency bypass)", () => {
+  // validateConfigAgainstSchema treats non-object configs as empty with
+  // ok:true — this structural gate is what actually stops them (HIGH-1).
+  for (const config of ["evil", 42, true, ["evil"], null]) {
+    const token = encodeUndoPayload({
+      node: { block: "section", id: "b_x", type: "recent-posts", v: 0, config },
+      zone: "main", index: 0,
+    });
+    assert.equal(parseUndoPayload(token), null, JSON.stringify(config));
+  }
+  // ABSENT config is fine (the handler rebuilds with {})
+  const absent = encodeUndoPayload({
+    node: { block: "section", id: "b_x", type: "recent-posts", v: 0 },
+    zone: "main", index: 0,
+  });
+  assert.ok(parseUndoPayload(absent));
+});
+
 test("encodeUndoPayload returns null when the payload exceeds 4096 chars", () => {
   const huge = { node: section("b_x", "custom-html", { content: "y".repeat(10000) }), zone: "main", index: 0 };
   assert.equal(encodeUndoPayload(huge), null);
@@ -493,6 +511,30 @@ test("POST restore rejects unknown types, illegal zones, duplicate ids, garbage 
     const res = await callRoute(router, "post", "/homepage/blocks/restore", { u: token });
     assert.equal(flag(res, "error"), code, String(code));
   }
+});
+
+test("POST restore rejects a string config (raw value must never reach draft or artifact)", async () => {
+  const ik = makeIndiekit();
+  const tampered = encodeUndoPayload({
+    node: { block: "section", id: "b_evil", type: "recent-posts", v: 0, config: "evil" },
+    zone: "main", index: 0,
+  });
+  const res = await callRoute(makeRouter(ik), "post", "/homepage/blocks/restore", { u: tampered });
+  assert.equal(flag(res, "error"), "undo-invalid");
+  assert.equal("draftTree" in ik._db.stores.compositions.get("homepage"), false);
+});
+
+test("POST restore clamps v to the catalog version (never the payload's)", async () => {
+  const ik = makeIndiekit();
+  const forged = encodeUndoPayload({
+    node: { ...section("b_new", "recent-posts", { maxItems: 5 }), v: 99 },
+    zone: "main", index: 0,
+  });
+  const res = await callRoute(makeRouter(ik), "post", "/homepage/blocks/restore", { u: forged });
+  assert.equal(flag(res, "restored"), "1");
+  const restored = draftZones(ik).main[0];
+  assert.equal(restored.id, "b_new");
+  assert.equal(restored.v, 1); // recent-posts catalog entry version, not 99
 });
 
 test("POST restore strips extra keys from the restored node (tamper-safe rebuild)", async () => {
