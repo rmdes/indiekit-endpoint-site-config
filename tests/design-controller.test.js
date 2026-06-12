@@ -301,6 +301,12 @@ test("GET /homepage renders zones, decorated blocks, grouped availableBlocks, mo
   assert.equal(locals.blocks.hero.label, "Hero Section");
   assert.equal(locals.blocks.main[0].type, "recent-posts");
   assert.ok(locals.blocks.main[0].fields.some((f) => f.name === "maxItems"));
+  // D4 card additions: source badge + move-to targets (current zone excluded)
+  assert.equal(locals.blocks.main[0].sourcePlugin, null); // built-in
+  assert.deepEqual(locals.blocks.main[0].legalZones, ["sidebar"]); // recent-posts: main+sidebar
+  assert.deepEqual(locals.blocks.main[1].legalZones, ["sidebar", "footer"]); // custom-html
+  assert.deepEqual(locals.blocks.hero.legalZones, []); // hero block fits the hero zone only
+  assert.equal(typeof locals.blocks.main[0].category, "string");
   // availableBlocks: built-in group first, plugin groups after, dormant flagged
   const groups = Object.fromEntries(locals.availableBlocks.map((g) => [g.group, g.blocks]));
   assert.equal(locals.availableBlocks[0].group, "built-in");
@@ -360,6 +366,11 @@ test("POST add appends with the catalog defaultConfig and saves a draft", async 
   assert.match(added.id, /^b_/);
   // published tree untouched
   assert.equal(treeToZones(ik._db.stores.compositions.get("homepage").tree).main.length, 2);
+  // the plugin block's card carries its source plugin (D4 badge)
+  const get = await callRoute(makeRouter(ik), "get", "/homepage");
+  const card = get.rendered.locals.blocks.main.at(-1);
+  assert.equal(card.sourcePlugin, "CV endpoint");
+  assert.deepEqual(card.legalZones, []); // cv-experience: main only
 });
 
 test("POST add gate violations: zone name, unknown type, placement, multiple:false", async () => {
@@ -565,12 +576,14 @@ test("POST config coerces + saves valid form bodies", async () => {
 test("POST config invalid → 200 re-render with fieldErrors + openBlockId, no save", async () => {
   const ik = makeIndiekit();
   const res = await callRoute(makeRouter(ik), "post", "/homepage/blocks/b_m1/config",
-    { maxItems: "lots" });
+    { maxItems: "lots", postTypes: "note, article" });
   assert.equal(res.statusCode, 200);
   assert.equal(res.rendered.view, "site-config-design-homepage");
   assert.equal(res.rendered.locals.openBlockId, "b_m1");
   assert.ok(res.rendered.locals.fieldErrors.some((e) => /maxItems/.test(e)));
   assert.ok(res.rendered.locals.zones); // full editor locals so the page re-renders whole
+  // the coerced submitted values ride along so the form re-fills as typed
+  assert.deepEqual(res.rendered.locals.submittedConfig, { postTypes: ["note", "article"] });
   assert.equal("draftTree" in ik._db.stores.compositions.get("homepage"), false);
 });
 

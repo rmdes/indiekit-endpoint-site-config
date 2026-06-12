@@ -1,0 +1,96 @@
+{# Renders the config form fields for one block card.
+   Context: card (with .fields from schemaToFields and .config), openBlockId,
+   fieldErrors (string[] from parseConfigBody), submittedConfig.
+   When this card's panel was re-rendered after a validation failure
+   (openBlockId == card.id), values come from submittedConfig (what the user
+   typed) and per-field errors are matched out of fieldErrors. #}
+{% from "input/macro.njk" import input with context %}
+{% from "select/macro.njk" import select with context %}
+{% from "textarea/macro.njk" import textarea with context %}
+
+{# parseConfigBody errors always quote the field name — match on that. #}
+{% macro fieldErrorText(name, errors) %}
+  {%- for fieldErrorItem in errors or [] %}
+    {%- if ('"' + name + '"') in fieldErrorItem %}{{ fieldErrorItem }} {% endif %}
+  {%- endfor %}
+{%- endmacro %}
+
+{% set isReRender = openBlockId == card.id and submittedConfig %}
+{% for field in card.fields %}
+  {% set fieldValue = submittedConfig[field.name] if isReRender else card.config[field.name] %}
+  {% set fieldValue = field.default if fieldValue is undefined else fieldValue %}
+  {% set fieldErrorMsg = (fieldErrorText(field.name, fieldErrors) | trim) if openBlockId == card.id else "" %}
+  {% set fieldId = "cfg-" + card.id + "-" + field.name %}
+
+  {% if field.type == "checkbox" %}
+  <div class="field sc-field-checkbox">
+    <label for="{{ fieldId }}">
+      <input type="checkbox" name="{{ field.name }}" id="{{ fieldId }}" value="true"
+        {{- " checked" if fieldValue }}>
+      {{ field.label }}
+    </label>
+    {% if field.hint %}<small class="hint">{{ field.hint }}</small>{% endif %}
+  </div>
+
+  {% elif field.type == "select" %}
+  {% set selectItems = [] %}
+  {% for option in field.options %}
+    {% set _push = selectItems.push({ value: option, text: option, selected: fieldValue == option }) %}
+  {% endfor %}
+  {{ select({
+    name: field.name,
+    id: fieldId,
+    label: field.label,
+    hint: field.hint,
+    items: selectItems,
+    errorMessage: { text: fieldErrorMsg } if fieldErrorMsg
+  }) }}
+
+  {% elif field.type == "textarea" or field.type == "markdown" %}
+  {{ textarea({
+    name: field.name,
+    id: fieldId,
+    label: field.label,
+    hint: field.hint,
+    value: fieldValue,
+    rows: 5,
+    errorMessage: { text: fieldErrorMsg } if fieldErrorMsg
+  }) }}
+
+  {% elif field.type == "number" %}
+  {{ input({
+    name: field.name,
+    id: fieldId,
+    type: "number",
+    label: field.label,
+    hint: field.hint,
+    value: fieldValue,
+    inputmode: "numeric",
+    attributes: ({ min: field.minimum, max: field.maximum } if (field.minimum and field.maximum)
+      else ({ min: field.minimum } if field.minimum
+      else ({ max: field.maximum } if field.maximum))),
+    errorMessage: { text: fieldErrorMsg } if fieldErrorMsg
+  }) }}
+
+  {% elif field.type == "tags" %}
+  {{ input({
+    name: field.name,
+    id: fieldId,
+    label: field.label,
+    hint: (field.hint + " — " if field.hint else "") + __("siteConfig.design.fields.tagsHint"),
+    value: (fieldValue | join(", ")) if fieldValue.join else fieldValue,
+    errorMessage: { text: fieldErrorMsg } if fieldErrorMsg
+  }) }}
+
+  {% else %}
+  {{ input({
+    name: field.name,
+    id: fieldId,
+    label: field.label,
+    hint: field.hint,
+    value: fieldValue,
+    attributes: { maxlength: field.maxLength } if field.maxLength,
+    errorMessage: { text: fieldErrorMsg } if fieldErrorMsg
+  }) }}
+  {% endif %}
+{% endfor %}

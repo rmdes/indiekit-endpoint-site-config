@@ -149,6 +149,127 @@
         "warnHint": "These pairs barely meet legibility thresholds — consider increasing contrast for visitors with low vision."
       }
     },
+    "design": {
+      "title": "Design",
+      "description": "Compose your site's surfaces from blocks — drafts stay private until you publish.",
+      "hub": {
+        "surfaces": {
+          "homepage": "Homepage",
+          "listing": "Blog listing",
+          "posttype": "Post types",
+          "pages": "Pages"
+        },
+        "comingSoon": "Arrives in a later phase.",
+        "lastEdited": "Last edited",
+        "draftBadge": "Draft",
+        "edit": "Edit"
+      },
+      "editor": {
+        "title": "Homepage design",
+        "description": "Arrange the blocks that make up your homepage. Changes are saved as a draft until you publish."
+      },
+      "zones": {
+        "hero": "Hero",
+        "main": "Main content",
+        "sidebar": "Sidebar",
+        "footer": "Footer",
+        "empty": "No blocks in this zone yet."
+      },
+      "actions": {
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "moveTo": "Move to",
+        "edit": "Edit settings",
+        "remove": "Remove",
+        "add": "Add block",
+        "undo": "Undo",
+        "publish": "Publish",
+        "discard": "Discard draft",
+        "close": "Close"
+      },
+      "confirms": {
+        "remove": "Remove “{{label}}” from your homepage? You can undo right after.",
+        "discard": "Discard the draft and return to the published homepage?"
+      },
+      "mode": {
+        "advanced": "Advanced mode",
+        "apply": "Apply"
+      },
+      "arrangement": {
+        "title": "Arrangement",
+        "stack": "Single column",
+        "sidebarRight": "Sidebar right",
+        "apply": "Apply arrangement"
+      },
+      "recipes": {
+        "title": "Quick-start recipes",
+        "intro": "Start from a ready-made layout. Applying a recipe replaces your current draft.",
+        "apply": "Use this recipe",
+        "confirmReplace": "Applying a recipe replaces your current draft. Continue?"
+      },
+      "addBlock": {
+        "title": "Add a block",
+        "builtIn": "Built-in",
+        "search": "Search blocks",
+        "searchEmpty": "No blocks match your search.",
+        "zone": "Zone",
+        "dormant": "Needs the {{plugin}} plugin — kept safe"
+      },
+      "block": {
+        "via": "via {{plugin}}",
+        "dormantBadge": "Dormant",
+        "unknownBadge": "Unknown"
+      },
+      "fields": {
+        "tagsHint": "Comma-separated"
+      },
+      "draftBar": {
+        "draft": "Draft",
+        "autosaved": "autosaved",
+        "live": "Live — matches the published homepage."
+      },
+      "empty": {
+        "explainer": "No homepage composition exists yet. Pick a recipe below to create one — you'll be able to rearrange everything afterwards."
+      },
+      "custom": {
+        "notice": "This homepage uses a custom hand-built layout that the visual editor can't safely edit.",
+        "hint": "The composition is read-only here. Apply a recipe from an empty state or edit the stored tree directly to make changes."
+      },
+      "flash": {
+        "saved": "Block settings saved to the draft.",
+        "added": "Block added to the draft.",
+        "moved": "Block moved.",
+        "restored": "Block restored.",
+        "recipe": "Recipe applied — the draft now uses the new layout.",
+        "published": "Homepage published.",
+        "discarded": "Draft discarded.",
+        "arranged": "Arrangement updated.",
+        "removed": "“{{label}}” removed.",
+        "sidebarMoved": "{{count}} sidebar block(s) moved to the main column.",
+        "undoUnavailable": "Undo isn't available for this removal.",
+        "dismiss": "Dismiss"
+      },
+      "errors": {
+        "invalid-zone": "That zone doesn't exist.",
+        "unknown-type": "Unknown block type.",
+        "placement": "That block can't be placed in that zone.",
+        "duplicate": "That block is already on the homepage and can only appear once.",
+        "no-composition": "No homepage composition exists yet — apply a recipe first.",
+        "custom-tree": "This homepage uses a custom layout and is read-only in the editor.",
+        "not-found": "That block no longer exists — the page may be out of date.",
+        "invalid-index": "Invalid position.",
+        "undo-invalid": "This undo link is no longer valid.",
+        "invalid-arrangement": "Unknown arrangement.",
+        "unknown-recipe": "Unknown recipe.",
+        "publish-invalid": "The draft failed validation and was not published.",
+        "conflict": "The draft changed while publishing — try again.",
+        "invalid-mode": "Unknown editor mode.",
+        "config-invalid": "Some settings are invalid — fix the highlighted fields below."
+      },
+      "preview": {
+        "title": "Layout preview"
+      }
+    },
     "homepage": {
       "title": "Homepage",
       "description": "Configure your homepage layout, sections, sidebar widgets, and footer.",

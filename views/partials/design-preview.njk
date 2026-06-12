@@ -1,0 +1,37 @@
+{# Structural skeleton preview of the homepage composition (right pane).
+   Purely decorative — mirrors the theme's comp-* GEOMETRY via preview.css,
+   never its visual design. Context: blocks (decorated), zones (raw). #}
+{% macro previewBlock(card) %}
+<div class="scp-block scp-block--{{ card.category or "content" }}">
+  <span class="scp-block__icon">{{ icon(card.icon) or icon("note") }}</span>
+  <span class="scp-block__label">{{ card.label }}</span>
+</div>
+{% endmacro %}
+
+<div class="sc-design__preview" aria-hidden="true">
+  <p class="sc-design__preview-title">{{ __("siteConfig.design.preview.title") }}</p>
+  <div class="scp-frame">
+    {% if blocks.hero %}
+    <div class="scp-hero">{{ previewBlock(blocks.hero) }}</div>
+    {% endif %}
+    {% if zones.arrangement == "sidebar-right" %}
+    <div class="scp-columns">
+      <div class="scp-main">
+        {% for card in blocks.main %}{{ previewBlock(card) }}{% endfor %}
+      </div>
+      <div class="scp-sidebar">
+        {% for card in blocks.sidebar %}{{ previewBlock(card) }}{% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="scp-stack">
+      {% for card in blocks.main %}{{ previewBlock(card) }}{% endfor %}
+    </div>
+    {% endif %}
+    {% if blocks.footer.length %}
+    <div class="scp-footer">
+      {% for card in blocks.footer %}{{ previewBlock(card) }}{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>

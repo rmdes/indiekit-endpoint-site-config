@@ -1,0 +1,283 @@
+{% extends "document.njk" %}
+
+{% from "badge/macro.njk" import badge with context %}
+{% from "button/macro.njk" import button with context %}
+{% from "details/macro.njk" import details with context %}
+{% from "modal-dialog/macro.njk" import modalDialog with context %}
+{% from "notification-banner/macro.njk" import notificationBanner with context %}
+{% from "toggle-switch/macro.njk" import toggleSwitch with context %}
+
+{# Recipe quick-start forms; guarded=true adds the replace-draft confirm. #}
+{% macro recipeForms(recipes, guarded) %}
+<div class="sc-recipes">
+  {% for recipe in recipes %}
+  <form method="post" action="/site-config/design/homepage/apply-recipe" class="sc-recipe"
+    {%- if guarded %} onsubmit="return window.confirm(this.dataset.confirm)"
+    data-confirm="{{ __('siteConfig.design.recipes.confirmReplace') }}"{% endif %}>
+    <input type="hidden" name="recipeId" value="{{ recipe.id }}">
+    <strong class="sc-recipe__label">{{ recipe.label }}</strong>
+    <p class="sc-recipe__description">{{ recipe.description }}</p>
+    <button class="button button--small">{{ __("siteConfig.design.recipes.apply") }}</button>
+  </form>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% block content %}
+<link rel="stylesheet" href="/assets/@rmdes-indiekit-endpoint-site-config/editor.css">
+<link rel="stylesheet" href="/assets/@rmdes-indiekit-endpoint-site-config/preview.css">
+{# Sortable.min.js is UMD and must define the global before editor.js runs;
+   deferred classic scripts and modules both execute in document order. #}
+<script src="/assets/@rmdes-indiekit-endpoint-site-config/vendor/Sortable.min.js" defer></script>
+<script type="module" src="/assets/@rmdes-indiekit-endpoint-site-config/editor.js"></script>
+{% set editorI18n = {
+  searchEmpty: __("siteConfig.design.addBlock.searchEmpty"),
+  dismiss: __("siteConfig.design.flash.dismiss")
+} %}
+<script type="application/json" id="sc-editor-i18n">{{ editorI18n | dump | safe }}</script>
+
+<header class="page-header">
+  <h1 class="page-header__title">{{ __("siteConfig.design.editor.title") }}</h1>
+  <p class="page-header__description">{{ __("siteConfig.design.editor.description") }}</p>
+</header>
+
+{% include "partials/tab-strip.njk" %}
+
+<div class="sc-flash" aria-live="polite">
+  {% if success == "removed" %}
+  <div class="sc-flash__undo-wrap" data-sc-undo-flash>
+    {{ notificationBanner({
+      type: "success",
+      text: __("siteConfig.design.flash.removed", { label: removedLabel })
+    }) }}
+    {% if undo %}
+    <form method="post" action="/site-config/design/homepage/blocks/restore" class="sc-flash__undo">
+      <input type="hidden" name="u" value="{{ undo.token }}">
+      <button class="button button--small">{{ __("siteConfig.design.actions.undo") }}</button>
+    </form>
+    {% elif undoUnavailable %}
+    <p class="sc-flash__note">{{ __("siteConfig.design.flash.undoUnavailable") }}</p>
+    {% endif %}
+  </div>
+  {% elif success %}
+  {{ notificationBanner({
+    type: "success",
+    text: __("siteConfig.design.flash." + success)
+  }) }}
+  {% if success == "arranged" and request.query.sidebarMoved %}
+  <p class="sc-flash__note">{{ __("siteConfig.design.flash.sidebarMoved", { count: request.query.sidebarMoved }) }}</p>
+  {% endif %}
+  {% endif %}
+  {% if error %}
+  {{ notificationBanner({
+    type: "error",
+    text: __("siteConfig.design.errors." + error)
+  }) }}
+  {% endif %}
+  {% if fieldErrors and fieldErrors.length %}
+  {{ notificationBanner({
+    type: "error",
+    text: __("siteConfig.design.errors.config-invalid")
+  }) }}
+  {% endif %}
+</div>
+
+{% if noComposition %}
+<div class="sc-empty-state">
+  <p>{{ __("siteConfig.design.empty.explainer") }}</p>
+  <h2>{{ __("siteConfig.design.recipes.title") }}</h2>
+  <p>{{ __("siteConfig.design.recipes.intro") }}</p>
+  {{ recipeForms(recipes, false) }}
+</div>
+
+{% elif customTree %}
+<div class="sc-custom-notice">
+  {{ notificationBanner({
+    type: "message",
+    text: __("siteConfig.design.custom.notice")
+  }) }}
+  <p>{{ __("siteConfig.design.custom.hint") }}</p>
+</div>
+
+{% else %}
+{# ---- the two-pane editor ---- #}
+{% set visibleZones = [] %}
+{% set _push = visibleZones.push({ name: "hero", cards: [blocks.hero] if blocks.hero else [] }) %}
+{% set _push = visibleZones.push({ name: "main", cards: blocks.main }) %}
+{% if zones.arrangement == "sidebar-right" %}
+  {% set _push = visibleZones.push({ name: "sidebar", cards: blocks.sidebar }) %}
+{% endif %}
+{% if mode == "advanced" or blocks.footer.length %}
+  {% set _push = visibleZones.push({ name: "footer", cards: blocks.footer }) %}
+{% endif %}
+
+<div class="sc-design">
+  <div class="sc-design__editor">
+
+    {# Mode row. The hidden "simple" is only rendered in advanced mode so the
+       toggle submits exactly one value on both JS (change-submit) paths:
+       checking sends mode=advanced, unchecking sends the hidden mode=simple. #}
+    <form method="post" action="/site-config/design/mode" class="sc-mode-form">
+      {% if mode == "advanced" %}<input type="hidden" name="mode" value="simple">{% endif %}
+      {{ toggleSwitch({
+        name: "mode",
+        label: __("siteConfig.design.mode.advanced"),
+        checked: mode == "advanced",
+        value: "advanced",
+        submitOnChange: true
+      }) }}
+      <noscript><button class="button button--small button--secondary">{{ __("siteConfig.design.mode.apply") }}</button></noscript>
+    </form>
+
+    {# Recipes (replace the current draft) #}
+    {% call details({ classes: "sc-recipes-disclosure", summary: __("siteConfig.design.recipes.title") }) %}
+      <p>{{ __("siteConfig.design.recipes.intro") }}</p>
+      {{ recipeForms(recipes, true) }}
+    {% endcall %}
+
+    {# Arrangement picker (advanced mode only) #}
+    {% if mode == "advanced" %}
+    <form method="post" action="/site-config/design/homepage/arrangement" class="sc-arrangement">
+      <fieldset class="sc-arrangement__fieldset">
+        <legend>{{ __("siteConfig.design.arrangement.title") }}</legend>
+        <div class="sc-arrangement__options">
+          <label class="sc-arrangement__option">
+            <input type="radio" name="arrangement" value="stack"{{ " checked" if zones.arrangement == "stack" }}>
+            <svg viewBox="0 0 64 44" class="sc-thumb" aria-hidden="true">
+              <rect x="4" y="4" width="56" height="10" rx="1"/>
+              <rect x="4" y="18" width="56" height="10" rx="1" opacity="0.7"/>
+              <rect x="4" y="32" width="56" height="10" rx="1" opacity="0.4"/>
+            </svg>
+            <span>{{ __("siteConfig.design.arrangement.stack") }}</span>
+          </label>
+          <label class="sc-arrangement__option">
+            <input type="radio" name="arrangement" value="sidebar-right"{{ " checked" if zones.arrangement == "sidebar-right" }}>
+            <svg viewBox="0 0 64 44" class="sc-thumb" aria-hidden="true">
+              <rect x="4" y="4" width="36" height="36" rx="1"/>
+              <rect x="44" y="4" width="16" height="36" rx="1" opacity="0.6"/>
+            </svg>
+            <span>{{ __("siteConfig.design.arrangement.sidebarRight") }}</span>
+          </label>
+        </div>
+      </fieldset>
+      <button class="button button--small">{{ __("siteConfig.design.arrangement.apply") }}</button>
+    </form>
+    {% endif %}
+
+    {# Zone groups #}
+    {% for zone in visibleZones %}
+    <section class="sc-zone" aria-labelledby="zone-{{ zone.name }}-h">
+      <h3 id="zone-{{ zone.name }}-h" class="sc-zone__title">{{ __("siteConfig.design.zones." + zone.name) }}</h3>
+      <div class="sc-zone__list" data-sc-zone="{{ zone.name }}">
+        {% for card in zone.cards %}
+        {% include "partials/design-block-card.njk" %}
+        {% else %}
+        <p class="sc-zone__empty">{{ __("siteConfig.design.zones.empty") }}</p>
+        {% endfor %}
+      </div>
+      {# JS path: opens the shared add dialog preset to this zone.
+         Hidden until editor.js reveals it — the dialog needs JS. #}
+      <button type="button" class="button button--small sc-zone__add" hidden
+        data-modal-open="sc-add-dialog" data-sc-zone-for="{{ zone.name }}">
+        {{ __("siteConfig.design.actions.add") }} — {{ __("siteConfig.design.zones." + zone.name) }}
+      </button>
+      {# No-JS canonical path: inline disclosure with the same add forms,
+         zone fixed. (noscript content only renders when JS is off.) #}
+      <noscript>
+        <details class="sc-zone__add-fallback">
+          <summary>{{ __("siteConfig.design.actions.add") }} — {{ __("siteConfig.design.zones." + zone.name) }}</summary>
+          {% for group in availableBlocks %}
+          {% for entry in group.blocks %}
+          {% if zone.name in entry.regions and not entry.dormant %}
+          <form method="post" action="/site-config/design/homepage/blocks/add" class="sc-add-entry">
+            <input type="hidden" name="type" value="{{ entry.id }}">
+            <input type="hidden" name="zone" value="{{ zone.name }}">
+            <span class="sc-add-entry__body">
+              <strong>{{ entry.label }}</strong>
+              {% if group.group != "built-in" %}<small> · {{ group.group }}</small>{% endif %}
+              {% if entry.description %}<small class="sc-add-entry__description">{{ entry.description }}</small>{% endif %}
+            </span>
+            <button class="button button--small">{{ __("siteConfig.design.actions.add") }}</button>
+          </form>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </details>
+      </noscript>
+    </section>
+    {% endfor %}
+
+    {# Draft bar #}
+    <div class="sc-draft-bar{% if isDraft %} sc-draft-bar--draft{% endif %}">
+      {% if isDraft %}
+      <p class="sc-draft-bar__status">
+        {{ badge({ color: "purple", text: __("siteConfig.design.draftBar.draft") }) }}
+        {% if draftUpdatedAt %}
+        {{ __("siteConfig.design.draftBar.autosaved") }}
+        <time datetime="{{ draftUpdatedAt }}">{{ draftUpdatedAt | date("PPp") }}</time>
+        {% endif %}
+      </p>
+      <form method="post" action="/site-config/design/homepage/publish" class="sc-mini-form">
+        <button class="button button--small button--primary">{{ __("siteConfig.design.actions.publish") }}</button>
+      </form>
+      <form method="post" action="/site-config/design/homepage/discard" class="sc-mini-form"
+        onsubmit="return window.confirm(this.dataset.confirm)"
+        data-confirm="{{ __('siteConfig.design.confirms.discard') }}">
+        <button class="button button--small button--secondary">{{ __("siteConfig.design.actions.discard") }}</button>
+      </form>
+      {% else %}
+      <p class="sc-draft-bar__status">{{ __("siteConfig.design.draftBar.live") }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Right pane: structural preview #}
+  {% include "partials/design-preview.njk" %}
+</div>
+
+{# The shared add-block dialog (one per page; zone preset by editor.js) #}
+{% call modalDialog({
+  id: "sc-add-dialog",
+  title: __("siteConfig.design.addBlock.title"),
+  closeLabel: __("siteConfig.design.actions.close")
+}) %}
+  <div class="sc-add-search">
+    <label for="sc-add-filter">{{ __("siteConfig.design.addBlock.search") }}</label>
+    <input type="search" id="sc-add-filter" data-sc-filter autocomplete="off">
+    <p class="sc-add-search__empty" data-sc-filter-empty hidden>{{ __("siteConfig.design.addBlock.searchEmpty") }}</p>
+  </div>
+  {% for group in availableBlocks %}
+  <section class="sc-add-group" data-sc-group>
+    <h4 class="sc-add-group__title">{{ __("siteConfig.design.addBlock.builtIn") if group.group == "built-in" else group.group }}</h4>
+    {% for entry in group.blocks %}
+    {% if entry.dormant %}
+    <div class="sc-block-dormant" data-sc-label="{{ entry.label }}">
+      <strong>{{ entry.label }}</strong>
+      <p>{{ __("siteConfig.design.addBlock.dormant", { plugin: group.group }) }}</p>
+    </div>
+    {% else %}
+    <form method="post" action="/site-config/design/homepage/blocks/add" class="sc-add-entry"
+      data-sc-label="{{ entry.label }}">
+      <input type="hidden" name="type" value="{{ entry.id }}">
+      <span class="sc-add-entry__icon" aria-hidden="true">{{ icon(entry.icon) or icon("note") }}</span>
+      <span class="sc-add-entry__body">
+        <strong>{{ entry.label }}</strong>
+        {% if entry.description %}<small class="sc-add-entry__description">{{ entry.description }}</small>{% endif %}
+      </span>
+      <label class="sc-add-entry__zone">
+        <span>{{ __("siteConfig.design.addBlock.zone") }}</span>
+        <select name="zone" data-sc-zone-select>
+          {% for region in entry.regions %}
+          <option value="{{ region }}">{{ __("siteConfig.design.zones." + region) }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="button button--small">{{ __("siteConfig.design.actions.add") }}</button>
+    </form>
+    {% endif %}
+    {% endfor %}
+  </section>
+  {% endfor %}
+{% endcall %}
+{% endif %}
+{% endblock %}
