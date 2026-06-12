@@ -172,6 +172,27 @@ test("a blocks-getter entry beats a legacy-getter entry for the same id (adapter
   assert.equal(Indiekit.config.application.blockCatalog.find((e) => e.id === "dual").label, "V2 wins");
 });
 
+test("two plugins declaring the same blocks id → one entry (last wins) + collision warn", (t) => {
+  const { warn } = mockConsole(t);
+  const entry = (label) => ({ id: "clash", version: 1, label,
+    placement: { regions: ["main"] }, data: { source: "config" },
+    schema: { type: "object", additionalProperties: false, properties: {} } });
+  const Indiekit = makeIndiekit([
+    { name: "First", blocks: [entry("From First")] },
+    { name: "Second", blocks: [entry("From Second")] },
+  ]);
+  scanPlugins(Indiekit, null);
+  const matches = Indiekit.config.application.blockCatalog.filter((e) => e.id === "clash");
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].label, "From Second"); // last wins stays the rule
+  assert.equal(matches[0].sourcePlugin, "Second");
+  // ...but no longer silently — the collision warn is part of the contract.
+  assert.ok(
+    warned(warn, /block id "clash" declared by multiple plugins — Second wins/),
+    "expected the cross-plugin collision warn",
+  );
+});
+
 test("legacy getter entries are synthesized into the catalog with version 0 + legacy flag", (t) => {
   mockConsole(t);
   const Indiekit = makeIndiekit([

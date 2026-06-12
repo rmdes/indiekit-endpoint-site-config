@@ -112,7 +112,7 @@ export default class SiteConfigEndpoint {
         ({ catalog } = scanPlugins(Indiekit, self));
         await writeBlockCatalogJson(catalog);
       } catch (error) {
-        console.warn("[site-config] plugin discovery failed:", error?.message ?? String(error));
+        console.warn("[site-config] plugin discovery/catalog write failed:", error?.message ?? String(error));
       }
 
       // Dual-running v3 → v4 migration (spec §7). SAFE BY CONSTRUCTION on
@@ -137,12 +137,19 @@ export default class SiteConfigEndpoint {
           } else {
             // skippedExisting vs seeded is the single most important
             // diagnostic distinction — log the ids, not just counts.
-            console.log(
+            const summary =
               `[site-config] v4 migration: seeded=[${report.seeded}] ` +
-                `existing=[${report.skippedExisting}] valid=${report.valid}` +
-                (report.errors.length ? " errors=" + report.errors.join(" | ") : "") +
-                (report.warnings.length ? " warnings=" + report.warnings.join(" | ") : ""),
-            );
+              `existing=[${report.skippedExisting}] valid=${report.valid}` +
+              (report.errors.length ? " errors=" + report.errors.join(" | ") : "") +
+              (report.warnings.length ? " warnings=" + report.warnings.join(" | ") : "");
+            if (report.valid) {
+              console.log(summary);
+            } else {
+              // One invalid legacy config blocks seeding of EVERY surface on
+              // every boot — the one failure operators must notice before
+              // Phase 3. warn-level so it stands apart from success lines.
+              console.warn(summary);
+            }
           }
         }
       } catch (error) {
