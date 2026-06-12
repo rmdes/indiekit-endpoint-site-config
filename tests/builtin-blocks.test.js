@@ -5,6 +5,25 @@ import { validBlockEntry } from "../lib/discovery/block-entry.js";
 import { BUILTIN_SECTIONS } from "../lib/presets/builtin-sections.js";
 import { BUILTIN_WIDGETS } from "../lib/presets/builtin-widgets.js";
 import { BUILTIN_BLOG_POST_WIDGETS } from "../lib/presets/builtin-blog-post-widgets.js";
+import { DEFAULTS_HOMEPAGE } from "../lib/storage/defaults-homepage.js";
+
+test("hero schema accepts every v3 homepage-doc hero key (migrator stripUnknown guard)", () => {
+  // Task 7's migrator pours DEFAULTS_HOMEPAGE-shaped hero objects into the
+  // hero catalog schema with stripUnknown — any doc key missing from the
+  // schema would be silently stripped from every migrated site. `enabled` is
+  // a placement concern, not a config field, so it is excluded.
+  const hero = BUILTIN_BLOCKS.find((e) => e.id === "hero");
+  const docKeys = Object.keys(DEFAULTS_HOMEPAGE.hero).filter(
+    (key) => key !== "enabled",
+  );
+  assert.ok(docKeys.length > 0, "v3 doc hero shape unexpectedly empty");
+  for (const key of docKeys) {
+    assert.ok(
+      Object.hasOwn(hero.schema.properties, key),
+      `hero schema is missing v3 homepage-doc key "${key}" — the migrator would strip it`,
+    );
+  }
+});
 
 test("every built-in block entry passes the strict validBlockEntry gate", () => {
   for (const entry of BUILTIN_BLOCKS) {
