@@ -5,6 +5,7 @@ import {
   saveDraft,
   publishDraft,
   discardDraft,
+  createDraftFromTree,
 } from "../lib/storage/composition-draft.js";
 import { BUILTIN_BLOCKS } from "../lib/presets/builtin-blocks.js";
 
@@ -25,10 +26,35 @@ function makeDb(docs = []) {
           calls.push(["findOne", name, _id]);
           return store.get(_id) ?? null;
         },
-        async updateOne({ _id }, update) {
-          calls.push(["updateOne", name, _id, structuredClone(update)]);
-          const doc = store.get(_id);
-          if (!doc) return { matchedCount: 0, modifiedCount: 0 };
+        // Filter-aware (equality + {$exists}) with upsert/$setOnInsert
+        // support — mirrors the driver semantics the publish conflict guard
+        // and createDraftFromTree rely on.
+        async updateOne(filter, update, options = {}) {
+          calls.push(["updateOne", name, filter._id, structuredClone(update)]);
+          const doc = store.get(filter._id);
+          const matches =
+            doc &&
+            Object.entries(filter).every(([key, cond]) => {
+              if (key === "_id") return true;
+              if (cond && typeof cond === "object" && "$exists" in cond) {
+                return (key in doc) === cond.$exists;
+              }
+              return doc[key] === cond;
+            });
+          if (!matches) {
+            if (options.upsert && !store.has(filter._id)) {
+              const inserted = { _id: filter._id };
+              for (const [key, value] of Object.entries(update.$setOnInsert ?? {})) {
+                inserted[key] = value;
+              }
+              for (const [key, value] of Object.entries(update.$set ?? {})) {
+                inserted[key] = value;
+              }
+              store.set(filter._id, inserted);
+              return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1 };
+            }
+            return { matchedCount: 0, modifiedCount: 0 };
+          }
           for (const [key, value] of Object.entries(update.$set ?? {})) doc[key] = value;
           for (const key of Object.keys(update.$unset ?? {})) delete doc[key];
           return { matchedCount: 1, modifiedCount: 1 };
@@ -242,4 +268,98 @@ test("discardDraft removes both draft fields, keeps published state", async () =
 test("discardDraft is idempotent (no draft / no doc)", async () => {
   assert.deepEqual(await discardDraft(makeDb([makeDoc()]), "homepage"), { ok: true });
   assert.deepEqual(await discardDraft(makeDb(), "homepage"), { ok: true });
+});
+
+// ---- publish concurrency guard ----
+
+test("publishDraft: a draft saved between read and promote → conflict, racing draft survives", async () => {
+  const db = makeDb([
+    makeDoc({ draftTree: validTree({ maxItems: 5 }), draftUpdatedAt: "2026-06-12T09:00:00.000Z" }),
+  ]);
+  // Wrap findOne so the racing editor's saveDraft lands right after our
+  // read — publishDraft then promotes against a stale draftUpdatedAt.
+  const racingDraft = validTree({ maxItems: 9 });
+  const racing = {
+    collection(name) {
+      const col = db.collection(name);
+      return {
+        ...col,
+        async findOne(query) {
+          const doc = await col.findOne(query);
+          const snapshot = structuredClone(doc);
+          if (doc) await saveDraft(db, "homepage", racingDraft, { now: () => "2026-06-12T09:00:01.000Z" });
+          return snapshot;
+        },
+      };
+    },
+  };
+  const artifacts = [];
+  const result = await publishDraft(racing, "homepage", BUILTIN_BLOCKS, {
+    writeArtifact: async (doc) => artifacts.push(doc),
+    now,
+  });
+  assert.deepEqual(result, { ok: false, error: "conflict" });
+  assert.equal(artifacts.length, 0); // nothing published
+  const stored = db.store.get("homepage");
+  assert.deepEqual(stored.draftTree, racingDraft); // racing draft NOT clobbered
+  assert.deepEqual(stored.tree, validTree()); // published tree untouched
+});
+
+test("publishDraft: draft-less republish passes the {$exists:false} guard", async () => {
+  // The conflict filter must still match docs that never had a draft.
+  const db = makeDb([makeDoc()]);
+  const result = await publishDraft(db, "homepage", BUILTIN_BLOCKS, {
+    writeArtifact: async () => {},
+    now,
+  });
+  assert.deepEqual(result, { ok: true });
+});
+
+// ---- createDraftFromTree (apply-recipe's create path) ----
+
+test("createDraftFromTree creates a draft-only doc via atomic upsert (no published tree)", async () => {
+  const db = makeDb();
+  const tree = validTree({ maxItems: 4 });
+  const result = await createDraftFromTree(db, "homepage", "homepage", tree, { now });
+  assert.deepEqual(result, { ok: true });
+  const stored = db.store.get("homepage");
+  assert.equal(stored.schemaVersion, 4);
+  assert.equal(stored.kind, "homepage");
+  assert.equal(stored.status, "draft");
+  assert.deepEqual(stored.draftTree, tree);
+  assert.equal(stored.draftUpdatedAt, NOW);
+  assert.equal("tree" in stored, false); // nothing published until publishDraft
+  const state = await getEditorState(db, "homepage");
+  assert.equal(state.isDraft, true);
+  assert.deepEqual(state.tree, tree);
+});
+
+test("createDraftFromTree on an EXISTING doc only replaces the draft ($setOnInsert inert)", async () => {
+  const db = makeDb([makeDoc({ draftTree: validTree({ maxItems: 2 }), draftUpdatedAt: "old" })]);
+  const tree = validTree({ maxItems: 4 });
+  const result = await createDraftFromTree(db, "homepage", "homepage", tree, { now });
+  assert.deepEqual(result, { ok: true });
+  const stored = db.store.get("homepage");
+  assert.deepEqual(stored.draftTree, tree);
+  assert.equal(stored.draftUpdatedAt, NOW);
+  assert.equal(stored.status, "published"); // $setOnInsert must not fire on match
+  assert.deepEqual(stored.tree, validTree());
+  assert.equal(stored.updatedAt, "2026-06-01T00:00:00.000Z");
+});
+
+test("createDraftFromTree → publishDraft promotes the first-ever publish", async () => {
+  const db = makeDb();
+  const tree = validTree({ maxItems: 4 });
+  await createDraftFromTree(db, "homepage", "homepage", tree, { now });
+  const artifacts = [];
+  const result = await publishDraft(db, "homepage", BUILTIN_BLOCKS, {
+    writeArtifact: async (doc) => artifacts.push(doc),
+    now,
+  });
+  assert.deepEqual(result, { ok: true });
+  const stored = db.store.get("homepage");
+  assert.deepEqual(stored.tree, tree);
+  assert.equal(stored.status, "published");
+  assert.equal("draftTree" in stored, false);
+  assert.deepEqual(artifacts[0].tree, tree);
 });

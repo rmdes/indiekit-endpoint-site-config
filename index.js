@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { identityRouter   } from "./lib/controllers/identity.js";
 import { brandingRouter   } from "./lib/controllers/branding.js";
 import { homepageRouter   } from "./lib/controllers/homepage.js";
+import { designRouter     } from "./lib/controllers/design.js";
 import { blogRouter       } from "./lib/controllers/blog.js";
 import { navigationRouter } from "./lib/controllers/navigation.js";
 import { generalRouter    } from "./lib/controllers/general.js";
@@ -79,7 +80,8 @@ export default class SiteConfigEndpoint {
     protectedRouter.get("/", (req, res) => res.redirect(`${this.mountPath}/identity`));
     protectedRouter.use("/identity",   identityRouter(Indiekit));
     protectedRouter.use("/branding",   brandingRouter(Indiekit));
-    protectedRouter.use("/homepage",   homepageRouter(Indiekit));
+    protectedRouter.use("/homepage",   homepageRouter()); // legacy URL → design editor redirect
+    protectedRouter.use("/design",     designRouter(Indiekit));
     protectedRouter.use("/blog",       blogRouter(Indiekit));
     protectedRouter.use("/navigation", navigationRouter(Indiekit));
     protectedRouter.use("/general",    generalRouter(Indiekit));
@@ -170,11 +172,14 @@ export default class SiteConfigEndpoint {
         const doc = db
           ? await db.collection("compositions").findOne({ _id: "homepage" })
           : null;
-        if (doc) {
+        // doc?.tree guard: createDraftFromTree (apply-recipe on a fresh
+        // install) inserts DRAFT-ONLY docs with no published tree — writing
+        // those would activate the theme's v4 path with an empty artifact.
+        if (doc?.tree) {
           await writeCompositionJson(doc);
           console.log("[site-config] composition artifact written: homepage");
         } else {
-          console.log("[site-config] composition artifact skipped: no homepage composition");
+          console.log("[site-config] composition artifact skipped: no published homepage composition");
         }
       } catch (error) {
         console.warn("[site-config] composition artifact write failed:", error?.message ?? String(error));
