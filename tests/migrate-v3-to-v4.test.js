@@ -138,8 +138,14 @@ function makeDb(homepageDoc) {
       const store = stores[name] ?? (stores[name] = new Map());
       return {
         async findOne({ _id }) { return store.get(_id) || null; },
-        async replaceOne({ _id }, doc, opts) { store.set(_id, doc); },
-        async countDocuments() { return store.size; },
+        // Mirrors real driver semantics: replacing a missing doc without
+        // upsert matches nothing (here: throw, to catch bad calls loudly).
+        async replaceOne({ _id }, doc, opts) {
+          if (!opts?.upsert && !store.has(_id)) {
+            throw new Error(`replaceOne without upsert: no doc ${_id}`);
+          }
+          store.set(_id, doc);
+        },
       };
     },
   };
@@ -177,6 +183,33 @@ test("v3 source missing → no-op with report.skipped", async () => {
   const { report } = await migrateV3toV4(db, BUILTIN_BLOCKS, { dryRun: false });
   assert.equal(report.skipped, true);
   assert.equal(db.stores.compositions.size, 0);
+});
+
+test("skipped report carries the SAME shape as the normal report (Task 8 reads it unconditionally)", async () => {
+  const { report: skipped } = await migrateV3toV4(makeDb(null), BUILTIN_BLOCKS, { dryRun: false });
+  const { report: normal } = await migrateV3toV4(makeDb(V3), BUILTIN_BLOCKS, { dryRun: false });
+  for (const key of Object.keys(normal)) {
+    assert.equal(key in skipped, true, `skipped report missing "${key}"`);
+  }
+  assert.deepEqual(skipped, {
+    skipped: true,
+    reason: "no v3 homepageConfig doc",
+    dryRun: false,
+    valid: true,
+    errors: [],
+    warnings: [],
+    seeded: [],
+    skippedExisting: [],
+  });
+});
+
+test("report echoes dryRun (self-explanatory at the admin endpoint)", async () => {
+  const dry = await migrateV3toV4(makeDb(V3), BUILTIN_BLOCKS, { dryRun: true });
+  assert.equal(dry.report.dryRun, true);
+  const wet = await migrateV3toV4(makeDb(V3), BUILTIN_BLOCKS, { dryRun: false });
+  assert.equal(wet.report.dryRun, false);
+  const skipped = await migrateV3toV4(makeDb(null), BUILTIN_BLOCKS, { dryRun: true });
+  assert.equal(skipped.report.dryRun, true);
 });
 
 test("the migrated homepage validates against the real built-in catalog", async () => {
