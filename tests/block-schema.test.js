@@ -284,6 +284,127 @@ test("defaults never satisfy required — explicit value needed", () => {
   assert.equal(result.value.maxItems, 10);
 });
 
+// --- Hardening regressions (quality review, 2026-06-12) ---
+
+test("config keys named after Object.prototype members are unknown keys, not matches", () => {
+  // JSON.parse creates "__proto__" as an OWN key (no setter involved)
+  const config = JSON.parse(
+    '{"maxItems": 5, "toString": "x", "__proto__": {"polluted": true}}',
+  );
+
+  // strict mode: both are unknown-key errors, never "must be undefined"
+  const strict = validateConfigAgainstSchema(config, GOOD_SCHEMA);
+  assert.equal(strict.ok, false);
+  assert.equal(
+    strict.errors.filter((e) => /unknown config key/.test(e)).length,
+    2,
+  );
+  assert.equal(strict.errors.some((e) => /must be undefined/.test(e)), false);
+
+  // stripUnknown (migrator) mode: dropped with warnings, migration unblocked
+  const strip = validateConfigAgainstSchema(config, GOOD_SCHEMA, {
+    stripUnknown: true,
+  });
+  assert.equal(strip.ok, true);
+  assert.equal(strip.warnings.length, 2);
+  assert.equal(Object.hasOwn(strip.value, "toString"), false);
+  assert.equal(Object.hasOwn(strip.value, "__proto__"), false);
+  assert.equal(Object.getPrototypeOf(strip.value), Object.prototype);
+  assert.equal("polluted" in strip.value, false);
+});
+
+test("required: ['toString'] is rejected at meta-validation (no prototype-chain match)", () => {
+  const result = validateSchemaDefinition({
+    ...GOOD_SCHEMA,
+    required: ["toString"],
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join(" "), /required/);
+});
+
+test("defaults violating their own constraints are rejected at meta-validation", () => {
+  // default outside enum
+  assert.equal(
+    validateSchemaDefinition({
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        x: { type: "string", enum: ["a", "b"], default: "c" },
+      },
+    }).ok,
+    false,
+  );
+  // default below minimum
+  assert.equal(
+    validateSchemaDefinition({
+      type: "object",
+      additionalProperties: false,
+      properties: { x: { type: "integer", minimum: 1, default: 0 } },
+    }).ok,
+    false,
+  );
+  // default exceeding maxLength
+  assert.equal(
+    validateSchemaDefinition({
+      type: "object",
+      additionalProperties: false,
+      properties: { x: { type: "string", maxLength: 3, default: "long" } },
+    }).ok,
+    false,
+  );
+  // satisfying defaults still pass
+  assert.equal(
+    validateSchemaDefinition({
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        x: { type: "string", enum: ["a", "b"], default: "a", maxLength: 5 },
+      },
+    }).ok,
+    true,
+  );
+});
+
+test("reserved property names are rejected at meta-validation", () => {
+  for (const name of ["__proto__", "constructor", "prototype"]) {
+    const schema = JSON.parse(
+      `{"type":"object","additionalProperties":false,"properties":{${JSON.stringify(name)}:{"type":"string"}}}`,
+    );
+    const result = validateSchemaDefinition(schema);
+    assert.equal(result.ok, false, `expected "${name}" to be rejected`);
+    assert.match(result.errors.join(" "), /reserved/);
+  }
+});
+
+test("NaN and Infinity bounds are rejected at meta-validation", () => {
+  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.equal(
+      validateSchemaDefinition({
+        type: "object",
+        additionalProperties: false,
+        properties: { x: { type: "integer", minimum: bad } },
+      }).ok,
+      false,
+    );
+  }
+});
+
+test("truthy non-object config produces a warning instead of silent ok", () => {
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: { x: { type: "string" } },
+  };
+  const result = validateConfigAgainstSchema("garbage", schema);
+  assert.equal(result.ok, true); // nothing required — still ok
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /not an object/);
+
+  // null/undefined keep the quiet treated-as-empty semantics
+  assert.equal(validateConfigAgainstSchema(null, schema).warnings.length, 0);
+  assert.equal(validateConfigAgainstSchema(undefined, schema).warnings.length, 0);
+});
+
 test("boolean false and empty string are valid config values (no falsy traps)", () => {
   const result = validateConfigAgainstSchema(
     { maxItems: 5, enabled: false, title: "" },
