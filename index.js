@@ -14,11 +14,13 @@ import { getSiteConfig     } from "./lib/storage/get-site-config.js";
 import { getHomepageConfig } from "./lib/storage/get-homepage-config.js";
 import { maybeSeedFromEnv  } from "./lib/storage/seed-from-env.js";
 import { maybeBackfillIdentity } from "./lib/storage/backfill-identity.js";
+import { migrateV3toV4 } from "./lib/storage/migrate-v3-to-v4.js";
 
 import { writeThemeCss    } from "./lib/render/write-theme-css.js";
 import { writeCriticalCss } from "./lib/render/write-critical-css.js";
 import { writeSiteJson    } from "./lib/render/write-site-json.js";
 import { writeHomepageJson } from "./lib/render/write-homepage-json.js";
+import { writeBlockCatalogJson } from "./lib/render/write-block-catalog-json.js";
 
 import { scanPlugins } from "./lib/discovery/scan-plugins.js";
 
@@ -66,6 +68,7 @@ export default class SiteConfigEndpoint {
     Indiekit.addEndpoint(this);
     Indiekit.addCollection("siteConfig");
     Indiekit.addCollection("homepageConfig");
+    Indiekit.addCollection("compositions");
 
     Indiekit.config.application.contentDir = this.options.contentDir;
 
@@ -97,13 +100,60 @@ export default class SiteConfigEndpoint {
       console.warn("[site-config] initial render skipped:", error.message);
     }
 
-    // Plugin discovery — defer until all plugins' init() has returned
+    // Plugin discovery — defer until all plugins' init() has returned.
+    // The try/catch is load-bearing (spec §3.1): an async callback without it
+    // would turn any scan/write failure into an unhandled rejection. On dev
+    // machines where /app/data is not writable, the catalog write fails and
+    // we only warn — same posture as the initial render above.
     const self = this;
-    process.nextTick(() => {
+    process.nextTick(async () => {
+      let catalog;
       try {
-        scanPlugins(Indiekit, self);
+        ({ catalog } = scanPlugins(Indiekit, self));
+        await writeBlockCatalogJson(catalog);
       } catch (error) {
-        console.warn("[site-config] plugin discovery failed:", error.message);
+        console.warn("[site-config] plugin discovery/catalog write failed:", error?.message ?? String(error));
+      }
+
+      // Dual-running v3 → v4 migration (spec §7). SAFE BY CONSTRUCTION on
+      // every boot: seed-if-absent never touches the v3 doc and never
+      // overwrites existing compositions. This is the migrator's single
+      // sanctioned non-dry caller (see the TOCTOU precondition there).
+      //
+      // Separate try/catch — deliberately granular so a migration failure
+      // logs distinctly from a discovery failure (and, like discovery,
+      // never crashes boot). `catalog` survives a failed artifact write
+      // above (it is destructured before writeBlockCatalogJson), so an
+      // unwritable /app/data doesn't block the DB seed; only a failed SCAN
+      // leaves it undefined, in which case there is nothing to validate
+      // against and the migration is skipped.
+      if (!catalog) return;
+      try {
+        const db = Indiekit.database;
+        if (db) {
+          const { report } = await migrateV3toV4(db, catalog, { dryRun: false });
+          if (report.skipped) {
+            console.log("[site-config] v4 migration: no v3 source, skipped");
+          } else {
+            // skippedExisting vs seeded is the single most important
+            // diagnostic distinction — log the ids, not just counts.
+            const summary =
+              `[site-config] v4 migration: seeded=[${report.seeded}] ` +
+              `existing=[${report.skippedExisting}] valid=${report.valid}` +
+              (report.errors.length ? " errors=" + report.errors.join(" | ") : "") +
+              (report.warnings.length ? " warnings=" + report.warnings.join(" | ") : "");
+            if (report.valid) {
+              console.log(summary);
+            } else {
+              // One invalid legacy config blocks seeding of EVERY surface on
+              // every boot — the one failure operators must notice before
+              // Phase 3. warn-level so it stands apart from success lines.
+              console.warn(summary);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("[site-config] v4 migration failed:", error?.message ?? String(error));
       }
     });
   }

@@ -44,7 +44,7 @@ locales/                # i18n strings (multiple languages)
 ### Initialization (init method)
 
 1. Register endpoint with Indiekit: `Indiekit.addEndpoint(this)`
-2. Register MongoDB collections: `siteConfig`, `homepageConfig`
+2. Register MongoDB collections: `siteConfig`, `homepageConfig`, `compositions`
 3. Set content directory: `Indiekit.config.application.contentDir`
 4. Mount admin routes (protected by session auth)
 5. Mount public API routes
@@ -100,17 +100,16 @@ Singleton document `_id: "primary"` with schema version 3. Contains:
 
 #### homepageConfig
 
-Singleton document `_id: "primary"` with homepage builder state:
+Singleton document `_id: "homepage"` with homepage builder state:
 
 ```javascript
 {
-  _id: "primary",
+  _id: "homepage",
   hero: {
-    image: String | null,      // /content path to image
-    headline: String,
-    subheadline: String,
-    cta_link: String | null,
-    cta_text: String,
+    enabled: Boolean,          // hero renders before the layout wrapper when true
+    showSocial: Boolean,
+    ctaText: String,           // e.g., "Read more"
+    ctaUrl: String,            // e.g., "/about/"
   },
   layout: "single-column" | "two-column" | "full-width-hero",
   sections: [
@@ -133,6 +132,14 @@ Singleton document `_id: "primary"` with homepage builder state:
   updatedAt: Date,
 }
 ```
+
+#### compositions
+
+Site-builder v4 composition documents (`schemaVersion: 4`) — one document per
+surface (`homepage`, `collection:default`, `posttype:default`), seeded at boot
+by the dual-running v3 → v4 migration (`lib/storage/migrate-v3-to-v4.js`,
+seed-if-absent: never touches the v3 doc, never overwrites editor edits). See
+"Blocks contract v2" below.
 
 ## Routes
 
@@ -203,6 +210,15 @@ export class CvEndpoint {
 
 The homepage builder can then enable/disable each section, reorder them, and
 the theme reads `homepage.json` to render them.
+
+### Blocks contract v2 (Phase 2)
+
+Plugins can also declare a `get blocks()` getter — the v2 contract (id,
+version, label, placement, data source, frozen JSON Schema subset, …). These
+entries feed the block catalog (`block-catalog.json` artifact) and the v4
+composition system; legacy getter entries are synthesized into catalog
+entries when no `blocks` declaration exists. See "Blocks contract v2
+(Phase 2)" in `README.md` for the full contract.
 
 ## File Outputs
 

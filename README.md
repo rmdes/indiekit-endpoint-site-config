@@ -62,10 +62,11 @@ export default {
 
 ## Storage
 
-Two MongoDB collections:
+Three MongoDB collections:
 
 1. **`siteConfig`** — singleton document `_id: "primary"` storing all site identity, branding, navigation, blog config (schema version 3)
 2. **`homepageConfig`** — homepage builder state: hero, layout, sections, widgets (discovered from plugins at init() time)
+3. **`compositions`** — site-builder v4 composition documents (schema version 4), seeded by the dual-running v3 → v4 migration (see [Blocks contract v2](#blocks-contract-v2-phase-2) below)
 
 ## Routes
 
@@ -91,6 +92,85 @@ Two MongoDB collections:
 | GET | `/api/homepage.json` | Rendered homepage config (consumed by theme or client-side builds) |
 
 These endpoints enable the theme's admin UI to offer live previews and dynamic plugin discovery without exposing sensitive config data.
+
+## Blocks contract v2 (Phase 2)
+
+Phase 2 of the site builder introduces a unified **block catalog**: one validated registry of every block a site can place — built-ins, legacy plugin getters, and the new plugin-declared blocks — serialized to disk for the theme.
+
+### Declaring blocks (`get blocks()`)
+
+Any registered plugin can declare blocks via a `blocks` getter:
+
+```js
+export default class GithubEndpoint {
+  get blocks() {
+    return [{
+      id: "github-repos",
+      version: 1,
+      label: "GitHub Projects",
+      description: "Repos and commits",
+      icon: "github",
+      category: "social",
+      placement: { regions: ["sidebar", "main"], surfaces: ["homepage", "collection"] },
+      multiple: true,
+      schema: { type: "object", additionalProperties: false, properties: { /* frozen JSON Schema subset */ } },
+      data: { source: "api" },
+    }];
+  }
+}
+```
+
+Each entry passes a strict gate at discovery time: flat kebab-case `id`, integer `version >= 1`, non-empty `label`, `placement.regions` a non-empty subset of `main|sidebar|footer|hero`, optional `placement.surfaces` a subset of `homepage|collection|postType|standalone`, a valid `data` declaration, and a `schema` in the frozen subset below. Invalid entries are skipped with a console warning — discovery never crashes on a bad plugin.
+
+### Frozen JSON Schema subset
+
+Block config schemas use a deliberately tiny subset of JSON Schema 2020-12. Anything outside the subset is **rejected at registration**, so the admin form generator, save-time validation, and the migrator all share the exact same semantics.
+
+| Allowed | Values |
+|---------|--------|
+| Property types | `string`, `integer`, `number`, `boolean`, `array` (of strings only — `items: { type: "string" }` exactly) |
+| Property keywords | `type`, `enum`, `default`, `minimum`, `maximum`, `maxLength`, `title`, `description`, `items`, `x-control`, `x-advanced` |
+| Top-level keywords | `type: "object"`, `additionalProperties: false` (**mandatory**), `properties`, `required` |
+| `x-control` | `textarea`, `markdown`, `color`, `post-type-picker` |
+| `x-advanced` | boolean — marks a field for the editor's "advanced" disclosure |
+
+Gotchas the validator enforces:
+
+- **Defaults are validated against their own constraints** — a `default` that violates its property's `enum`/`minimum`/`maximum`/`maxLength` is rejected at registration.
+- **`required` means explicitly provided** — defaults never satisfy `required`. Declaring both `required` and a `default` on the same property means an empty config can never validate; don't combine them.
+- **Reserved property names** `__proto__`, `constructor`, and `prototype` are rejected (prototype-pollution guard).
+
+### Data sources
+
+| `data.source` | Meaning | Required fields |
+|---------------|---------|-----------------|
+| `file` | Block reads a JSON data file | `data.file` |
+| `collections` | Block reads an Eleventy collection | `data.key` |
+| `config` | Block renders from its config alone | — |
+| `api` | Block data is fetched from a plugin API | — |
+
+### Legacy back-compat
+
+The three legacy getters (`homepageSections`, `homepageWidgets`, `blogPostWidgets`) keep working unchanged. The scanner synthesizes catalog entries from them, marked `legacy: true` with `version: 0`; legacy entries keep bespoke-template semantics (the theme renders them via their existing partials, never the generic renderers). Per-id precedence, higher wins: built-in < legacy synthesis < plugin `blocks` declaration — a `blocks` entry shadows a same-id legacy or built-in entry.
+
+### block-catalog.json artifact
+
+After plugin discovery, the catalog is written **atomically** (tmp file + rename, so the Eleventy watcher never sees a partial file) to:
+
+```
+/app/data/content/_data/block-catalog.json
+```
+
+Shape: `{ catalogVersion: 1, generatedAt: "<ISO timestamp>", blocks: [...] }`, with blocks sorted by id and restricted to a whitelisted public field set. Each block carries `requiresPlugin`: `null` for built-ins (always available) or the registering endpoint's name — from Phase 3 the theme maps this to its `loadedPlugins` gating. The artifact is inert in Phase 2; the theme starts consuming it in Phase 3.
+
+### Dual-running v3 → v4 migration
+
+On boot, after discovery, v4 composition documents are computed from the v3 `homepageConfig` doc and seeded into the `compositions` collection — the homepage plus the two default sidebar surfaces (`collection:default`, `posttype:default`). The migration is **seed-if-absent**: it never modifies the v3 doc and never overwrites an existing composition, so it is safe on every boot and editor edits survive re-runs. v3 remains the source of truth (the legacy admin UI and `homepage.json` still own it) until the Phase 3 cutover.
+
+Diagnostics:
+
+- **Boot log** — look for `[site-config] v4 migration: seeded=[…] existing=[…] valid=true` (or `no v3 source, skipped`)
+- **`GET /site-config/api/migration-preview`** (authenticated admin API) — recomputes the migration as a dry run on every request and responds `{ docs, report, existing }`; it never writes
 
 ## Theme integration
 
