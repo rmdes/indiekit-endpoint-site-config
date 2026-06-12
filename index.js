@@ -19,6 +19,7 @@ import { writeThemeCss    } from "./lib/render/write-theme-css.js";
 import { writeCriticalCss } from "./lib/render/write-critical-css.js";
 import { writeSiteJson    } from "./lib/render/write-site-json.js";
 import { writeHomepageJson } from "./lib/render/write-homepage-json.js";
+import { writeBlockCatalogJson } from "./lib/render/write-block-catalog-json.js";
 
 import { scanPlugins } from "./lib/discovery/scan-plugins.js";
 
@@ -97,13 +98,18 @@ export default class SiteConfigEndpoint {
       console.warn("[site-config] initial render skipped:", error.message);
     }
 
-    // Plugin discovery — defer until all plugins' init() has returned
+    // Plugin discovery — defer until all plugins' init() has returned.
+    // The try/catch is load-bearing (spec §3.1): an async callback without it
+    // would turn any scan/write failure into an unhandled rejection. On dev
+    // machines where /app/data is not writable, the catalog write fails and
+    // we only warn — same posture as the initial render above.
     const self = this;
-    process.nextTick(() => {
+    process.nextTick(async () => {
       try {
-        scanPlugins(Indiekit, self);
+        const { catalog } = scanPlugins(Indiekit, self);
+        await writeBlockCatalogJson(catalog);
       } catch (error) {
-        console.warn("[site-config] plugin discovery failed:", error.message);
+        console.warn("[site-config] plugin discovery failed:", error?.message ?? String(error));
       }
     });
   }
