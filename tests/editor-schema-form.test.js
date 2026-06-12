@@ -122,6 +122,20 @@ test("parseConfigBody: checkbox presence/'on'/'true' → true", () => {
   }
 });
 
+test("parseConfigBody: whitespace-only number input omits the field (not 0)", () => {
+  const result = parseConfigBody({ maxItems: "  " }, blockSchema("recent-posts"));
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+  assert.equal("maxItems" in result.config, false);
+});
+
+test("parseConfigBody: explicit checkbox 'false'/false → false (hidden-input fallback)", () => {
+  const schema = blockSchema("hero");
+  for (const value of ["false", false]) {
+    const result = parseConfigBody({ showSocial: value }, schema);
+    assert.equal(result.config.showSocial, false, JSON.stringify(value));
+  }
+});
+
 test("parseConfigBody: empty strings mean field omitted (non-boolean)", () => {
   const result = parseConfigBody({ ctaText: "", ctaUrl: "" }, blockSchema("hero"));
   assert.equal(result.ok, true);
