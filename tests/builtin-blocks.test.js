@@ -84,18 +84,22 @@ test("every legacy configSchema field survives into the catalog schema (no dropp
 
 test("no schema uses required (legacy configs may omit anything; migration must not fail)", () => {
   for (const entry of BUILTIN_BLOCKS) {
+    // Checked BEFORE the no-required assertion so it actually runs if a
+    // required array ever appears: a required property must never also
+    // declare a default (defaults never satisfy required).
+    const required = new Set(
+      Array.isArray(entry.schema.required) ? entry.schema.required : [],
+    );
+    for (const [name, def] of Object.entries(entry.schema.properties)) {
+      assert.ok(
+        !(required.has(name) && "default" in def),
+        `${entry.id}: "${name}" combines required with default`,
+      );
+    }
     assert.ok(
       !("required" in entry.schema),
       `${entry.id}: schema must not use required`,
     );
-    // Belt-and-braces: even if required is ever introduced, it must never
-    // be combined with a default on the same property.
-    for (const name of entry.schema.required ?? []) {
-      assert.ok(
-        !("default" in (entry.schema.properties[name] ?? {})),
-        `${entry.id}: "${name}" combines required with default`,
-      );
-    }
   }
 });
 
@@ -145,18 +149,25 @@ test("table conformance spot checks", () => {
   assert.deepEqual(socialActivity.data, { source: "api" });
 });
 
+/**
+ * Recursively assert Object.isFrozen on EVERY object/array reachable from
+ * value — regions/surfaces arrays, property definitions, items, default
+ * arrays, render.variants, all of it. Primitives are skipped.
+ * @param {unknown} value
+ * @param {string} path Failure-message breadcrumb
+ */
+function assertDeepFrozen(value, path) {
+  if (value === null || typeof value !== "object") return;
+  assert.ok(Object.isFrozen(value), `${path} must be frozen`);
+  for (const [key, child] of Object.entries(value)) {
+    assertDeepFrozen(child, `${path}.${key}`);
+  }
+}
+
 test("catalog invariants: version 1, deep-frozen, multiple declared on every entry", () => {
-  assert.ok(Object.isFrozen(BUILTIN_BLOCKS), "BUILTIN_BLOCKS array must be frozen");
+  assertDeepFrozen(BUILTIN_BLOCKS, "BUILTIN_BLOCKS");
   for (const entry of BUILTIN_BLOCKS) {
     assert.equal(entry.version, 1, `${entry.id}: version must be 1`);
     assert.equal(typeof entry.multiple, "boolean", `${entry.id}: multiple missing`);
-    assert.ok(Object.isFrozen(entry), `${entry.id}: entry must be frozen`);
-    assert.ok(Object.isFrozen(entry.schema), `${entry.id}: schema must be frozen`);
-    assert.ok(
-      Object.isFrozen(entry.schema.properties),
-      `${entry.id}: schema.properties must be frozen`,
-    );
-    assert.ok(Object.isFrozen(entry.placement), `${entry.id}: placement must be frozen`);
-    assert.ok(Object.isFrozen(entry.data), `${entry.id}: data must be frozen`);
   }
 });
