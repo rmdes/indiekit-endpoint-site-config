@@ -274,42 +274,43 @@ function initPreviewPane(i18n) {
   });
 }
 
-/** (6) Publish-flow build-status strip (Phase 5 S2). After a publish
- * (?published=1) the draft bar — now "Live" — gains a strip tracking the
- * Eleventy rebuild. The strip element only renders on the publish flash;
- * sessionStorage carries the watch across reloads of that page, stamped
- * with the publish time so "finishedAt after the publish" is checkable.
- * Polling is a passive 5s GET of the authed build-status API (a cheap fs
- * read server-side); the watch ends on terminal states (post-publish ok,
- * or failed) and when the user navigates off the flash page. A stale "ok"
- * from BEFORE the publish keeps the rebuilding copy — the new build just
- * hasn't been observed yet.
+/** (6) Publish-flow build-status strip (Phase 5 S2, stateless). After a
+ * publish the redirect carries the publish epoch in the URL
+ * (?published=<Date.now() on the SERVER — the same clock that writes
+ * finishedAt into build-status.json, so no client/server skew) and the
+ * draft bar — now "Live" — gains a strip tracking the Eleventy rebuild.
+ * The strip element only renders on the publish flash; the epoch is the
+ * ONLY state, so reloads need no storage:
  *
- * No stamp + a terminal status = a reload AFTER the watch already ended
- * (endWatch cleared the stamp; the URL still says ?published=1). The probe
- * branch handles it: fetch once FIRST and, if the status is already
- * terminal (ok with a finishedAt, or failed), render it as-is and never
- * (re)start the watch — re-stamping with the reload time would compare
- * finishedAt against the WRONG moment and replace a correct "Live · time"
- * with an eternal "Rebuilding…". Only a non-terminal probe (building,
- * unknown, fetch failure) stamps and starts polling.
+ * - ok with finishedAt > epoch → the new build landed: "Live · time",
+ *   terminal (covers reloads after the build completed — the probe sees
+ *   a post-publish finishedAt immediately, no false "Rebuilding…").
+ * - ok with finishedAt ≤ epoch → STALE pre-publish ok (the Eleventy
+ *   watcher debounces ~5s before flipping to "building", so the very
+ *   first probe after a publish always sees this): building copy + poll.
+ * - failed with finishedAt > epoch → the new build failed: failed copy,
+ *   terminal. failed with finishedAt ≤ epoch (or unparseable) → the LAST
+ *   build failed BEFORE this publish; the publish just triggered a new
+ *   one: building copy + poll.
+ * - building → building copy (stuck variant keeps polling too) + poll.
+ * - unknown → building copy + poll (a build is known to be coming).
  *
- * The no-JS path renders the last-known status server-side with a
- * reload-to-update note. */
+ * A legacy/garbage published value (e.g. "1") falls back to probe-first
+ * semantics with epoch 0: any parseable terminal status renders as-is and
+ * the watch never starts; only a non-terminal probe polls. Polling is a
+ * passive 5s GET of the authed build-status API (a cheap fs read
+ * server-side) and stops on terminal states. The no-JS path renders the
+ * last-known status server-side with a reload-to-update note. */
 const BUILD_STATUS_POLL_MS = 5000;
 const BUILD_STATUS_URL = "/site-config/design/api/build-status";
-const PUBLISH_WATCH_KEY = "scPublishWatch";
 const BUILD_ERROR_EXCERPT_CHARS = 140;
+// Plausibility floor for the URL epoch: anything ≤ this (legacy "1",
+// garbage, tampered values) is not a publish time. 1e12 ms ≈ 2001-09-09.
+const MIN_PUBLISH_EPOCH_MS = 1e12;
 
 function initBuildStatus(i18n) {
   const strip = document.querySelector("[data-sc-build-status]");
-  if (!strip) {
-    // The watch lives only on the page showing the publish flash —
-    // navigating away ends it (a lingering stamp would poison the
-    // "finishedAt after publish" check on the NEXT publish).
-    sessionStorage.removeItem(PUBLISH_WATCH_KEY);
-    return;
-  }
+  if (!strip) return;
   const text = strip.querySelector("[data-sc-build-text]");
   if (!text) return;
 
@@ -317,41 +318,48 @@ function initBuildStatus(i18n) {
     text.textContent = value;
   };
 
-  // The moment finishedAt must beat for an "ok" to count as terminal.
-  // Stamp path: the publish time. Probe path: 0 — any finished build is
-  // terminal there (see the docblock above).
-  let publishedAt = 0;
+  // The moment finishedAt must beat for a status to count as THIS
+  // publish's build. Real epoch from the redirect URL, or 0 (legacy
+  // probe-first semantics — any parseable terminal status wins).
+  const raw = Number(new URLSearchParams(window.location.search).get("published"));
+  const publishedAt =
+    Number.isFinite(raw) && raw > MIN_PUBLISH_EPOCH_MS ? raw : 0;
+
   let timer = null;
   let ended = false;
   const endWatch = () => {
     ended = true;
-    sessionStorage.removeItem(PUBLISH_WATCH_KEY);
     if (timer) {
       clearInterval(timer);
       timer = null;
     }
   };
 
+  const renderBuilding = (status) => {
+    const seconds =
+      typeof status?.lastOkDurationSeconds === "number" && status.lastOkDurationSeconds > 0
+        ? Math.round(status.lastOkDurationSeconds)
+        : null;
+    setText(
+      seconds
+        ? (i18n.buildBuilding || "").replace("{{seconds}}", String(seconds))
+        : i18n.buildBuildingUnknown || "",
+    );
+  };
+
   const render = (status) => {
+    if (ended) return; // a late in-flight response must not revive the strip
     const state = status?.state;
+    const finishedAt =
+      typeof status?.finishedAt === "string" ? Date.parse(status.finishedAt) : Number.NaN;
     if (state === "building") {
-      if (status.stuck) return setText(i18n.buildStuck || "");
-      const seconds =
-        typeof status.lastOkDurationSeconds === "number" && status.lastOkDurationSeconds > 0
-          ? Math.round(status.lastOkDurationSeconds)
-          : null;
-      return setText(
-        seconds
-          ? (i18n.buildBuilding || "").replace("{{seconds}}", String(seconds))
-          : i18n.buildBuildingUnknown || "",
-      );
+      if (status.stuck) return setText(i18n.buildStuck || ""); // keeps polling
+      return renderBuilding(status);
     }
     if (state === "ok") {
-      const finishedAt =
-        typeof status.finishedAt === "string" ? Date.parse(status.finishedAt) : Number.NaN;
       if (!Number.isNaN(finishedAt) && finishedAt > publishedAt) {
-        // Terminal: the build landed. (Client-side display only —
-        // templates never see this Date.)
+        // Terminal: the post-publish build landed. (Client-side display
+        // only — templates never see this Date.)
         setText(
           (i18n.buildLive || "").replace(
             "{{time}}",
@@ -362,22 +370,33 @@ function initBuildStatus(i18n) {
         return;
       }
       // Stale ok from before the publish (or finishedAt dropped): the
-      // rebuild hasn't been observed yet — keep waiting.
-      return setText(i18n.buildBuildingUnknown || "");
+      // rebuild hasn't been observed yet — show the building copy (the
+      // stale ok carries lastOkDurationSeconds, so the ~Xs estimate is
+      // usually available) and keep waiting.
+      return renderBuilding(status);
     }
     if (state === "failed") {
+      // With a real epoch, only a POST-publish failure is terminal. A
+      // stale failed (finishedAt ≤ epoch, or unparseable) means the LAST
+      // build failed before this publish — the publish just triggered a
+      // new build, so keep the building copy and poll on.
+      if (publishedAt > 0 && !(finishedAt > publishedAt)) {
+        return renderBuilding(status);
+      }
       const parts = [i18n.buildFailed || ""];
       if (typeof status.error === "string" && status.error !== "") {
         parts.push(status.error.slice(0, BUILD_ERROR_EXCERPT_CHARS));
       }
       parts.push(i18n.buildRetryHint || "");
       setText(parts.filter(Boolean).join(" "));
-      endWatch(); // terminal: failed (the live site is unchanged)
+      endWatch(); // terminal: this publish's build failed (live site unchanged)
       return;
     }
-    // unknown — or any unrecognized/garbage state — renders neutral copy
-    // and keeps polling (the writer may catch up).
-    setText(i18n.buildUnknown || "");
+    // unknown — or any unrecognized/garbage state. With a real epoch a
+    // build is known to be coming, so show the building copy; in legacy
+    // probe mode keep the neutral copy. Either way keep polling (the
+    // writer may catch up).
+    setText(publishedAt > 0 ? i18n.buildBuildingUnknown || "" : i18n.buildUnknown || "");
   };
 
   const fetchStatus = async () => {
@@ -397,24 +416,11 @@ function initBuildStatus(i18n) {
     if (status) render(status);
   };
 
-  const stamp = Number(sessionStorage.getItem(PUBLISH_WATCH_KEY));
-  if (Number.isFinite(stamp) && stamp > 0) {
-    // Mid-watch reload of the flash page: keep the original publish stamp.
-    publishedAt = stamp;
-    timer = setInterval(tick, BUILD_STATUS_POLL_MS);
-    tick();
-    return;
-  }
-
-  // No stamp: a fresh publish flash, or a reload after the watch ended.
-  // Probe FIRST — in probe mode (publishedAt 0) render() treats any ok
-  // with a finishedAt, and any failed, as terminal: show it, never watch.
+  // Probe immediately (terminal statuses resolve without a single poll),
+  // then poll every 5s until a terminal render stops the watch.
   (async () => {
-    const status = await fetchStatus();
-    if (status) render(status);
-    if (ended) return; // already terminal — the rendered copy is final
-    publishedAt = Date.now();
-    sessionStorage.setItem(PUBLISH_WATCH_KEY, String(publishedAt));
+    await tick();
+    if (ended) return;
     timer = setInterval(tick, BUILD_STATUS_POLL_MS);
   })();
 }

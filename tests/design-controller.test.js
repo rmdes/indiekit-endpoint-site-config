@@ -788,11 +788,22 @@ test("POST publish promotes the draft and writes the artifact", async () => {
   const artifacts = [];
   const router = makeRouter(ik, { writeArtifact: async (doc) => artifacts.push(doc) });
   const res = await callRoute(router, "post", "/homepage/publish");
-  assert.equal(flag(res, "published"), "1");
+  assert.match(flag(res, "published"), /^\d{13,}$/); // publish epoch (ms)
   assert.equal(artifacts.length, 1);
   const doc = ik._db.stores.compositions.get("homepage");
   assert.equal("draftTree" in doc, false);
   assert.equal(doc.status, "published");
+});
+
+test("publish redirect carries the injected clock's epoch as an integer (?published=<ms>)", async () => {
+  const epoch = Date.parse("2026-06-13T12:00:00.000Z");
+  const ik = makeIndiekit({ compositions: [homepageDoc({ draftTree: baseTree(), draftUpdatedAt: "D1" })] });
+  const router = makeRouter(ik, { writeArtifact: async () => {}, now: () => epoch });
+  const res = await callRoute(router, "post", "/homepage/publish");
+  const value = flag(res, "published");
+  assert.equal(value, String(epoch)); // SERVER clock — same seam as finishedAt/stuck math
+  const parsed = Number(value);
+  assert.ok(Number.isInteger(parsed) && parsed > 1e12); // editor.js plausibility gate
 });
 
 test("POST publish invalid draft → publish-invalid flash, nothing written", async () => {
@@ -974,7 +985,7 @@ test("publish rotates the token, bumps the revision, writes a FRESH preview-draf
     writePreviewArtifact: async (input) => previews.push(input),
   });
   const res = await callRoute(router, "post", "/homepage/publish");
-  assert.equal(flag(res, "published"), "1");
+  assert.match(flag(res, "published"), /^\d{13,}$/);
   const state = previewState(ik);
   assert.notEqual(state.token, "old-token"); // rotated unconditionally
   assert.equal(state.token.length, 22);
@@ -1013,7 +1024,7 @@ test("a preview-rotation failure after a successful publish still redirects publ
       writePreviewArtifact: async () => { throw new Error("disk full"); },
     });
     const res = await callRoute(router, "post", "/homepage/publish");
-    assert.equal(flag(res, "published"), "1"); // publish success is never masked
+    assert.match(flag(res, "published"), /^\d{13,}$/); // publish success is never masked
     assert.ok(warnings.some((w) => w.includes("preview rotation after publish failed")));
   } finally {
     console.warn = original;
@@ -1157,6 +1168,19 @@ test("GET /homepage?published=1 carries the merged build status in the locals (n
   const res = await callRoute(router, "get", "/homepage?published=1");
   assert.equal(res.rendered.locals.success, "published");
   assert.deepEqual(res.rendered.locals.buildStatus, { ...status, stuck: true });
+});
+
+test("GET /homepage?published=<epoch> gates the strip the same way (truthy, value never rendered)", async () => {
+  const status = buildingStatus({ lastOkDurationSeconds: 27 });
+  const router = makeRouter(makeIndiekit(), {
+    readStatus: async () => status,
+    now: atT0(10_000),
+  });
+  const res = await callRoute(router, "get", `/homepage?published=${T0}`);
+  assert.equal(res.rendered.locals.success, "published");
+  assert.deepEqual(res.rendered.locals.buildStatus, { ...status, stuck: false });
+  // the raw epoch must not leak into the template locals
+  assert.equal("published" in res.rendered.locals, false);
 });
 
 test("GET /homepage?published=1 with no status file → buildStatus unknown in locals", async () => {

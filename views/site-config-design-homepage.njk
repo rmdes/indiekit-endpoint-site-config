@@ -246,9 +246,10 @@
       {% else %}
       <p class="sc-draft-bar__status">{{ __("siteConfig.design.draftBar.live") }}</p>
       {# Publish-flow build-status strip (Phase 5 S2): renders ONLY on the
-         publish flash (?published=1) with the LAST-KNOWN status server-side
-         (no-JS path; the noscript note says reload to update — no
-         meta-refresh). editor.js takes over with 5s polling of the
+         publish flash (?published=<epoch> — the value is the publish time,
+         never rendered) with the LAST-KNOWN status server-side (no-JS path;
+         the noscript note says reload to update — no meta-refresh).
+         editor.js takes over with epoch-aware 5s polling of the
          build-status API. Unrecognized states render the neutral copy. #}
       {% if success == "published" %}
       <div class="sc-build-status" data-sc-build-status aria-live="polite">
