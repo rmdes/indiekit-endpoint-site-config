@@ -1086,6 +1086,20 @@ test("mergeBuildStatus: null → unknown; otherwise raw fields + stuck ride toge
   assert.deepEqual(mergeBuildStatus(status, T0 + 10_000), { ...status, stuck: false });
 });
 
+test("mergeBuildStatus strips an unparseable finishedAt (the | date filter would crash on it)", () => {
+  for (const finishedAt of ["garbage", "8 Feb 2025 oops no", 12_345, null, {}]) {
+    const merged = mergeBuildStatus({ state: "ok", finishedAt }, T0);
+    assert.equal("finishedAt" in merged, false, JSON.stringify(finishedAt));
+    assert.equal(merged.state, "ok");
+  }
+  // a valid ISO string passes through; the caller's object is never mutated
+  const status = { state: "ok", finishedAt: "2026-06-12T10:00:27.000Z" };
+  assert.equal(mergeBuildStatus(status, T0).finishedAt, status.finishedAt);
+  const garbage = { state: "ok", finishedAt: "garbage" };
+  mergeBuildStatus(garbage, T0);
+  assert.equal(garbage.finishedAt, "garbage");
+});
+
 test("GET /api/build-status responds the merged object with Cache-Control: no-store", async () => {
   const status = {
     state: "ok", buildId: "b1", startedAt: "2026-06-12T09:59:00.000Z",
@@ -1149,6 +1163,17 @@ test("GET /homepage?published=1 with no status file → buildStatus unknown in l
   const router = makeRouter(makeIndiekit(), { readStatus: async () => null });
   const res = await callRoute(router, "get", "/homepage?published=1");
   assert.deepEqual(res.rendered.locals.buildStatus, { state: "unknown", stuck: false });
+});
+
+test("GET /homepage?published=1 with garbage finishedAt → field stripped from locals (the no-JS GET never crashes the | date filter)", async () => {
+  const router = makeRouter(makeIndiekit(), {
+    readStatus: async () => ({ state: "ok", finishedAt: "garbage" }),
+  });
+  const res = await callRoute(router, "get", "/homepage?published=1");
+  // the view's ok branch is gated on finishedAt — with it stripped, the
+  // strip renders the neutral no-time copy instead of feeding garbage to
+  // date-fns parseISO
+  assert.deepEqual(res.rendered.locals.buildStatus, { state: "ok", stuck: false });
 });
 
 test("GET /homepage without ?published does not read the status file", async () => {

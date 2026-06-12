@@ -283,8 +283,19 @@ function initPreviewPane(i18n) {
  * read server-side); the watch ends on terminal states (post-publish ok,
  * or failed) and when the user navigates off the flash page. A stale "ok"
  * from BEFORE the publish keeps the rebuilding copy — the new build just
- * hasn't been observed yet. The no-JS path renders the last-known status
- * server-side with a reload-to-update note. */
+ * hasn't been observed yet.
+ *
+ * No stamp + a terminal status = a reload AFTER the watch already ended
+ * (endWatch cleared the stamp; the URL still says ?published=1). The probe
+ * branch handles it: fetch once FIRST and, if the status is already
+ * terminal (ok with a finishedAt, or failed), render it as-is and never
+ * (re)start the watch — re-stamping with the reload time would compare
+ * finishedAt against the WRONG moment and replace a correct "Live · time"
+ * with an eternal "Rebuilding…". Only a non-terminal probe (building,
+ * unknown, fetch failure) stamps and starts polling.
+ *
+ * The no-JS path renders the last-known status server-side with a
+ * reload-to-update note. */
 const BUILD_STATUS_POLL_MS = 5000;
 const BUILD_STATUS_URL = "/site-config/design/api/build-status";
 const PUBLISH_WATCH_KEY = "scPublishWatch";
@@ -299,12 +310,6 @@ function initBuildStatus(i18n) {
     sessionStorage.removeItem(PUBLISH_WATCH_KEY);
     return;
   }
-  // Set-once: reloads of ?published=1 keep the original publish stamp.
-  let publishedAt = Number(sessionStorage.getItem(PUBLISH_WATCH_KEY));
-  if (!Number.isFinite(publishedAt) || publishedAt <= 0) {
-    publishedAt = Date.now();
-    sessionStorage.setItem(PUBLISH_WATCH_KEY, String(publishedAt));
-  }
   const text = strip.querySelector("[data-sc-build-text]");
   if (!text) return;
 
@@ -312,8 +317,14 @@ function initBuildStatus(i18n) {
     text.textContent = value;
   };
 
+  // The moment finishedAt must beat for an "ok" to count as terminal.
+  // Stamp path: the publish time. Probe path: 0 — any finished build is
+  // terminal there (see the docblock above).
+  let publishedAt = 0;
   let timer = null;
+  let ended = false;
   const endWatch = () => {
+    ended = true;
     sessionStorage.removeItem(PUBLISH_WATCH_KEY);
     if (timer) {
       clearInterval(timer);
@@ -339,8 +350,8 @@ function initBuildStatus(i18n) {
       const finishedAt =
         typeof status.finishedAt === "string" ? Date.parse(status.finishedAt) : Number.NaN;
       if (!Number.isNaN(finishedAt) && finishedAt > publishedAt) {
-        // Terminal: the post-publish build landed. (Client-side display
-        // only — templates never see this Date.)
+        // Terminal: the build landed. (Client-side display only —
+        // templates never see this Date.)
         setText(
           (i18n.buildLive || "").replace(
             "{{time}}",
@@ -369,20 +380,43 @@ function initBuildStatus(i18n) {
     setText(i18n.buildUnknown || "");
   };
 
-  const tick = async () => {
+  const fetchStatus = async () => {
     try {
       const response = await fetch(BUILD_STATUS_URL, {
         headers: { Accept: "application/json" },
       });
-      if (!response.ok) return; // transient — keep polling
-      render(await response.json());
+      if (!response.ok) return null; // transient — caller keeps polling
+      return await response.json();
     } catch {
-      // network blip — keep polling; the last rendered copy stands
+      return null; // network blip — the last rendered copy stands
     }
   };
 
-  timer = setInterval(tick, BUILD_STATUS_POLL_MS);
-  tick();
+  const tick = async () => {
+    const status = await fetchStatus();
+    if (status) render(status);
+  };
+
+  const stamp = Number(sessionStorage.getItem(PUBLISH_WATCH_KEY));
+  if (Number.isFinite(stamp) && stamp > 0) {
+    // Mid-watch reload of the flash page: keep the original publish stamp.
+    publishedAt = stamp;
+    timer = setInterval(tick, BUILD_STATUS_POLL_MS);
+    tick();
+    return;
+  }
+
+  // No stamp: a fresh publish flash, or a reload after the watch ended.
+  // Probe FIRST — in probe mode (publishedAt 0) render() treats any ok
+  // with a finishedAt, and any failed, as terminal: show it, never watch.
+  (async () => {
+    const status = await fetchStatus();
+    if (status) render(status);
+    if (ended) return; // already terminal — the rendered copy is final
+    publishedAt = Date.now();
+    sessionStorage.setItem(PUBLISH_WATCH_KEY, String(publishedAt));
+    timer = setInterval(tick, BUILD_STATUS_POLL_MS);
+  })();
 }
 
 const i18n = readI18n();
