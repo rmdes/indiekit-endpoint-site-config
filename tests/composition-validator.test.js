@@ -38,16 +38,21 @@ test("drops unknown variant tokens with a warning, keeps valid ones", () => {
 });
 
 test("errors: unknown block type, bad role, bad kind, missing section id, schemaVersion", () => {
-  for (const mutate of [
-    (d) => { d.tree.children[0].type = "not-in-catalog"; },
-    (d) => { d.tree.role = "navigation"; },
-    (d) => { d.kind = "snowflake"; },
-    (d) => { delete d.tree.children[0].id; },
-    (d) => { d.schemaVersion = 3; },
+  for (const [mutate, pattern] of [
+    [(d) => { d.tree.children[0].type = "not-in-catalog"; }, /unknown block type/],
+    [(d) => { d.tree.role = "navigation"; }, /role/],
+    [(d) => { d.kind = "snowflake"; }, /kind/],
+    [(d) => { delete d.tree.children[0].id; }, /section\.id/],
+    [(d) => { d.schemaVersion = 3; }, /schemaVersion/],
   ]) {
     const doc = structuredClone(GOOD);
     mutate(doc);
-    assert.equal(validateComposition(doc, CATALOG).ok, false);
+    const result = validateComposition(doc, CATALOG);
+    assert.equal(result.ok, false);
+    assert.ok(
+      result.errors.some((e) => pattern.test(e)),
+      `expected an error matching ${pattern}, got: ${result.errors.join("; ")}`,
+    );
   }
 });
 
@@ -150,6 +155,22 @@ test("variant of wrong value type is dropped (sticky must be boolean, span from 
   assert.deepEqual(result.value.tree.children[1].variant, { gap: "normal" });
   assert.ok(result.warnings.some((w) => /sticky/.test(w)));
   assert.ok(result.warnings.some((w) => /span/.test(w)));
+});
+
+test("non-object variant is dropped with a warning; absent variant stays silent", () => {
+  for (const bad of ["wide", ["wide"]]) {
+    const doc = structuredClone(GOOD);
+    doc.tree.children[1].variant = bad;
+    const result = validateComposition(doc, CATALOG);
+    assert.equal(result.ok, true, result.errors.join("; "));
+    assert.ok(result.warnings.some((w) => /non-object variant/.test(w)));
+    assert.equal(Object.hasOwn(result.value.tree.children[1], "variant"), false);
+  }
+  const doc = structuredClone(GOOD);
+  delete doc.tree.children[1].variant;
+  const result = validateComposition(doc, CATALOG);
+  assert.equal(result.ok, true);
+  assert.ok(!result.warnings.some((w) => /variant/.test(w)));
 });
 
 test("variant filtered to nothing is omitted from the normalized node", () => {
