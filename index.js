@@ -67,6 +67,7 @@ export default class SiteConfigEndpoint {
     Indiekit.addEndpoint(this);
     Indiekit.addCollection("siteConfig");
     Indiekit.addCollection("homepageConfig");
+    Indiekit.addCollection("compositions");
 
     Indiekit.config.application.contentDir = this.options.contentDir;
 
