@@ -76,7 +76,21 @@ test("GET /api/migration-preview returns freshly-computed docs + seed state, no-
   // Current compositions-collection state: only "homepage" pre-exists in the
   // mock; the two sidebar surfaces are absent (and the v3 sidebars are empty
   // anyway, so the migrator computes no docs for them).
-  assert.deepEqual(response.body.seeded, ["homepage"]);
+  assert.deepEqual(response.body.existing, ["homepage"]);
+});
+
+test("migration-preview with nothing seeded yet returns existing: [] and never writes", async () => {
+  // With NO pre-existing compositions, a non-dry regression would reach the
+  // migrator's seed loop and call replaceOne for the homepage doc — the
+  // throwing replaceOne stub makes that explode loudly instead of passing
+  // silently (in the pre-existing-homepage fixture above, skip-if-existing
+  // would mask such a regression for that doc).
+  const router = adminApiRouter(makeIndiekit({ compositionsExisting: [] }));
+  const response = await callRoute(router, "GET", "/migration-preview");
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body.existing, []);
+  assert.equal(response.body.report.valid, true);
+  assert.ok(response.body.docs.find((d) => d._id === "homepage"));
 });
 
 test("migration-preview with no v3 source returns the uniform skipped report", async () => {
@@ -85,7 +99,7 @@ test("migration-preview with no v3 source returns the uniform skipped report", a
   assert.equal(response.statusCode, 200);
   assert.equal(response.body.report.skipped, true);
   assert.deepEqual(response.body.docs, []);
-  assert.deepEqual(response.body.seeded, []);
+  assert.deepEqual(response.body.existing, []);
 });
 
 test("migration-preview without a database returns 503", async () => {

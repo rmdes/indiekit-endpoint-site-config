@@ -140,7 +140,8 @@ export default class SiteConfigEndpoint {
             console.log(
               `[site-config] v4 migration: seeded=[${report.seeded}] ` +
                 `existing=[${report.skippedExisting}] valid=${report.valid}` +
-                (report.errors.length ? " errors=" + report.errors.join(" | ") : ""),
+                (report.errors.length ? " errors=" + report.errors.join(" | ") : "") +
+                (report.warnings.length ? " warnings=" + report.warnings.join(" | ") : ""),
             );
           }
         }
