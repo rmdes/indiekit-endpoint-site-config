@@ -159,7 +159,13 @@ function initUndoFlash(i18n) {
  * The no-JS path (plain POST + full page reloads) works without any of
  * this. */
 const PREVIEW_POLL_MS = 3000;
-const PREVIEW_DEFAULT_CAP_MS = 90_000;
+// Last-resort polling cap, used ONLY when the site's build time is unknown
+// (calibration still unavailable after the build-status self-probe — see
+// fetchLastOkSeconds). Sized at 5 min so a genuinely hung build still
+// eventually surfaces the recovery hint, while NOT false-tripping "taking
+// longer than usual" on large sites whose real build runs ~2 min. When
+// calibration IS known we cap at expected×3 (with the 30s floor below).
+const PREVIEW_DEFAULT_CAP_MS = 300_000;
 const PREVIEW_MIN_CAP_MS = 30_000;
 
 function initPreviewPane(i18n) {
@@ -174,6 +180,30 @@ function initPreviewPane(i18n) {
 
   const setStatus = (text) => {
     if (status) status.textContent = text;
+  };
+
+  /** One-shot calibration probe. The preview POST reads expectedSeconds from
+   * the build-status snapshot, but lastOkDurationSeconds is ABSENT in two
+   * windows: the boot window before the first `ok` write establishes it, and
+   * just after start.sh's crash wrapper writes a `failed` status (which drops
+   * the field by design — the next ok re-establishes it). In those windows
+   * the POST returns expectedSeconds=null even though calibration may have
+   * landed moments later. So when the POST snapshot is null, do ONE GET of the
+   * same build-status API the publish strip uses and pick up a fresh
+   * lastOkDurationSeconds. Returns a positive number or null; fetch failure
+   * leaves it null (we then fall back to PREVIEW_DEFAULT_CAP_MS). */
+  const fetchLastOkSeconds = async () => {
+    try {
+      const response = await fetch(BUILD_STATUS_URL, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) return null;
+      const status = await response.json();
+      const seconds = status?.lastOkDurationSeconds;
+      return typeof seconds === "number" && seconds > 0 ? seconds : null;
+    } catch {
+      return null; // uncalibrated — caller uses the blind fallback cap
+    }
   };
 
   const reloadFrame = (iframe) => {
@@ -265,7 +295,17 @@ function initPreviewPane(i18n) {
         headers: { Accept: "application/json" },
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      startPolling(await response.json());
+      const result = await response.json();
+      // Self-calibrate: the POST can race ahead of calibration (boot window,
+      // or just after a crash-wrapper `failed` status drops the field). When
+      // its snapshot is null, probe the build-status API once for a fresh
+      // lastOkDurationSeconds before falling back to the blind cap.
+      if (
+        !(typeof result.expectedSeconds === "number" && result.expectedSeconds > 0)
+      ) {
+        result.expectedSeconds = await fetchLastOkSeconds();
+      }
+      startPolling(result);
     } catch {
       // Fall back to the plain POST (full reload) — the no-JS path.
       stopPolling();
