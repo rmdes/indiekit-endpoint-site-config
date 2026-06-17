@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { SURFACES, getSurface } from "../lib/editor/surface-registry.js";
 import { homepageZoneModel } from "../lib/editor/zone-models/homepage.js";
+import { listingZoneModel } from "../lib/editor/zone-models/listing.js";
 import { LAYOUT_PRESETS } from "../lib/presets/layout-presets.js";
 import { buildHomepageTree } from "../lib/storage/migrate-v3-to-v4.js";
 
@@ -34,11 +35,39 @@ test("getSurface('homepage') returns the same entry as SURFACES.homepage", () =>
   assert.equal(getSurface("homepage"), SURFACES.homepage);
 });
 
-// ---- getSurface: not-live / unknown / prototype-safe ----
+// ---- getSurface: listing entry (6.3) ----
 
-test("getSurface('listing') returns null (not a live 6.2 surface)", () => {
-  assert.equal(getSurface("listing"), null);
+test("getSurface('listing') returns the listing entry with the exact fields", () => {
+  const entry = getSurface("listing");
+  assert.ok(entry, "listing entry exists");
+  assert.equal(entry.routeKey, "listing");
+  assert.equal(entry.surfaceId, "collection:default");
+  assert.equal(entry.kind, "collection");
+  assert.equal(entry.surfaceFilter, "collection");
+  assert.equal(entry.hubKey, "listing");
 });
+
+test("listing entry wires the listing zoneModel by identity, with empty recipes and null treeBuilder", () => {
+  const entry = getSurface("listing");
+  assert.equal(entry.zoneModel, listingZoneModel);
+  assert.deepEqual(entry.recipes, []);
+  assert.equal(entry.treeBuilder, null);
+});
+
+test("listing declares NO arrangement capability (sidebar-only)", () => {
+  const entry = getSurface("listing");
+  assert.equal(entry.arrangements, undefined);
+});
+
+test("getSurface('listing') returns the same entry as SURFACES.listing", () => {
+  assert.equal(getSurface("listing"), SURFACES.listing);
+});
+
+test("the listing entry is frozen", () => {
+  assert.ok(Object.isFrozen(SURFACES.listing));
+});
+
+// ---- getSurface: unknown / prototype-safe ----
 
 test("getSurface('unknown') returns null", () => {
   assert.equal(getSurface("unknown"), null);

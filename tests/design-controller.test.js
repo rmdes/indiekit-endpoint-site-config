@@ -390,25 +390,51 @@ test("readFlash surfaces query flags as success/error vars", () => {
 
 // ---- hub ----
 
-test("GET / renders the hub with 4 surface cards (homepage live, rest disabled)", async () => {
-  const ik = makeIndiekit({ compositions: [homepageDoc({ draftTree: baseTree(), draftUpdatedAt: "D" })] });
+test("GET / renders the hub with homepage + listing live, posttype/pages disabled", async () => {
+  const ik = makeIndiekit({
+    compositions: [
+      homepageDoc({ draftTree: baseTree(), draftUpdatedAt: "D" }),
+      {
+        ...sidebarDoc(),
+        draftTree: sidebarDoc().tree,
+        updatedAt: "2026-06-02T00:00:00.000Z",
+      },
+    ],
+  });
   const res = await callRoute(makeRouter(ik), "get", "/");
   assert.equal(res.rendered.view, "site-config-design");
   assert.equal(res.rendered.locals.activeTab, "design");
   const { surfaces } = res.rendered.locals;
   assert.equal(surfaces.length, 4);
+  // Order: homepage, listing (both enabled), then posttype, pages (disabled).
   assert.deepEqual(surfaces[0], {
     key: "homepage", href: "/site-config/design/homepage", enabled: true,
     exists: true, hasDraft: true, updatedAt: "2026-06-01T00:00:00.000Z",
   });
-  assert.deepEqual(surfaces.slice(1).map((s) => s.enabled), [false, false, false]);
+  assert.deepEqual(surfaces[1], {
+    key: "listing", href: "/site-config/design/listing", enabled: true,
+    exists: true, hasDraft: true, updatedAt: "2026-06-02T00:00:00.000Z",
+  });
+  assert.deepEqual(surfaces.slice(2).map((s) => s.key), ["posttype", "pages"]);
+  assert.deepEqual(surfaces.slice(2).map((s) => s.enabled), [false, false]);
 });
 
-test("GET / hub: no composition → exists false, hasDraft false", async () => {
+test("GET / hub: no composition → homepage exists false, hasDraft false", async () => {
   const res = await callRoute(makeRouter(makeIndiekit({ compositions: [] })), "get", "/");
   const [homepage] = res.rendered.locals.surfaces;
   assert.equal(homepage.exists, false);
   assert.equal(homepage.hasDraft, false);
+});
+
+test("GET / hub: listing with no composition → enabled card, exists false, hasDraft false", async () => {
+  // homepage present, listing absent → listing still enabled (registered) but
+  // reports no composition.
+  const ik = makeIndiekit({ compositions: [homepageDoc()] });
+  const res = await callRoute(makeRouter(ik), "get", "/");
+  const listing = res.rendered.locals.surfaces.find((s) => s.key === "listing");
+  assert.equal(listing.enabled, true);
+  assert.equal(listing.exists, false);
+  assert.equal(listing.hasDraft, false);
 });
 
 // ---- surface resolver (6.2) ----
@@ -419,12 +445,33 @@ test("resolveSurface 404s an unknown surface route", async () => {
   assert.equal(res.body, "Unknown design surface");
 });
 
-test("the not-yet-live placeholder surfaces (listing/posttype/pages) 404 on the editor", async () => {
+test("the not-yet-live placeholder surfaces (posttype/pages) 404 on the editor", async () => {
   const router = makeRouter(makeIndiekit());
-  for (const key of ["listing", "posttype", "pages"]) {
+  for (const key of ["posttype", "pages"]) {
     const res = await callRoute(router, "get", `/${key}`);
     assert.equal(res.statusCode, 404, key);
   }
+});
+
+test("GET /listing resolves (200, no crash) now that the listing surface is registered", async () => {
+  // Uses the REAL registry (no resolveSurfaceEntry seam) — the listing entry
+  // is live in 6.3-T3. The shared homepage view renders until T4 parameterizes
+  // it; this test only asserts the route resolves and renders without crashing.
+  const ik = makeIndiekit({ compositions: [sidebarDoc()] });
+  const res = await callRoute(makeRouter(ik), "get", "/listing");
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.rendered.view, "site-config-design-homepage");
+  assert.equal(res.rendered.locals.supportsArrangement, false);
+});
+
+test("POST /listing/apply-recipe 404s (empty recipes / null treeBuilder) without invoking treeBuilder", async () => {
+  // listing has recipes:[] and treeBuilder:null. The guard must 404 on the
+  // empty recipes BEFORE reaching treeBuilder (which is null → would throw).
+  const ik = makeIndiekit({ compositions: [sidebarDoc()] });
+  const res = await callRoute(makeRouter(ik), "post", "/listing/apply-recipe", { recipeId: "blog" });
+  assert.equal(res.statusCode, 404);
+  // The handler body never ran past the guard: no draft written.
+  assert.equal("draftTree" in ik._db.stores.compositions.get("collection:default"), false);
 });
 
 test("a POST to an unknown surface 404s before any handler runs", async () => {
