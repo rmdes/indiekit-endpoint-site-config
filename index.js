@@ -16,6 +16,7 @@ import { getHomepageConfig } from "./lib/storage/get-homepage-config.js";
 import { maybeSeedFromEnv  } from "./lib/storage/seed-from-env.js";
 import { maybeBackfillIdentity } from "./lib/storage/backfill-identity.js";
 import { migrateV3toV4 } from "./lib/storage/migrate-v3-to-v4.js";
+import { reseedListingComposition } from "./lib/storage/reseed-listing.js";
 
 import { writeThemeCss    } from "./lib/render/write-theme-css.js";
 import { writeCriticalCss } from "./lib/render/write-critical-css.js";
@@ -159,6 +160,28 @@ export default class SiteConfigEndpoint {
         } catch (error) {
           console.warn("[site-config] v4 migration failed:", error?.message ?? String(error));
         }
+      }
+
+      // 6.3-T7 one-time forced re-seed (design D7 option a): carry the
+      // operator's CURRENT blog-tab blogListingSidebar into collection:default
+      // ONCE at the 6.3 cutover (the migrator is skip-if-exists, so a
+      // post-migration blog-tab edit would otherwise be stranded). Gated on
+      // siteConfig.migrations.listingReseed so it runs exactly once and never
+      // clobbers a later listing-editor edit. MUST run BEFORE the artifact
+      // write below so the re-seeded tree is flushed to collection-default.json.
+      // Separate try/catch — never crashes boot.
+      try {
+        const db = Indiekit.database;
+        if (db) {
+          const { ran, reseeded } = await reseedListingComposition(db);
+          if (ran) {
+            console.log(
+              `[site-config] listing re-seed: ran=true reseeded=${reseeded}`,
+            );
+          }
+        }
+      } catch (error) {
+        console.warn("[site-config] listing re-seed failed:", error?.message ?? String(error));
       }
 
       // Phase 3 cutover: (re)write the composition artifact — THE theme

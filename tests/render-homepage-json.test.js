@@ -18,7 +18,6 @@ test("writeHomepageJson writes composition shape to file", async () => {
       hero: { enabled: true, showSocial: false },
       sections: [{ type: "hero", config: {} }],
       sidebar: [],
-      blogListingSidebar: [],
       blogPostSidebar: [],
       footer: [],
       updatedAt: "2026-05-26T00:00:00.000Z",
@@ -29,6 +28,27 @@ test("writeHomepageJson writes composition shape to file", async () => {
     assert.equal(written.hero.showSocial, false);
     assert.equal(written.sections.length, 1);
     assert.equal(written.updatedAt, "2026-05-26T00:00:00.000Z");
+  } finally {
+    cleanup();
+  }
+});
+
+test("writeHomepageJson no longer emits blogListingSidebar (dissolved into listing surface) but keeps blogPostSidebar", async () => {
+  const { file, cleanup } = tempPath();
+  try {
+    await writeHomepageJson({
+      layout: "two-column",
+      sections: [],
+      sidebar: [],
+      blogListingSidebar: [{ type: "search", config: {} }],
+      blogPostSidebar: [{ type: "toc", config: {} }],
+      footer: [],
+      updatedAt: "2026-06-18T00:00:00.000Z",
+    }, file);
+    const written = JSON.parse(readFileSync(file, "utf8"));
+    assert.equal("blogListingSidebar" in written, false);
+    assert.ok(Array.isArray(written.blogPostSidebar));
+    assert.equal(written.blogPostSidebar[0].type, "toc");
   } finally {
     cleanup();
   }

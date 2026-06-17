@@ -356,6 +356,7 @@
     },
     "blog": {
       "title": "Blog Layout",
+      "listingMoved": "The blog listing sidebar is now edited in Design → Listing, where it can be composed visually and shared across all listing pages.",
       "blogListingSidebar": {
         "title": "Blog Listing Sidebar",
         "description": "Configure widgets that appear in the sidebar on blog listing pages (/blog/, /notes/, /articles/...). Leave empty to use default widgets.",
