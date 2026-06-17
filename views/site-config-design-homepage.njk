@@ -11,7 +11,7 @@
 {% macro recipeForms(recipes, guarded) %}
 <div class="sc-recipes">
   {% for recipe in recipes %}
-  <form method="post" action="/site-config/design/homepage/apply-recipe" class="sc-recipe"
+  <form method="post" action="{{ surfaceBase }}/apply-recipe" class="sc-recipe"
     {%- if guarded %} onsubmit="return window.confirm(this.dataset.confirm)"
     data-confirm="{{ __('siteConfig.design.recipes.confirmReplace') }}"{% endif %}>
     <input type="hidden" name="recipeId" value="{{ recipe.id }}">
@@ -67,7 +67,7 @@
       text: __("siteConfig.design.flash.removed", { label: removedLabel })
     }) }}
     {% if undo %}
-    <form method="post" action="/site-config/design/homepage/blocks/restore" class="sc-flash__undo">
+    <form method="post" action="{{ surfaceBase }}/blocks/restore" class="sc-flash__undo">
       <input type="hidden" name="u" value="{{ undo.token }}">
       <button class="button button--small">{{ __("siteConfig.design.actions.undo") }}</button>
     </form>
@@ -155,7 +155,7 @@
 
     {# Arrangement picker (advanced mode only) #}
     {% if mode == "advanced" %}
-    <form method="post" action="/site-config/design/homepage/arrangement" class="sc-arrangement">
+    <form method="post" action="{{ surfaceBase }}/arrangement" class="sc-arrangement">
       <fieldset class="sc-arrangement__fieldset">
         <legend>{{ __("siteConfig.design.arrangement.title") }}</legend>
         <div class="sc-arrangement__options">
@@ -207,7 +207,7 @@
           {% for group in availableBlocks %}
           {% for entry in group.blocks %}
           {% if zone.name in entry.regions and not entry.dormant %}
-          <form method="post" action="/site-config/design/homepage/blocks/add" class="sc-add-entry">
+          <form method="post" action="{{ surfaceBase }}/blocks/add" class="sc-add-entry">
             <input type="hidden" name="type" value="{{ entry.id }}">
             <input type="hidden" name="zone" value="{{ zone.name }}">
             <span class="sc-add-entry__body">
@@ -235,10 +235,10 @@
         <time datetime="{{ draftUpdatedAt }}">{{ draftUpdatedAt | date("PPp") }}</time>
         {% endif %}
       </p>
-      <form method="post" action="/site-config/design/homepage/publish" class="sc-mini-form">
+      <form method="post" action="{{ surfaceBase }}/publish" class="sc-mini-form">
         <button class="button button--small button--primary">{{ __("siteConfig.design.actions.publish") }}</button>
       </form>
-      <form method="post" action="/site-config/design/homepage/discard" class="sc-mini-form"
+      <form method="post" action="{{ surfaceBase }}/discard" class="sc-mini-form"
         onsubmit="return window.confirm(this.dataset.confirm)"
         data-confirm="{{ __('siteConfig.design.confirms.discard') }}">
         <button class="button button--small button--secondary">{{ __("siteConfig.design.actions.discard") }}</button>
@@ -285,9 +285,9 @@
      (?pane=preview) via plain links, so no-JS toggles by full reload. #}
   <div class="sc-design__pane">
     <nav class="sc-pane-toggle" aria-label="{{ __('siteConfig.design.previewPane.toggleLabel') }}">
-      <a class="sc-pane-toggle__link" href="/site-config/design/homepage"
+      <a class="sc-pane-toggle__link" href="{{ surfaceBase }}"
         {%- if pane != "preview" %} aria-current="true"{% endif %}>{{ __("siteConfig.design.previewPane.structural") }}</a>
-      <a class="sc-pane-toggle__link" href="/site-config/design/homepage?pane=preview"
+      <a class="sc-pane-toggle__link" href="{{ surfaceBase }}?pane=preview"
         {%- if pane == "preview" %} aria-current="true"{% endif %}>{{ __("siteConfig.design.previewPane.live") }}</a>
     </nav>
     {% if pane == "preview" %}
@@ -321,7 +321,7 @@
     {% elif entry.regions.length %}
     {# entries whose every legal zone is hidden under the current arrangement
        have empty regions and are skipped entirely #}
-    <form method="post" action="/site-config/design/homepage/blocks/add" class="sc-add-entry"
+    <form method="post" action="{{ surfaceBase }}/blocks/add" class="sc-add-entry"
       data-sc-label="{{ entry.label }}">
       <input type="hidden" name="type" value="{{ entry.id }}">
       <span class="sc-add-entry__icon" aria-hidden="true">{{ icon(entry.icon) or icon("note") }}</span>
