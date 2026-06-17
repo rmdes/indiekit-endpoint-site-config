@@ -121,3 +121,30 @@ test("default surface ids derive from the live surface registry (homepage + coll
   const written = await writeCompositionArtifacts(db, { outputDir: dir });
   assert.deepEqual(written.sort(), ["collection:default", "homepage"]);
 });
+
+test("per-surface error isolation: a failure writing homepage does NOT prevent collection:default", async () => {
+  // Inject a writer that THROWS for the first live surface (homepage) but
+  // succeeds for the rest. The loop must catch the homepage failure, skip it,
+  // and STILL write collection:default — proving each surface is independent.
+  const written = [];
+  const failingWriter = async (doc) => {
+    if (doc._id === "homepage") {
+      throw new Error("simulated I/O error writing homepage.json");
+    }
+    written.push(doc._id);
+    return `/fake/${doc._id}.json`;
+  };
+  const db = makeDb(
+    new Map([
+      ["homepage", makeDoc("homepage", "homepage")],
+      ["collection:default", makeDoc("collection:default", "collection")],
+    ]),
+  );
+
+  const result = await writeCompositionArtifacts(db, { writer: failingWriter });
+
+  // homepage threw → not in the returned list; collection:default still written.
+  assert.deepEqual(result, ["collection:default"]);
+  assert.equal(result.includes("homepage"), false);
+  assert.deepEqual(written, ["collection:default"]);
+});
