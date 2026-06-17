@@ -22,7 +22,7 @@ import { writeCriticalCss } from "./lib/render/write-critical-css.js";
 import { writeSiteJson    } from "./lib/render/write-site-json.js";
 import { writeHomepageJson } from "./lib/render/write-homepage-json.js";
 import { writeBlockCatalogJson } from "./lib/render/write-block-catalog-json.js";
-import { writeCompositionJson } from "./lib/render/write-composition-json.js";
+import { writeCompositionArtifacts } from "./lib/render/write-composition-json.js";
 
 import { scanPlugins } from "./lib/discovery/scan-plugins.js";
 
@@ -169,17 +169,19 @@ export default class SiteConfigEndpoint {
       // migration failure and never crashes boot.
       try {
         const db = Indiekit.database;
-        const doc = db
-          ? await db.collection("compositions").findOne({ _id: "homepage" })
-          : null;
-        // doc?.tree guard: createDraftFromTree (apply-recipe on a fresh
-        // install) inserts DRAFT-ONLY docs with no published tree — writing
-        // those would activate the theme's v4 path with an empty artifact.
-        if (doc?.tree) {
-          await writeCompositionJson(doc);
-          console.log("[site-config] composition artifact written: homepage");
-        } else {
-          console.log("[site-config] composition artifact skipped: no published homepage composition");
+        // Write ONE artifact per LIVE surface (6.3: homepage + collection:default;
+        // the id list is derived from the surface registry inside the helper, so
+        // 6.4/6.5 surfaces auto-extend). The per-doc `doc?.tree` guard inside the
+        // helper still skips draft-only docs (apply-recipe on a fresh install can
+        // insert a draft-only doc with no published tree — writing that would
+        // activate the theme's v4 path with an empty artifact). posttype:default
+        // is NOT in the live registry until 6.4, so it is never written here.
+        const written = db ? await writeCompositionArtifacts(db) : [];
+        for (const surfaceId of written) {
+          console.log(`[site-config] composition artifact written: ${surfaceId}`);
+        }
+        if (written.length === 0) {
+          console.log("[site-config] composition artifact skipped: no published compositions");
         }
       } catch (error) {
         console.warn("[site-config] composition artifact write failed:", error?.message ?? String(error));
