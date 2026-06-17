@@ -50,3 +50,10 @@ test("getSurface('constructor') returns null (prototype keys do not leak)", () =
 test("getSurface(undefined) returns null", () => {
   assert.equal(getSurface(undefined), null);
 });
+
+// ---- immutability (regression guard for 6.3+ which extend this registry) ----
+
+test("SURFACES and its entries are frozen", () => {
+  assert.ok(Object.isFrozen(SURFACES), "SURFACES registry is frozen");
+  assert.ok(Object.isFrozen(SURFACES.homepage), "homepage entry is frozen");
+});
