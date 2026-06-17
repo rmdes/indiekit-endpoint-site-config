@@ -35,7 +35,10 @@ const SECTIONS = [section("b_1", "recent-posts"), section("b_2", "categories")];
 test("listingZoneModel exposes zoneModel:true, sidebar-only zones, and region map", () => {
   assert.equal(listingZoneModel.zoneModel, true);
   assert.deepEqual(listingZoneModel.zones, ["sidebar"]);
-  assert.deepEqual(listingZoneModel.regionMap, { sidebar: "complementary" });
+  // regionMap maps the editor ZONE NAME → block PLACEMENT REGION (identity
+  // here), NOT the tree container ROLE "complementary" (set in build()).
+  // {sidebar:"complementary"} would make placementAllows reject every block.
+  assert.deepEqual(listingZoneModel.regionMap, { sidebar: "sidebar" });
   assert.equal(typeof listingZoneModel.recognize, "function");
   assert.equal(typeof listingZoneModel.build, "function");
 });

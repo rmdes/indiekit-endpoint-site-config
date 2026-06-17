@@ -256,6 +256,55 @@ test("placementAllows maps zones to placement regions (model-driven)", () => {
   assert.equal(placementAllows(undefined, "main", HP_REGION_MAP), false);
 });
 
+test("placementAllows: listing regionMap makes sidebar blocks placeable, main-only blocks not (6.3 CRITICAL regression)", () => {
+  // The listing surface is sidebar-only. Its regionMap MUST map editor zone
+  // "sidebar" → placement region "sidebar" (NOT the tree role "complementary"):
+  // sidebar-capable blocks declare regions:["sidebar"], so a regionMap of
+  // {sidebar:"complementary"} makes placementAllows reject EVERY block → an
+  // unusable listing editor. This test fails under the broken regionMap.
+  const LISTING_REGION_MAP = listingZoneModel.regionMap;
+  // Realistic collection-surface sidebar blocks (regions incl. "sidebar").
+  const authorCard = BUILTIN_BLOCKS.find((b) => b.id === "author-card");
+  const categories = BUILTIN_BLOCKS.find((b) => b.id === "categories");
+  // A main-only block (regions: ["main"]) — never sidebar-placeable.
+  const featured = BUILTIN_BLOCKS.find((b) => b.id === "featured-posts");
+  assert.ok(authorCard && categories && featured, "fixtures present in builtin catalog");
+  assert.deepEqual(authorCard.placement.regions, ["sidebar"]);
+  assert.deepEqual(featured.placement.regions, ["main"]);
+
+  // Placeable: sidebar blocks in the listing sidebar zone.
+  assert.equal(placementAllows(authorCard, "sidebar", LISTING_REGION_MAP), true);
+  assert.equal(placementAllows(categories, "sidebar", LISTING_REGION_MAP), true);
+  // Not placeable: a main-only block in the (only) sidebar zone.
+  assert.equal(placementAllows(featured, "sidebar", LISTING_REGION_MAP), false);
+  assert.equal(placementAllows(undefined, "sidebar", LISTING_REGION_MAP), false);
+
+  // Guard the regionMap value directly so a future revert to "complementary"
+  // is caught even if the catalog changes.
+  assert.equal(LISTING_REGION_MAP.sidebar, "sidebar");
+});
+
+test("groupAvailableBlocks: listing editor sidebar zone offers ≥1 placeable collection block (not an empty picker)", () => {
+  // Integration-level: the listing editor's available-blocks for the sidebar
+  // zone must be non-empty. Mirrors the controller's call (surfaceFilter from
+  // the collection surface) + the placementAllows gate using the listing
+  // regionMap, against the REAL builtin catalog.
+  const names = new Set();
+  const groups = groupAvailableBlocks(BUILTIN_BLOCKS, names, { surfaceFilter: "collection" });
+  const placeable = groups
+    .flatMap((g) => g.blocks)
+    .filter((b) => placementAllows(
+      BUILTIN_BLOCKS.find((e) => e.id === b.id),
+      "sidebar",
+      listingZoneModel.regionMap,
+    ));
+  assert.ok(placeable.length >= 1, "listing sidebar zone must offer at least one placeable block");
+  // author-card and categories are both collection+sidebar — expect them.
+  const ids = placeable.map((b) => b.id);
+  assert.ok(ids.includes("author-card"), "author-card should be sidebar-placeable for collection");
+  assert.ok(ids.includes("categories"), "categories should be sidebar-placeable for collection");
+});
+
 test("groupAvailableBlocks honors the injected surfaceFilter (homepage vs collection)", () => {
   // A fixture catalog with surface-specific blocks: one homepage-only, one
   // collection-only, one unrestricted (no surfaces ⇒ offered everywhere).
