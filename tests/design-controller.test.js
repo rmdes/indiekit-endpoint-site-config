@@ -10,6 +10,7 @@ import {
   placementAllows,
   encodeUndoPayload,
   parseUndoPayload,
+  groupAvailableBlocks,
   readFlash,
   isStuckBuild,
   mergeBuildStatus,
@@ -17,10 +18,16 @@ import {
 } from "../lib/controllers/design.js";
 import { readBuildStatus } from "../lib/storage/read-build-status.js";
 import { treeToZones } from "../lib/editor/zones.js";
+import { homepageZoneModel } from "../lib/editor/zone-models/homepage.js";
 import { BUILTIN_BLOCKS } from "../lib/presets/builtin-blocks.js";
 import { LAYOUT_PRESETS } from "../lib/presets/layout-presets.js";
 
 const makeIds = () => { let n = 0; return (prefix) => `${prefix}_${String(++n).padStart(6, "0")}`; };
+
+// The homepage surface's zone vocabulary, threaded into the now model-driven
+// pure seams (parseZone/placementAllows/parseUndoPayload).
+const HP_ZONES = homepageZoneModel.zones;
+const HP_REGION_MAP = homepageZoneModel.regionMap;
 
 // ---- stubs ----
 
@@ -218,40 +225,62 @@ const flag = (res, name) => new URL(res.redirected.url, "http://x").searchParams
 
 // ---- pure helpers ----
 
-test("parseZone accepts the four zones only", () => {
-  for (const zone of ["hero", "main", "sidebar", "footer"]) assert.equal(parseZone(zone), zone);
-  for (const bad of ["root", "", undefined, null, "MAIN", 3]) assert.equal(parseZone(bad), null);
+test("parseZone accepts the four zones only (model-driven)", () => {
+  for (const zone of ["hero", "main", "sidebar", "footer"]) assert.equal(parseZone(zone, HP_ZONES), zone);
+  for (const bad of ["root", "", undefined, null, "MAIN", 3]) assert.equal(parseZone(bad, HP_ZONES), null);
+  // accepts either a list or a Set as the zone vocabulary
+  assert.equal(parseZone("main", new Set(HP_ZONES)), "main");
 });
 
 test("parseAddBody validates zone before type (zone errors win)", () => {
-  assert.deepEqual(parseAddBody({ zone: "main", type: "hero" }), { zone: "main", type: "hero" });
-  assert.deepEqual(parseAddBody({ zone: "attic", type: "hero" }), { error: "invalid-zone" });
-  assert.deepEqual(parseAddBody({ zone: "main" }), { error: "unknown-type" });
-  assert.deepEqual(parseAddBody(undefined), { error: "invalid-zone" });
+  assert.deepEqual(parseAddBody({ zone: "main", type: "hero" }, HP_ZONES), { zone: "main", type: "hero" });
+  assert.deepEqual(parseAddBody({ zone: "attic", type: "hero" }, HP_ZONES), { error: "invalid-zone" });
+  assert.deepEqual(parseAddBody({ zone: "main" }, HP_ZONES), { error: "unknown-type" });
+  assert.deepEqual(parseAddBody(undefined, HP_ZONES), { error: "invalid-zone" });
 });
 
-test("placementAllows maps zones to placement regions", () => {
+test("placementAllows maps zones to placement regions (model-driven)", () => {
   const hero = CATALOG.find((e) => e.id === "hero");
   const recent = CATALOG.find((e) => e.id === "recent-posts");
-  assert.equal(placementAllows(hero, "hero"), true);
-  assert.equal(placementAllows(hero, "main"), false);
-  assert.equal(placementAllows(recent, "main"), true);
-  assert.equal(placementAllows(recent, "footer"), false);
-  assert.equal(placementAllows(undefined, "main"), false);
+  assert.equal(placementAllows(hero, "hero", HP_REGION_MAP), true);
+  assert.equal(placementAllows(hero, "main", HP_REGION_MAP), false);
+  assert.equal(placementAllows(recent, "main", HP_REGION_MAP), true);
+  assert.equal(placementAllows(recent, "footer", HP_REGION_MAP), false);
+  assert.equal(placementAllows(undefined, "main", HP_REGION_MAP), false);
+});
+
+test("groupAvailableBlocks honors the injected surfaceFilter (homepage vs collection)", () => {
+  // A fixture catalog with surface-specific blocks: one homepage-only, one
+  // collection-only, one unrestricted (no surfaces ⇒ offered everywhere).
+  const catalog = [
+    { id: "hp-only", label: "HP", placement: { regions: ["main"], surfaces: ["homepage"] } },
+    { id: "col-only", label: "Col", placement: { regions: ["main"], surfaces: ["collection"] } },
+    { id: "anywhere", label: "Any", placement: { regions: ["main"] } },
+  ];
+  const idsIn = (groups) => groups.flatMap((g) => g.blocks.map((b) => b.id)).sort();
+  const names = new Set();
+  assert.deepEqual(
+    idsIn(groupAvailableBlocks(catalog, names, { surfaceFilter: "homepage" })),
+    ["anywhere", "hp-only"],
+  );
+  assert.deepEqual(
+    idsIn(groupAvailableBlocks(catalog, names, { surfaceFilter: "collection" })),
+    ["anywhere", "col-only"],
+  );
 });
 
 test("undo payload round-trips; oversized/garbage tokens → null", () => {
   const removed = { node: section("b_x", "recent-posts", { maxItems: 5 }), zone: "main", index: 1 };
   const token = encodeUndoPayload(removed);
-  assert.deepEqual(parseUndoPayload(token), removed);
-  assert.equal(parseUndoPayload("!!!not-base64-json"), null);
-  assert.equal(parseUndoPayload("A".repeat(5000)), null);
-  assert.equal(parseUndoPayload(undefined), null);
+  assert.deepEqual(parseUndoPayload(token, HP_ZONES), removed);
+  assert.equal(parseUndoPayload("!!!not-base64-json", HP_ZONES), null);
+  assert.equal(parseUndoPayload("A".repeat(5000), HP_ZONES), null);
+  assert.equal(parseUndoPayload(undefined, HP_ZONES), null);
   // container nodes and bad zones are rejected at parse time
   const container = encodeUndoPayload({ node: { block: "container", id: "c_x" }, zone: "main", index: 0 });
-  assert.equal(parseUndoPayload(container), null);
+  assert.equal(parseUndoPayload(container, HP_ZONES), null);
   const badZone = encodeUndoPayload({ node: section("b_x", "t"), zone: "attic", index: 0 });
-  assert.equal(parseUndoPayload(badZone), null);
+  assert.equal(parseUndoPayload(badZone, HP_ZONES), null);
 });
 
 test("parseUndoPayload structurally rejects non-object configs (schema-gate leniency bypass)", () => {
@@ -262,14 +291,14 @@ test("parseUndoPayload structurally rejects non-object configs (schema-gate leni
       node: { block: "section", id: "b_x", type: "recent-posts", v: 0, config },
       zone: "main", index: 0,
     });
-    assert.equal(parseUndoPayload(token), null, JSON.stringify(config));
+    assert.equal(parseUndoPayload(token, HP_ZONES), null, JSON.stringify(config));
   }
   // ABSENT config is fine (the handler rebuilds with {})
   const absent = encodeUndoPayload({
     node: { block: "section", id: "b_x", type: "recent-posts", v: 0 },
     zone: "main", index: 0,
   });
-  assert.ok(parseUndoPayload(absent));
+  assert.ok(parseUndoPayload(absent, HP_ZONES));
 });
 
 test("encodeUndoPayload returns null when the payload exceeds 4096 chars", () => {
@@ -313,6 +342,48 @@ test("GET / hub: no composition → exists false, hasDraft false", async () => {
   const [homepage] = res.rendered.locals.surfaces;
   assert.equal(homepage.exists, false);
   assert.equal(homepage.hasDraft, false);
+});
+
+// ---- surface resolver (6.2) ----
+
+test("resolveSurface 404s an unknown surface route", async () => {
+  const res = await callRoute(makeRouter(makeIndiekit()), "get", "/bogus");
+  assert.equal(res.statusCode, 404);
+  assert.equal(res.body, "Unknown design surface");
+});
+
+test("the not-yet-live placeholder surfaces (listing/posttype/pages) 404 on the editor", async () => {
+  const router = makeRouter(makeIndiekit());
+  for (const key of ["listing", "posttype", "pages"]) {
+    const res = await callRoute(router, "get", `/${key}`);
+    assert.equal(res.statusCode, 404, key);
+  }
+});
+
+test("a POST to an unknown surface 404s before any handler runs", async () => {
+  const ik = makeIndiekit();
+  const res = await callRoute(makeRouter(ik), "post", "/bogus/blocks/add",
+    { zone: "main", type: "cv-experience" });
+  assert.equal(res.statusCode, 404);
+  // no draft was written — the resolver short-circuits
+  assert.equal("draftTree" in ik._db.stores.compositions.get("homepage"), false);
+});
+
+test("/mode and /api/build-status are NOT shadowed by the :surface param route", async () => {
+  // /mode is a top-level POST (site-wide designMode); were it shadowed by
+  // /:surface it would resolve surface="mode" → 404.
+  const ik = makeIndiekit();
+  const router = makeRouter(ik);
+  const mode = await callRoute(router, "post", "/mode", { mode: "advanced" });
+  assert.equal(mode.redirected.url, "/site-config/design/homepage");
+  assert.equal(ik._db.stores.siteConfig.get("primary").designMode, "advanced");
+  // /api/build-status is a top-level GET; surface="api" would 404 it.
+  const status = await callRoute(
+    makeRouter(makeIndiekit(), { readStatus: async () => null }),
+    "get",
+    "/api/build-status",
+  );
+  assert.deepEqual(status.jsonBody, { state: "unknown", stuck: false });
 });
 
 // ---- editor GET ----
@@ -512,7 +583,7 @@ test("POST remove saves the draft and redirects with label + undo token", async 
   const res = await callRoute(makeRouter(ik), "post", "/homepage/blocks/b_m1/remove");
   assert.equal(res.redirected.status, 303);
   assert.equal(flag(res, "removed"), "Recent Posts"); // catalog label, not type
-  const payload = parseUndoPayload(flag(res, "u"));
+  const payload = parseUndoPayload(flag(res, "u"), HP_ZONES);
   assert.deepEqual(payload, { node: section("b_m1", "recent-posts", { maxItems: 10 }), zone: "main", index: 0 });
   assert.deepEqual(draftZones(ik).main.map((n) => n.id), ["b_m2"]);
 });
