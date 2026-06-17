@@ -11,6 +11,9 @@ import {
   encodeUndoPayload,
   parseUndoPayload,
   groupAvailableBlocks,
+  decorateZones,
+  typePresent,
+  findNode,
   readFlash,
   isStuckBuild,
   mergeBuildStatus,
@@ -267,6 +270,68 @@ test("groupAvailableBlocks honors the injected surfaceFilter (homepage vs collec
     idsIn(groupAvailableBlocks(catalog, names, { surfaceFilter: "collection" })),
     ["anywhere", "col-only"],
   );
+});
+
+test("groupAvailableBlocks with NO surfaceFilter applies no surface gate (restricted blocks still offered)", () => {
+  // A missing surfaceFilter must NOT silently drop surface-restricted blocks —
+  // every entry is offered.
+  const catalog = [
+    { id: "hp-only", label: "HP", placement: { regions: ["main"], surfaces: ["homepage"] } },
+    { id: "col-only", label: "Col", placement: { regions: ["main"], surfaces: ["collection"] } },
+    { id: "anywhere", label: "Any", placement: { regions: ["main"] } },
+  ];
+  const idsIn = (groups) => groups.flatMap((g) => g.blocks.map((b) => b.id)).sort();
+  assert.deepEqual(
+    idsIn(groupAvailableBlocks(catalog, new Set(), {})),
+    ["anywhere", "col-only", "hp-only"],
+  );
+});
+
+// A mock alternate zone-model: NOT homepage's vocabulary. `featured` is a
+// single slot (node | null, like homepage's hero); `main` is a list zone.
+// This proves the zone helpers derive their slots from the model and don't
+// crash on a surface whose zones differ from homepage's four.
+const ALT_MODEL = {
+  zoneModel: true,
+  zones: ["main", "featured"],
+  regionMap: { main: "main", featured: "hero" },
+};
+
+test("decorateZones/typePresent/findNode generalize to an alternate zone-model", () => {
+  const altZones = {
+    arrangement: "stack",
+    main: [section("a1", "recent-posts", { maxItems: 3 }), section("a2", "custom-html", {})],
+    featured: section("f1", "hero", { showSocial: true }),
+  };
+  const blocks = decorateZones(altZones, CATALOG, new Set(), "simple", ALT_MODEL);
+  // result is keyed by the MODEL's zones, not hardcoded hero/main/sidebar/footer
+  assert.deepEqual(Object.keys(blocks).sort(), ["featured", "main"]);
+  // list zone → array of cards; single slot → a single card object
+  assert.equal(Array.isArray(blocks.main), true);
+  assert.equal(blocks.main.length, 2);
+  assert.equal(blocks.main[0].type, "recent-posts");
+  assert.equal(Array.isArray(blocks.featured), false);
+  assert.equal(blocks.featured.type, "hero");
+  // hero block's legalZones derive from the model's regionMap: hero fits the
+  // "featured" region (mapped to "hero"); it's already there, so it's excluded.
+  assert.deepEqual(blocks.featured.legalZones, []);
+
+  // typePresent flattens list + single slots across the model's zones
+  assert.equal(typePresent(altZones, "hero", ALT_MODEL), true);
+  assert.equal(typePresent(altZones, "recent-posts", ALT_MODEL), true);
+  assert.equal(typePresent(altZones, "missing", ALT_MODEL), false);
+
+  // findNode searches list zones AND single slots
+  assert.equal(findNode(altZones, "a2", ALT_MODEL).type, "custom-html");
+  assert.equal(findNode(altZones, "f1", ALT_MODEL).type, "hero");
+  assert.equal(findNode(altZones, "nope", ALT_MODEL), null);
+});
+
+test("decorateZones renders an empty single slot as null (alternate model)", () => {
+  const altZones = { arrangement: "stack", main: [], featured: null };
+  const blocks = decorateZones(altZones, CATALOG, new Set(), "simple", ALT_MODEL);
+  assert.deepEqual(blocks.main, []);
+  assert.equal(blocks.featured, null);
 });
 
 test("undo payload round-trips; oversized/garbage tokens → null", () => {
