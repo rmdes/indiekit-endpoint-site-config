@@ -12,7 +12,7 @@
    polling. Context: preview {token, revision}, previewing. #}
 <div class="sc-design__preview sc-design__preview--live">
   <div class="sc-preview-bar">
-    <form method="post" action="/site-config/design/homepage/preview" class="sc-mini-form" data-sc-preview-form>
+    <form method="post" action="{{ surfaceBase }}/preview" class="sc-mini-form" data-sc-preview-form>
       <button class="button button--small">{{ __("siteConfig.design.previewPane.update") }}</button>
     </form>
     {# JS-only manual reload affordance — editor.js reveals it. #}

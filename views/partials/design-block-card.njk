@@ -2,7 +2,7 @@
    Context: card (decorated block card), zone ({ name }), openBlockId,
    fieldErrors, submittedConfig (the editor GET locals). #}
 {% from "badge/macro.njk" import badge with context %}
-{% set blockBase = "/site-config/design/homepage/blocks/" + card.id %}
+{% set blockBase = surfaceBase + "/blocks/" + card.id %}
 <article class="sc-block-card{% if card.dormant %} sc-block-card--dormant{% endif %}"
   data-sc-block="{{ card.id }}">
   <div class="sc-block-card__head">
