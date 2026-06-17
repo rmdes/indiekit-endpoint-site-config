@@ -311,6 +311,40 @@ test("zonesToTree wrapper guard: old call style (options as 2nd arg) still works
   assert.deepEqual(oldStyle, newStyle);
 });
 
+test("zonesToTree wrapper guard: options bag with method-name lookalikes is NOT a model — idFactory is honored", () => {
+  // Hardening: the overload guard sniffs the explicit `zoneModel: true`
+  // sentinel, NOT the presence of build/recognize methods. An options object
+  // that happens to carry build/recognize keys (no sentinel) must fall
+  // through to the default homepage model so its idFactory is honored — not
+  // be misclassified as a model (which would drop idFactory → undefined ids).
+  const lookalike = {
+    build() { throw new Error("must not be called — this is options, not a model"); },
+    recognize() { throw new Error("must not be called — this is options, not a model"); },
+    idFactory: makeIds(),
+  };
+  const tree = zonesToTree({
+    arrangement: "stack",
+    hero: null,
+    main: [{ block: "section", id: "b_keep", type: "recent-posts", v: 0, config: {} }],
+    sidebar: [],
+    footer: [],
+  }, lookalike);
+  // The default model built the tree AND honored lookalike.idFactory: no
+  // undefined ids anywhere.
+  assert.equal(tree.role, "root");
+  assert.match(tree.id, /^c_/);
+  assert.match(tree.children[0].id, /^c_/);
+  assert.equal(tree.children[0].children[0].id, "b_keep");
+});
+
+test("zonesToTree wrapper guard: real model with sentinel still routes to model.build", () => {
+  const tree = buildHomepageTree(V3, makeIds());
+  const zones = treeToZones(tree);
+  assert.equal(homepageZoneModel.zoneModel, true); // sentinel present
+  const explicit = zonesToTree(zones, homepageZoneModel, { idFactory: makeIds() });
+  assert.deepEqual(explicit, tree);
+});
+
 // ---- ROUND-TRIP PROPERTY: every recognized shape survives build(recognize(t)) deep-equal incl. ids ----
 
 test("ROUND-TRIP PROPERTY (zone-model): plain-stack and 2-1 columns, with/without hero/footer", () => {
