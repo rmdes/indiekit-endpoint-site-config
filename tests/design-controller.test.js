@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import nunjucks from "nunjucks";
 import {
   designRouter,
   parseAddBody,
@@ -1011,6 +1013,114 @@ test("POST /listing/arrangement 404s even for an otherwise-valid arrangement val
   const res = await callRoute(router, "post", "/listing/arrangement", { arrangement: "sidebar-right" });
   assert.equal(res.statusCode, 404);
   assert.equal("draftTree" in ik._db.stores.compositions.get("collection:default"), false);
+});
+
+// ---- zoneNames local + shared-view parameterization (6.3-T4) ----
+//
+// The editor view (site-config-design-homepage.njk) is SHARED across surfaces.
+// T4 drives the rendered zones from `zoneNames` (= surface.zoneModel.zones) so a
+// sidebar-only surface renders just its sidebar editor — no empty hero/main/
+// footer, no arrangement form. The locals tests below assert the controller
+// exposes the right vocabulary; the render tests prove the view honors it.
+
+test("GET /homepage exposes zoneNames = the homepage zone-model's four zones", async () => {
+  const res = await callRoute(makeRouter(makeIndiekit()), "get", "/homepage");
+  assert.deepEqual(res.rendered.locals.zoneNames, ["hero", "main", "sidebar", "footer"]);
+});
+
+test("GET /listing exposes zoneNames = ['sidebar'] (the listing zone-model)", async () => {
+  const ik = makeIndiekit({ compositions: [sidebarDoc()] });
+  const router = makeRouter(ik, { resolveSurfaceEntry: withListing });
+  const res = await callRoute(router, "get", "/listing");
+  assert.deepEqual(res.rendered.locals.zoneNames, ["sidebar"]);
+});
+
+// Render the SHARED view's `{% block content %}` body directly. We strip the
+// `{% extends %}`/`{% from %}` lines and provide the imported macros as no-op
+// globals, because the fork's modal-dialog/toggle-switch macros aren't in the
+// installed @indiekit/frontend. This faithfully exercises the EXACT visibleZones
+// build + zone loop T4 changed.
+function renderEditorContent(locals) {
+  const source = readFileSync(
+    new URL("../views/site-config-design-homepage.njk", import.meta.url),
+    "utf8",
+  );
+  const body = source
+    .replace(/\{% extends [^%]+%\}/g, "")
+    .replace(/\{% from [^%]+%\}/g, "")
+    .replace(/\{% block content %\}/g, "")
+    .replace(/\{% endblock %\}/g, "");
+  const env = new nunjucks.Environment(
+    new nunjucks.FileSystemLoader([
+      "views",
+      "views/partials",
+      "node_modules/@indiekit/frontend/components",
+      "node_modules/@indiekit/frontend",
+    ]),
+    { autoescape: true },
+  );
+  env.addGlobal("__", (k, o) => (o ? `${k}:${JSON.stringify(o)}` : k));
+  env.addGlobal("icon", (n) => `<icon>${n || ""}</icon>`);
+  for (const m of ["badge", "button", "details", "modalDialog", "notificationBanner", "toggleSwitch"]) {
+    env.addGlobal(m, (...a) => `<${m}>${JSON.stringify(a)}</${m}>`);
+  }
+  env.addFilter("date", (v, f) => `[date:${v}:${f}]`);
+  env.addFilter("truncate", (v, n) => String(v).slice(0, n));
+  env.addFilter("round", (v) => Math.round(v));
+  env.addFilter("dump", (v) => JSON.stringify(v));
+  return env.renderString(body, locals);
+}
+
+const RENDER_BLOCKS = () => ({
+  hero: { id: "b_hero", type: "hero", label: "Hero", icon: "home", config: {}, legalZones: [], fields: [] },
+  main: [
+    { id: "b_m1", type: "recent-posts", label: "Recent", icon: "list", config: { maxItems: 10 }, legalZones: ["sidebar"], fields: [] },
+    { id: "b_m2", type: "custom-html", label: "Custom", icon: "code", config: {}, legalZones: ["sidebar", "footer"], fields: [] },
+  ],
+  sidebar: [{ id: "b_s1", type: "recent-posts", label: "Recent", icon: "list", config: { maxItems: 5 }, legalZones: ["main"], fields: [] }],
+  footer: [],
+});
+const RENDER_AVAILABLE = () => [
+  { group: "built-in", blocks: [
+    { id: "hero", label: "Hero", icon: "home", description: "", regions: ["hero"], dormant: false },
+    { id: "recent-posts", label: "Recent", icon: "list", description: "", regions: ["main", "sidebar"], dormant: false },
+  ]},
+];
+const RENDER_BASE = {
+  activeTab: "design", recipes: [{ id: "blog", label: "Blog", description: "d" }],
+  mode: "advanced", isDraft: true, draftUpdatedAt: "2026-06-12T08:00:00.000Z",
+  undo: null, pane: "structural", preview: { token: "t", revision: 1 }, previewing: null,
+};
+
+test("editor view renders ALL homepage zones + arrangement form when zoneNames=4 and supportsArrangement", () => {
+  const blocks = RENDER_BLOCKS();
+  const html = renderEditorContent({
+    ...RENDER_BASE, supportsArrangement: true,
+    surfaceBase: "/site-config/design/homepage",
+    zoneNames: ["hero", "main", "sidebar", "footer"],
+    zones: { arrangement: "sidebar-right", ...blocks },
+    blocks, availableBlocks: RENDER_AVAILABLE(),
+  });
+  for (const zone of ["hero", "main", "sidebar", "footer"]) {
+    assert.match(html, new RegExp(`data-sc-zone="${zone}"`), `homepage missing zone ${zone}`);
+  }
+  assert.match(html, /class="sc-arrangement"/, "homepage missing arrangement form");
+});
+
+test("editor view renders ONLY the sidebar zone (no hero/main/footer, no arrangement form) when zoneNames=['sidebar']", () => {
+  const blocks = RENDER_BLOCKS();
+  const html = renderEditorContent({
+    ...RENDER_BASE, supportsArrangement: false,
+    surfaceBase: "/site-config/design/listing",
+    zoneNames: ["sidebar"],
+    zones: { sidebar: blocks.sidebar },
+    blocks: { sidebar: blocks.sidebar }, availableBlocks: RENDER_AVAILABLE(),
+  });
+  assert.match(html, /data-sc-zone="sidebar"/, "listing missing sidebar zone");
+  for (const zone of ["hero", "main", "footer"]) {
+    assert.doesNotMatch(html, new RegExp(`data-sc-zone="${zone}"`), `listing must NOT render zone ${zone}`);
+  }
+  assert.doesNotMatch(html, /class="sc-arrangement"/, "listing must NOT render arrangement form");
 });
 
 // ---- recipes ----

@@ -117,16 +117,35 @@
 
 {% else %}
 {# ---- the two-pane editor ---- #}
+{# visibleZones is built from the SURFACE'S zone vocabulary (zoneNames, e.g.
+   homepage's ["hero","main","sidebar","footer"] or listing's ["sidebar"]). Each
+   zone is pushed only when the surface's zone-model declares it ("<zone>" in
+   zoneNames), so a sidebar-only surface (listing) renders just its sidebar
+   editor — no empty hero/main/footer. For homepage zoneNames contains all four,
+   so every membership guard is true and the rendered CONTENT is unchanged from
+   before this gate (the guards add only insignificant inter-block whitespace).
+   The arrangement axis (sidebar visibility under stack vs sidebar-right, and the
+   always-on footer in advanced mode) is gated on supportsArrangement so a
+   no-arrangement surface shows its zone whenever the model declares it. #}
 {% set visibleZones = [] %}
-{% set _push = visibleZones.push({ name: "hero", cards: [blocks.hero] if blocks.hero else [] }) %}
-{% set _push = visibleZones.push({ name: "main", cards: blocks.main }) %}
-{# Sidebar shows for sidebar-right, or whenever it still holds blocks under
-   stack (orphans stay visible and manageable — mirror the footer pattern). #}
-{% if zones.arrangement == "sidebar-right" or blocks.sidebar.length %}
-  {% set _push = visibleZones.push({ name: "sidebar", cards: blocks.sidebar }) %}
+{% if "hero" in zoneNames %}
+  {% set _push = visibleZones.push({ name: "hero", cards: [blocks.hero] if blocks.hero else [] }) %}
 {% endif %}
-{% if mode == "advanced" or blocks.footer.length %}
+{% if "main" in zoneNames %}
+  {% set _push = visibleZones.push({ name: "main", cards: blocks.main }) %}
+{% endif %}
+{# Sidebar shows for sidebar-right, or whenever it still holds blocks under
+   stack (orphans stay visible and manageable — mirror the footer pattern); a
+   surface WITHOUT an arrangement axis shows it whenever the model declares it. #}
+{% if "sidebar" in zoneNames %}
+  {% if not supportsArrangement or zones.arrangement == "sidebar-right" or blocks.sidebar.length %}
+  {% set _push = visibleZones.push({ name: "sidebar", cards: blocks.sidebar }) %}
+  {% endif %}
+{% endif %}
+{% if "footer" in zoneNames %}
+  {% if mode == "advanced" or blocks.footer.length %}
   {% set _push = visibleZones.push({ name: "footer", cards: blocks.footer }) %}
+  {% endif %}
 {% endif %}
 
 <div class="sc-design">
