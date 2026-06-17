@@ -153,8 +153,10 @@
       {{ recipeForms(recipes, true) }}
     {% endcall %}
 
-    {# Arrangement picker (advanced mode only) #}
-    {% if mode == "advanced" %}
+    {# Arrangement picker: advanced mode AND a surface that has an arrangement
+       axis (6.3-T2 capability gate). Homepage supportsArrangement is truthy, so
+       this renders exactly as before; a sidebar-only surface gets no form. #}
+    {% if mode == "advanced" and supportsArrangement %}
     <form method="post" action="{{ surfaceBase }}/arrangement" class="sc-arrangement">
       <fieldset class="sc-arrangement__fieldset">
         <legend>{{ __("siteConfig.design.arrangement.title") }}</legend>

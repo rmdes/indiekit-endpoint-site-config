@@ -22,6 +22,8 @@ import {
 import { readBuildStatus } from "../lib/storage/read-build-status.js";
 import { treeToZones } from "../lib/editor/zones.js";
 import { homepageZoneModel } from "../lib/editor/zone-models/homepage.js";
+import { listingZoneModel } from "../lib/editor/zone-models/listing.js";
+import { getSurface } from "../lib/editor/surface-registry.js";
 import { BUILTIN_BLOCKS } from "../lib/presets/builtin-blocks.js";
 import { LAYOUT_PRESETS } from "../lib/presets/layout-presets.js";
 
@@ -880,6 +882,88 @@ test("POST arrangement stack→sidebar-right and invalid values", async () => {
   assert.equal(draftZones(ik).arrangement, "sidebar-right");
   const bad = await callRoute(router, "post", "/homepage/arrangement", { arrangement: "diagonal" });
   assert.equal(flag(bad, "error"), "invalid-arrangement");
+});
+
+// ---- arrangement capability gate (6.3-T2) ----
+//
+// The /arrangement route is homepage-shaped: it spreads `zones.main` when
+// collapsing the sidebar. A sidebar-only surface (the 6.3 listing surface)
+// has NO `main` zone — reaching that body would throw. The gate must 404 on
+// `!surface.arrangements` BEFORE any zone access.
+//
+// The listing surface isn't registered until 6.3-T3, so we exercise the gate
+// through designRouter's `resolveSurfaceEntry` seam: a real, off-registry
+// surface entry that OMITS `arrangements` and uses the sidebar-only
+// listingZoneModel. Its composition has a populated sidebar so that — were the
+// gate absent — the handler would actually reach (and crash on) the missing
+// `main` zone, not bail earlier.
+
+// A recognized sidebar-only composition (root stack → one sticky complementary
+// stack → sections). zones from this tree have `sidebar` but no `main`.
+const sidebarDoc = () => ({
+  _id: "collection:default", schemaVersion: 4, kind: "collection", status: "published",
+  tree: {
+    block: "container", id: "c_root", as: "stack", role: "root",
+    children: [
+      {
+        block: "container", id: "c_side", as: "stack", role: "complementary",
+        variant: { sticky: true },
+        children: [section("b_s1", "recent-posts", { maxItems: 5 })],
+      },
+    ],
+  },
+  updatedAt: "2026-06-01T00:00:00.000Z", updatedBy: "test",
+});
+
+// A surface entry with NO `arrangements` field, modeling the listing surface.
+const NO_ARRANGEMENT_SURFACE = Object.freeze({
+  routeKey: "listing",
+  surfaceId: "collection:default",
+  kind: "collection",
+  surfaceFilter: "collection",
+  editorView: "site-config-design-homepage",
+  hubKey: "listing",
+  zoneModel: listingZoneModel,
+  recipes: [],
+  treeBuilder: () => null,
+  // arrangements intentionally omitted ⇒ no arrangement axis.
+});
+
+// Resolver seam: keeps the real registry for known keys, adds `listing`.
+const withListing = (key) =>
+  key === "listing" ? NO_ARRANGEMENT_SURFACE : getSurface(key);
+
+test("POST /listing/arrangement 404s on a no-arrangement surface (no zones.main crash)", async () => {
+  const ik = makeIndiekit({ compositions: [sidebarDoc()] });
+  const router = makeRouter(ik, { resolveSurfaceEntry: withListing });
+  // `stack` would, on homepage, spread `zones.main` — a sidebar-only surface
+  // has none, so reaching the body would throw. The gate must 404 first.
+  const res = await callRoute(router, "post", "/listing/arrangement", { arrangement: "stack" });
+  assert.equal(res.statusCode, 404);
+  // The handler body never ran: no draft was written to the composition doc.
+  assert.equal("draftTree" in ik._db.stores.compositions.get("collection:default"), false);
+});
+
+test("GET /homepage exposes supportsArrangement:true (view renders the arrangement form)", async () => {
+  const res = await callRoute(makeRouter(makeIndiekit()), "get", "/homepage");
+  assert.equal(res.rendered.locals.supportsArrangement, true);
+});
+
+test("GET /listing exposes supportsArrangement:false (no arrangement form for a sidebar-only surface)", async () => {
+  const ik = makeIndiekit({ compositions: [sidebarDoc()] });
+  const router = makeRouter(ik, { resolveSurfaceEntry: withListing });
+  const res = await callRoute(router, "get", "/listing");
+  assert.equal(res.rendered.locals.supportsArrangement, false);
+});
+
+test("POST /listing/arrangement 404s even for an otherwise-valid arrangement value", async () => {
+  // Proves the gate keys on the surface capability, NOT on the value: a value
+  // that would be valid on homepage ("sidebar-right") is still rejected here.
+  const ik = makeIndiekit({ compositions: [sidebarDoc()] });
+  const router = makeRouter(ik, { resolveSurfaceEntry: withListing });
+  const res = await callRoute(router, "post", "/listing/arrangement", { arrangement: "sidebar-right" });
+  assert.equal(res.statusCode, 404);
+  assert.equal("draftTree" in ik._db.stores.compositions.get("collection:default"), false);
 });
 
 // ---- recipes ----

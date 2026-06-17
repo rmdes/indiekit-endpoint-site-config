@@ -25,6 +25,11 @@ test("homepage entry wires the imported zoneModel/recipes/treeBuilder by identit
   assert.equal(entry.treeBuilder, buildHomepageTree);
 });
 
+test("homepage declares the arrangement capability (stack + sidebar-right)", () => {
+  const entry = getSurface("homepage");
+  assert.deepEqual([...entry.arrangements], ["stack", "sidebar-right"]);
+});
+
 test("getSurface('homepage') returns the same entry as SURFACES.homepage", () => {
   assert.equal(getSurface("homepage"), SURFACES.homepage);
 });
