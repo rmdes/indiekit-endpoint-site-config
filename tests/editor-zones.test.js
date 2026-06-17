@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { treeToZones, zonesToTree } from "../lib/editor/zones.js";
+import { homepageZoneModel } from "../lib/editor/zone-models/homepage.js";
 import { buildHomepageTree } from "../lib/storage/migrate-v3-to-v4.js";
 import { LAYOUT_PRESETS } from "../lib/presets/layout-presets.js";
 
@@ -244,4 +245,102 @@ test("zonesToTree: empty footer emits no contentinfo container even when a foote
   assert.equal(rebuilt.children.some((c) => c.role === "contentinfo"), false);
   // And the result still round-trips
   assert.deepEqual(zonesToTree(treeToZones(rebuilt), { idFactory: makeIds() }), rebuilt);
+});
+
+// ---- homepageZoneModel: the extracted zone-model object (6.2 foundation) ----
+
+test("homepageZoneModel exposes the homepage zone vocabulary and region map", () => {
+  assert.deepEqual(homepageZoneModel.zones, ["hero", "main", "sidebar", "footer"]);
+  assert.deepEqual(homepageZoneModel.regionMap, {
+    hero: "hero",
+    main: "main",
+    sidebar: "sidebar",
+    footer: "footer",
+  });
+  assert.equal(typeof homepageZoneModel.recognize, "function");
+  assert.equal(typeof homepageZoneModel.build, "function");
+});
+
+test("homepageZoneModel.recognize matches treeToZones on the full two-column tree", () => {
+  const tree = buildHomepageTree(V3, makeIds());
+  assert.deepEqual(homepageZoneModel.recognize(tree), treeToZones(tree));
+});
+
+test("homepageZoneModel.recognize returns custom for garbage, like treeToZones", () => {
+  for (const garbage of [null, undefined, 42, "tree", [], {}, { block: "section" }]) {
+    const direct = homepageZoneModel.recognize(garbage);
+    assert.equal(direct.custom, true, JSON.stringify(garbage));
+    assert.equal(direct.tree, garbage);
+    assert.deepEqual(direct, treeToZones(garbage));
+  }
+});
+
+test("homepageZoneModel.build matches zonesToTree (explicit idFactory in options)", () => {
+  const tree = buildHomepageTree(V3, makeIds());
+  const zones = homepageZoneModel.recognize(tree);
+  const viaModel = homepageZoneModel.build(zones, { idFactory: makeIds() });
+  const viaWrapper = zonesToTree(zones, { idFactory: makeIds() });
+  assert.deepEqual(viaModel, viaWrapper);
+  assert.deepEqual(viaModel, tree);
+});
+
+// ---- explicit-model wrapper calls: treeToZones(tree, model) / zonesToTree(zones, model, opts) ----
+
+test("treeToZones(tree, homepageZoneModel) works when the model is passed explicitly", () => {
+  const tree = buildHomepageTree(V3, makeIds());
+  const explicit = treeToZones(tree, homepageZoneModel);
+  const implicit = treeToZones(tree);
+  assert.equal(explicit.custom, undefined);
+  assert.deepEqual(explicit, implicit);
+});
+
+test("zonesToTree(zones, homepageZoneModel, {idFactory}) works when the model is passed explicitly", () => {
+  const tree = buildHomepageTree(V3, makeIds());
+  const zones = treeToZones(tree);
+  const explicit = zonesToTree(zones, homepageZoneModel, { idFactory: makeIds() });
+  assert.deepEqual(explicit, tree);
+});
+
+test("zonesToTree wrapper guard: old call style (options as 2nd arg) still works", () => {
+  // design.js call site: zonesToTree(zones, { idFactory }) — options, not model.
+  const tree = buildHomepageTree(V3, makeIds());
+  const zones = treeToZones(tree);
+  const oldStyle = zonesToTree(zones, { idFactory: makeIds() });
+  const newStyle = zonesToTree(zones, homepageZoneModel, { idFactory: makeIds() });
+  assert.deepEqual(oldStyle, tree);
+  assert.deepEqual(oldStyle, newStyle);
+});
+
+// ---- ROUND-TRIP PROPERTY: every recognized shape survives build(recognize(t)) deep-equal incl. ids ----
+
+test("ROUND-TRIP PROPERTY (zone-model): plain-stack and 2-1 columns, with/without hero/footer", () => {
+  // Generate real migrator trees covering plain-stack (single-column) AND the
+  // 2-1 columns/sidebar arrangement, each with/without hero and with/without footer.
+  const sources = [];
+  for (const layout of ["single-column", "two-column"]) {
+    for (const heroEnabled of [true, false]) {
+      for (const withFooter of [true, false]) {
+        sources.push({
+          ...V3,
+          layout,
+          hero: { ...V3.hero, enabled: heroEnabled },
+          footer: withFooter ? V3.footer : [],
+        });
+      }
+    }
+  }
+  for (const [index, v3] of sources.entries()) {
+    const tree = buildHomepageTree(v3, makeIds());
+    // Recognize via the model, rebuild via the model, deep-equal INCLUDING ids.
+    const zones = homepageZoneModel.recognize(tree);
+    assert.equal(zones.custom, undefined, `wrongly custom: source ${index} (${v3.layout})`);
+    const rebuilt = homepageZoneModel.build(zones, { idFactory: makeIds() });
+    assert.deepEqual(rebuilt, tree, `round-trip failed: source ${index} (${v3.layout})`);
+    // And through the public wrappers with the explicit model, identically.
+    assert.deepEqual(
+      zonesToTree(treeToZones(tree, homepageZoneModel), homepageZoneModel, { idFactory: makeIds() }),
+      tree,
+      `wrapper round-trip failed: source ${index} (${v3.layout})`,
+    );
+  }
 });
