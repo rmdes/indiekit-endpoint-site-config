@@ -1690,6 +1690,36 @@ test("a preview-rotation failure after a successful publish still redirects publ
   }
 });
 
+test("publishing the listing surface does NOT rotate/overwrite the shared homepage preview slot (6.3 #31)", async () => {
+  // Sibling of the /preview gate: the publish handler's preview-rotation block
+  // writes the SINGLE shared slot (siteConfig token/revision + preview-draft.json).
+  // The listing surface OMITS supportsLivePreview, so a listing publish must NOT
+  // touch that slot — otherwise it rotates the homepage token and overwrites the
+  // homepage preview-draft with the sidebar-only listing tree.
+  const ik = makeIndiekit({
+    compositions: [
+      { ...sidebarDoc(), draftTree: sidebarDoc().tree, draftUpdatedAt: "D1" },
+    ],
+    // A homepage-owned preview slot seeded BEFORE the listing publish.
+    siteConfig: [{ _id: "primary", previewToken: "homepage-token", previewRevision: 9 }],
+  });
+  const previews = [];
+  const router = makeRouter(ik, {
+    writeArtifact: async () => {},
+    writePreviewArtifact: async (input) => previews.push(input),
+  });
+  const res = await callRoute(router, "post", "/listing/publish");
+  // Publish itself succeeds (db promote + writeCompositionJson + redirect).
+  assert.match(flag(res, "published"), /^\d{13,}$/);
+  const doc = ik._db.stores.compositions.get("collection:default");
+  assert.equal("draftTree" in doc, false); // draft promoted
+  assert.equal(doc.status, "published");
+  // The shared preview slot is byte-identical (token NOT rotated, revision NOT
+  // bumped) and NO preview-draft artifact was written.
+  assert.deepEqual(previewState(ik), { token: "homepage-token", revision: 9 });
+  assert.equal(previews.length, 0);
+});
+
 // ---- build-status API (Phase 5 S2) ----
 
 const T0 = Date.parse("2026-06-12T10:00:00.000Z");
