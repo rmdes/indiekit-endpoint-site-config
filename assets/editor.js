@@ -216,6 +216,11 @@ function initPreviewPane(i18n) {
     }
   };
 
+  // Per-surface preview URL (#32): the pane carries the surface's routeKey so
+  // the client-built iframe targets /preview/<routeKey>/<token>/ (matching the
+  // server-rendered src). Falls back to "homepage" if the attribute is absent.
+  const routeKey = pane.dataset.scPreviewRouteKey || "homepage";
+
   /** First Update-preview on a fresh site: no token existed at render time,
    * so the iframe wasn't server-rendered — create it from the response. */
   const ensureFrame = (token) => {
@@ -226,7 +231,7 @@ function initPreviewPane(i18n) {
     iframe.className = "sc-preview-frame";
     iframe.setAttribute("data-sc-preview-frame", "");
     iframe.title = i18n.previewFrameTitle || "";
-    iframe.src = `/preview/${encodeURIComponent(token)}/`;
+    iframe.src = `/preview/${encodeURIComponent(routeKey)}/${encodeURIComponent(token)}/`;
     pane.append(iframe);
     return iframe;
   };

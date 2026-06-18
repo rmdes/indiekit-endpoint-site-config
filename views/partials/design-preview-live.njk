@@ -1,7 +1,8 @@
 {# True preview pane (Phase 5, right pane when ?pane=preview). The iframe is
-   the theme's /preview/<token>/ page — the preview-draft.json artifact
-   rendered through the PRODUCTION composition renderer (zero drift), same
-   origin as the admin. The artifact is written ONLY by the Update-preview
+   the theme's /preview/<routeKey>/<token>/ page (#32 per-surface) — the
+   preview-<routeKey>.json artifact rendered through the PRODUCTION composition
+   renderer (zero drift), same origin as the admin. The artifact is written
+   ONLY by the Update-preview
    POST (and on publish) — never per keystroke (every write triggers an
    incremental Eleventy rebuild).
 
@@ -10,7 +11,7 @@
    rebuilding and a full page reload refreshes the iframe. editor.js
    enhances with fetch (Accept: application/json) + same-origin revision
    polling. Context: preview {token, revision}, previewing. #}
-<div class="sc-design__preview sc-design__preview--live">
+<div class="sc-design__preview sc-design__preview--live" data-sc-preview-route-key="{{ previewRouteKey }}">
   <div class="sc-preview-bar">
     <form method="post" action="{{ surfaceBase }}/preview" class="sc-mini-form" data-sc-preview-form>
       <button class="button button--small">{{ __("siteConfig.design.previewPane.update") }}</button>
@@ -25,9 +26,9 @@
   </p>
   {% if preview.token %}
   <iframe class="sc-preview-frame" data-sc-preview-frame
-    src="/preview/{{ preview.token }}/"
+    src="/preview/{{ previewRouteKey }}/{{ preview.token }}/"
     data-sc-revision="{{ preview.revision }}"
-    title="{{ __('siteConfig.design.previewPane.frameTitle') }}"></iframe>
+    title="{{ __('siteConfig.design.previewPane.frameTitle', { surface: __(editorNounKey) }) }}"></iframe>
   {% else %}
   <p class="sc-preview-empty" data-sc-preview-empty>{{ __("siteConfig.design.previewPane.empty") }}</p>
   {% endif %}

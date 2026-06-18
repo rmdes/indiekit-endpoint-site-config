@@ -41,7 +41,7 @@
   previewBuildingUnknown: __("siteConfig.design.previewPane.buildingUnknown"),
   previewReady: __("siteConfig.design.previewPane.ready"),
   previewSlow: __("siteConfig.design.previewPane.slow"),
-  previewFrameTitle: __("siteConfig.design.previewPane.frameTitle"),
+  previewFrameTitle: __("siteConfig.design.previewPane.frameTitle", { surface: __(editorNounKey) }),
   buildBuilding: __("siteConfig.design.buildStatus.building", { seconds: "{{seconds}}" }),
   buildBuildingUnknown: __("siteConfig.design.buildStatus.buildingUnknown"),
   buildLive: __("siteConfig.design.buildStatus.live", { time: "{{time}}" }),
@@ -309,14 +309,12 @@
      PRODUCTION renderer at /preview/<token>/). Pane choice is server state
      (?pane=preview) via plain links, so no-JS toggles by full reload. #}
   <div class="sc-design__pane">
-    {# Live-preview pane is a per-surface capability (6.3 #31 stopgap): the
-       preview is a SINGLE shared slot (homepage-only). When the surface owns it
-       (supportsLivePreview), render the Structural/Preview toggle + the chosen
-       pane exactly as before — homepage is byte-identical. When it does NOT
-       (listing), render NEITHER the toggle NOR the preview iframe; show a short
-       notice instead. The structural editing pane (the block list) is unchanged
-       either way — it lives in sc-design__editor above. #}
-    {% if supportsLivePreview %}
+    {# Live preview is now a per-surface capability for EVERY surface (#32):
+       each surface owns an ISOLATED slot keyed by routeKey
+       (previews.<routeKey> + preview-<routeKey>.json), so the Structural/Preview
+       toggle + the chosen pane ALWAYS render. The preview iframe points at the
+       surface's own /preview/<previewRouteKey>/<token>/ page. The structural
+       editing pane (the block list) lives in sc-design__editor above. #}
     <nav class="sc-pane-toggle" aria-label="{{ __('siteConfig.design.previewPane.toggleLabel') }}">
       <a class="sc-pane-toggle__link" href="{{ surfaceBase }}"
         {%- if pane != "preview" %} aria-current="true"{% endif %}>{{ __("siteConfig.design.previewPane.structural") }}</a>
@@ -327,11 +325,6 @@
     {% include "partials/design-preview-live.njk" %}
     {% else %}
     {% include "partials/design-preview.njk" %}
-    {% endif %}
-    {% else %}
-    <div class="sc-preview-unavailable" data-sc-preview-unavailable>
-      <p class="sc-preview-unavailable__note">{{ __("siteConfig.design.previewPane.unavailable") }}</p>
-    </div>
     {% endif %}
   </div>
 </div>

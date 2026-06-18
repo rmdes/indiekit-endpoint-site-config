@@ -285,14 +285,13 @@
         "live": "Preview",
         "update": "Update preview",
         "reload": "Reload preview",
-        "frameTitle": "Homepage preview",
+        "frameTitle": "{{{surface}}} preview",
         "empty": "No preview yet — choose “Update preview” to build one.",
         "requested": "Preview update requested — the site is rebuilding. Reload this page in a moment to refresh the preview.",
         "building": "Building preview… (~{{seconds}}s on this site)",
         "buildingUnknown": "Building preview…",
         "ready": "Preview is up to date.",
-        "slow": "This is taking longer than usual — the preview will appear once the build finishes. Use “Reload preview” to check again.",
-        "unavailable": "Live preview isn't available for this surface yet — view your blog listing pages directly (e.g. /articles/, /notes/) to see the sidebar."
+        "slow": "This is taking longer than usual — the preview will appear once the build finishes. Use “Reload preview” to check again."
       },
       "buildStatus": {
         "building": "Rebuilding — usually ~{{seconds}}s on this site. Your current site stays online.",

@@ -29,13 +29,29 @@ const LOCALES = ["en", "fr"];
 const viewSource = readFileSync(viewPath, "utf8");
 const setMatch = viewSource.match(/\{% set editorI18n = (\{[\s\S]*?\}) %\}/);
 
-// jsonKey → __() locale key, taken from the actual expression
+// jsonKey → __() locale key (+ optional args object), taken from the actual
+// expression. The args group lets the survival test below distinguish
+// SELF-MAPPED client placeholders (`{ seconds: "{{seconds}}" }`, which survive
+// rendering for editor.js to fill in) from SERVER-RESOLVED args
+// (`{ surface: __(editorNounKey) }`, which are replaced at render time and must
+// NOT be asserted to survive).
 const i18nCalls = setMatch
-  ? [...setMatch[1].matchAll(/(\w+):\s*__\("([^"]+)"/g)].map((m) => ({
+  ? [
+      ...setMatch[1].matchAll(/(\w+):\s*__\("([^"]+)"(?:\s*,\s*(\{[^}]*\}))?\)/g),
+    ].map((m) => ({
       jsonKey: m[1],
       localeKey: m[2],
+      args: m[3] || "",
     }))
   : [];
+
+// A placeholder {{name}} is "self-mapped" when the __() args object maps it to
+// its own literal (e.g. `seconds: "{{seconds}}"`) — those survive rendering. A
+// placeholder given any other (concrete) value is server-resolved and replaced.
+const placeholderIsSelfMapped = (args, placeholder) => {
+  const name = placeholder.slice(2, -2); // {{seconds}} → seconds
+  return new RegExp(`${name}:\\s*"\\{\\{${name}\\}\\}"`).test(args);
+};
 
 const lookupCatalog = (locale, dottedKey) => {
   const catalog = JSON.parse(
@@ -58,6 +74,9 @@ const renderEditorI18n = (locale) => {
   const template = `{% set editorI18n = ${setMatch[1]} %}{{ editorI18n | dump | safe }}`;
   const rendered = env.renderString(template, {
     __: (phrase, args) => i18n.__({ phrase, locale }, args),
+    // The previewFrameTitle call resolves __(editorNounKey) server-side (#32),
+    // so the surface noun key must be in the render context like the real view.
+    editorNounKey: "siteConfig.design.editor.surfaceNoun.homepage",
   });
   return JSON.parse(rendered);
 };
@@ -89,17 +108,29 @@ for (const locale of LOCALES) {
 
   test(`every client-consumed catalog placeholder survives rendering (${locale})`, () => {
     const parsed = renderEditorI18n(locale);
-    for (const { jsonKey, localeKey } of i18nCalls) {
+    for (const { jsonKey, localeKey, args } of i18nCalls) {
       const catalogString = lookupCatalog(locale, localeKey);
       assert.equal(
         typeof catalogString,
         "string",
         `${locale} catalog has ${localeKey}`,
       );
-      for (const [placeholder] of catalogString.matchAll(/\{\{\w+\}\}/g)) {
+      // Match both mustache double-brace {{x}} and triple-brace {{{x}}}
+      // (the latter is the #39 double-escape-safe form for values with
+      // apostrophes, e.g. frameTitle's {{{surface}}}).
+      for (const [, placeholder] of catalogString.matchAll(
+        /(\{\{\{?\w+\}?\}\})/g,
+      )) {
+        // SERVER-RESOLVED placeholders (a concrete __() arg, e.g.
+        // frameTitle's { surface: __(editorNounKey) }) are replaced at render
+        // time — they MUST NOT be asserted to survive. Only SELF-MAPPED client
+        // placeholders (seconds/time) survive for editor.js to fill in.
+        const normalized = placeholder.replace(/^\{+|\}+$/g, "");
+        const doubleBrace = `{{${normalized}}}`;
+        if (!placeholderIsSelfMapped(args, doubleBrace)) continue;
         assert.ok(
-          parsed[jsonKey].includes(placeholder),
-          `${jsonKey} (${localeKey}, ${locale}) keeps ${placeholder} — got: ${parsed[jsonKey]}`,
+          parsed[jsonKey].includes(doubleBrace),
+          `${jsonKey} (${localeKey}, ${locale}) keeps ${doubleBrace} — got: ${parsed[jsonKey]}`,
         );
       }
     }

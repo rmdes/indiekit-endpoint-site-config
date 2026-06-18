@@ -1318,7 +1318,7 @@ const RENDER_BASE = {
 test("editor view renders ALL homepage zones + arrangement form when zoneNames=4 and supportsArrangement", () => {
   const blocks = RENDER_BLOCKS();
   const html = renderEditorContent({
-    ...RENDER_BASE, supportsArrangement: true, supportsLivePreview: true,
+    ...RENDER_BASE, supportsArrangement: true,
     surfaceBase: "/site-config/design/homepage",
     zoneNames: ["hero", "main", "sidebar", "footer"],
     zones: { arrangement: "sidebar-right", ...blocks },
@@ -1333,7 +1333,7 @@ test("editor view renders ALL homepage zones + arrangement form when zoneNames=4
 test("editor view renders ONLY the sidebar zone (no hero/main/footer, no arrangement form) when zoneNames=['sidebar']", () => {
   const blocks = RENDER_BLOCKS();
   const html = renderEditorContent({
-    ...RENDER_BASE, supportsArrangement: false, supportsLivePreview: false,
+    ...RENDER_BASE, supportsArrangement: false,
     surfaceBase: "/site-config/design/listing",
     zoneNames: ["sidebar"],
     zones: { sidebar: blocks.sidebar },
@@ -1346,41 +1346,61 @@ test("editor view renders ONLY the sidebar zone (no hero/main/footer, no arrange
   assert.doesNotMatch(html, /class="sc-arrangement"/, "listing must NOT render arrangement form");
 });
 
-// ---- live-preview pane gating (6.3 #31 stopgap) ----
+// ---- live-preview pane: per-surface for EVERY surface (#32-T6) ----
+//
+// The old single-owner supportsLivePreview gate is GONE: every surface renders
+// the Structural/Preview toggle + the preview pane, and the iframe targets the
+// surface's OWN /preview/<previewRouteKey>/<token>/ page. No "unavailable"
+// notice exists anymore.
 
-test("editor view (supportsLivePreview=true) renders the preview pane + Structural/Preview toggle (homepage)", () => {
+test("editor view renders the preview pane + Structural/Preview toggle (homepage)", () => {
   const blocks = RENDER_BLOCKS();
   const html = renderEditorContent({
-    ...RENDER_BASE, supportsArrangement: true, supportsLivePreview: true,
+    ...RENDER_BASE, supportsArrangement: true, previewRouteKey: "homepage",
     surfaceBase: "/site-config/design/homepage",
     zoneNames: ["hero", "main", "sidebar", "footer"],
     zones: { arrangement: "sidebar-right", ...blocks },
     blocks, availableBlocks: RENDER_AVAILABLE(),
   });
   // Structural/Preview toggle nav + the structural preview pane are present;
-  // the "unavailable" notice is NOT.
+  // the "unavailable" notice no longer exists.
   assert.match(html, /class="sc-pane-toggle"/, "homepage missing the Structural/Preview toggle");
   assert.match(html, /sc-design__preview/, "homepage missing the preview pane");
-  assert.doesNotMatch(html, /data-sc-preview-unavailable/, "homepage must NOT show the unavailable notice");
+  assert.doesNotMatch(html, /data-sc-preview-unavailable/, "the unavailable notice must be retired");
 });
 
-test("editor view (supportsLivePreview=false) renders NEITHER the preview pane NOR the toggle — shows a notice (listing)", () => {
+test("editor view renders the preview pane + toggle for a sidebar-only surface too (listing) — no unavailable notice", () => {
   const blocks = RENDER_BLOCKS();
   const html = renderEditorContent({
-    ...RENDER_BASE, supportsArrangement: false, supportsLivePreview: false,
+    ...RENDER_BASE, supportsArrangement: false, previewRouteKey: "listing",
     surfaceBase: "/site-config/design/listing",
     zoneNames: ["sidebar"],
     zones: { sidebar: blocks.sidebar },
     blocks: { sidebar: blocks.sidebar }, availableBlocks: RENDER_AVAILABLE(),
   });
-  // No preview iframe, no Structural/Preview toggle.
-  assert.doesNotMatch(html, /class="sc-pane-toggle"/, "listing must NOT render the Structural/Preview toggle");
-  assert.doesNotMatch(html, /sc-preview-frame/, "listing must NOT render the preview iframe");
+  // Listing now previews: the toggle renders and the structural pane is present.
+  assert.match(html, /class="sc-pane-toggle"/, "listing must render the Structural/Preview toggle");
+  assert.match(html, /sc-design__preview/, "listing must render the preview pane");
   // The structural editing pane (block list) stays — the sidebar zone renders.
   assert.match(html, /data-sc-zone="sidebar"/, "listing must keep the structural block list");
-  // The notice is shown instead.
-  assert.match(html, /data-sc-preview-unavailable/, "listing missing the preview-unavailable notice");
-  assert.match(html, /siteConfig\.design\.previewPane\.unavailable/, "listing missing the unavailable i18n string");
+  // The old unavailable notice is fully retired.
+  assert.doesNotMatch(html, /data-sc-preview-unavailable/, "the unavailable notice must be retired");
+});
+
+test("editor view live pane targets the per-surface preview URL /preview/<routeKey>/<token>/ (listing)", () => {
+  const blocks = RENDER_BLOCKS();
+  const html = renderEditorContent({
+    ...RENDER_BASE, supportsArrangement: false, pane: "preview",
+    previewRouteKey: "listing", editorNounKey: "siteConfig.design.editor.surfaceNoun.listing",
+    surfaceBase: "/site-config/design/listing",
+    zoneNames: ["sidebar"],
+    zones: { sidebar: blocks.sidebar },
+    blocks: { sidebar: blocks.sidebar }, availableBlocks: RENDER_AVAILABLE(),
+  });
+  // The iframe src is the listing's own per-surface preview page.
+  assert.match(html, /src="\/preview\/listing\/t\//, "listing preview iframe must target /preview/listing/<token>/");
+  // The pane carries the routeKey for editor.js to build the client-side URL.
+  assert.match(html, /data-sc-preview-route-key="listing"/, "preview pane must carry the surface routeKey");
 });
 
 test("editor view (no-JS add path): a listing sidebar zone offers a constrained ['sidebar'] block, not a main-only one (6.3 #29)", () => {
@@ -1391,7 +1411,7 @@ test("editor view (no-JS add path): a listing sidebar zone offers a constrained 
   // unconstrained) main-only block does NOT — there is no main zone here.
   const blocks = RENDER_BLOCKS();
   const html = renderEditorContent({
-    ...RENDER_BASE, supportsArrangement: false, supportsLivePreview: false,
+    ...RENDER_BASE, supportsArrangement: false,
     surfaceBase: "/site-config/design/listing",
     zoneNames: ["sidebar"],
     zones: { sidebar: blocks.sidebar },
@@ -1421,7 +1441,7 @@ test("editor view (no-JS add path): a listing sidebar zone offers a constrained 
 test("editor view renders the per-surface editor title/intro keys (6.3 #28)", () => {
   const blocks = RENDER_BLOCKS();
   const html = renderEditorContent({
-    ...RENDER_BASE, supportsArrangement: false, supportsLivePreview: false,
+    ...RENDER_BASE, supportsArrangement: false,
     surfaceBase: "/site-config/design/listing",
     zoneNames: ["sidebar"],
     zones: { sidebar: blocks.sidebar },
@@ -1734,19 +1754,19 @@ test("INDEPENDENCE: previewing /listing does NOT touch the homepage slot or file
 
 // ---- per-surface editor locals (6.3 #31 + #28) ----
 
-test("editorLocals: homepage exposes supportsLivePreview true + the existing editor copy keys", async () => {
+test("editorLocals: homepage carries NO supportsLivePreview (retired #32) + the existing editor copy keys", async () => {
   const res = await callRoute(makeRouter(makeIndiekit()), "get", "/homepage");
   const { locals } = res.rendered;
-  assert.equal(locals.supportsLivePreview, true);
+  assert.equal("supportsLivePreview" in locals, false);
   assert.equal(locals.editorTitleKey, "siteConfig.design.editor.title");
   assert.equal(locals.editorIntroKey, "siteConfig.design.editor.description");
 });
 
-test("editorLocals: listing exposes supportsLivePreview false + its own editor copy keys", async () => {
+test("editorLocals: listing carries NO supportsLivePreview (retired #32) + its own editor copy keys", async () => {
   const ik = makeIndiekit({ compositions: [sidebarDoc()] });
   const res = await callRoute(makeRouter(ik), "get", "/listing");
   const { locals } = res.rendered;
-  assert.equal(locals.supportsLivePreview, false);
+  assert.equal("supportsLivePreview" in locals, false);
   assert.equal(locals.editorTitleKey, "siteConfig.design.editor.listingTitle");
   assert.equal(locals.editorIntroKey, "siteConfig.design.editor.listingDescription");
 });

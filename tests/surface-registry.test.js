@@ -31,9 +31,9 @@ test("homepage declares the arrangement capability (stack + sidebar-right)", () 
   assert.deepEqual([...entry.arrangements], ["stack", "sidebar-right"]);
 });
 
-test("homepage declares the live-preview capability (owns the shared slot)", () => {
+test("homepage carries NO supportsLivePreview field (retired #32 — live preview is per-surface)", () => {
   const entry = getSurface("homepage");
-  assert.equal(entry.supportsLivePreview, true);
+  assert.equal("supportsLivePreview" in entry, false);
 });
 
 test("homepage editor copy keys are the EXISTING editor.title/description (byte-identical)", () => {
@@ -83,9 +83,9 @@ test("listing declares NO arrangement capability (sidebar-only)", () => {
   assert.equal(entry.arrangements, undefined);
 });
 
-test("listing OMITS the live-preview capability (does not own the shared slot)", () => {
+test("listing carries NO supportsLivePreview field (retired #32 — listing previews its own slot)", () => {
   const entry = getSurface("listing");
-  assert.equal(entry.supportsLivePreview, undefined);
+  assert.equal("supportsLivePreview" in entry, false);
 });
 
 test("listing declares its OWN editor copy keys (not the homepage ones)", () => {
@@ -130,9 +130,9 @@ test("posttype declares NO arrangement capability (sidebar-only)", () => {
   assert.equal(entry.arrangements, undefined);
 });
 
-test("posttype OMITS the live-preview capability (does not own the shared slot)", () => {
+test("posttype carries NO supportsLivePreview field (retired #32 — posttype previews its own slot)", () => {
   const entry = getSurface("posttype");
-  assert.equal(entry.supportsLivePreview, undefined);
+  assert.equal("supportsLivePreview" in entry, false);
 });
 
 test("posttype declares its OWN editor copy keys", () => {
