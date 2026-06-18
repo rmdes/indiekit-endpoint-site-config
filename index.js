@@ -6,7 +6,6 @@ import { identityRouter   } from "./lib/controllers/identity.js";
 import { brandingRouter   } from "./lib/controllers/branding.js";
 import { homepageRouter   } from "./lib/controllers/homepage.js";
 import { designRouter     } from "./lib/controllers/design.js";
-import { blogRouter       } from "./lib/controllers/blog.js";
 import { navigationRouter } from "./lib/controllers/navigation.js";
 import { generalRouter    } from "./lib/controllers/general.js";
 import { publicApiRouter, adminApiRouter } from "./lib/controllers/api.js";
@@ -83,7 +82,6 @@ export default class SiteConfigEndpoint {
     protectedRouter.use("/branding",   brandingRouter(Indiekit));
     protectedRouter.use("/homepage",   homepageRouter()); // legacy URL → design editor redirect
     protectedRouter.use("/design",     designRouter(Indiekit));
-    protectedRouter.use("/blog",       blogRouter(Indiekit));
     protectedRouter.use("/navigation", navigationRouter(Indiekit));
     protectedRouter.use("/general",    generalRouter(Indiekit));
     protectedRouter.use("/api",        adminApiRouter(Indiekit));

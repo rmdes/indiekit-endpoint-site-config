@@ -33,7 +33,11 @@ test("writeHomepageJson writes composition shape to file", async () => {
   }
 });
 
-test("writeHomepageJson no longer emits blogListingSidebar (dissolved into listing surface) but keeps blogPostSidebar", async () => {
+// 6.4-T4: blogPostSidebar now ALSO no longer emitted here (the blog tab is
+// gone; the theme reads the posttype:default composition artifact instead).
+// The homepageConfig.blogPostSidebar STORAGE field is retained for the
+// one-time re-seed — it just no longer reaches the homepage.json artifact.
+test("writeHomepageJson no longer emits blogListingSidebar nor blogPostSidebar (both dissolved into composition surfaces)", async () => {
   const { file, cleanup } = tempPath();
   try {
     await writeHomepageJson({
@@ -47,8 +51,7 @@ test("writeHomepageJson no longer emits blogListingSidebar (dissolved into listi
     }, file);
     const written = JSON.parse(readFileSync(file, "utf8"));
     assert.equal("blogListingSidebar" in written, false);
-    assert.ok(Array.isArray(written.blogPostSidebar));
-    assert.equal(written.blogPostSidebar[0].type, "toc");
+    assert.equal("blogPostSidebar" in written, false);
   } finally {
     cleanup();
   }

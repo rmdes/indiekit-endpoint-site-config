@@ -37,7 +37,9 @@ async function callRoute(router, method, path) {
       json(payload) { this.body = payload; resolve(this); },
       send(payload) { this.body = payload; resolve(this); },
     };
-    router.handle(req, res, () => resolve(res));
+    // No route matched → Express calls the final `next()`; model that as 404
+    // (matching how the host's error handler responds to unmounted routes).
+    router.handle(req, res, () => { res.statusCode = 404; resolve(res); });
   });
 }
 
@@ -54,10 +56,13 @@ test("GET /api/widgets returns discoveredWidgets", async () => {
   assert.deepEqual(res.body, [{ id: "search", label: "Search" }]);
 });
 
-test("GET /api/blog-widgets returns discoveredBlogPostWidgets", async () => {
+// 6.4-T4: the /api/blog-widgets route was removed with the blog tab — the
+// post sidebar now lives in the postType surface. The discoveredBlogPostWidgets
+// collector itself remains (out of scope); only the route is gone.
+test("GET /api/blog-widgets is gone (404) after blog-tab removal", async () => {
   const router = adminApiRouter(makeIndiekit());
   const res = await callRoute(router, "get", "/blog-widgets");
-  assert.equal(res.body.length, 2);
+  assert.equal(res.statusCode, 404);
 });
 
 test("GET /api/homepage.json returns the homepage config (public)", async () => {
