@@ -89,9 +89,10 @@ test("does NOT write a surface whose doc is absent from the db", async () => {
   assert.deepEqual(files, ["homepage.json"]);
 });
 
-test("does NOT write posttype:default — not a live surface in 6.3 (only homepage + collection:default)", async () => {
+test("DOES write posttype:default — now a live surface (registered in 6.4-T2)", async () => {
   const dir = await mkdtemp(join(tmpdir(), "artifacts-"));
-  // Even with a fully-published posttype:default doc present, it must be skipped.
+  // posttype:default is registered in the SURFACES registry as of 6.4-T2, so a
+  // fully-published doc now flows through the registry-derived live set.
   const db = makeDb(
     new Map([
       ["homepage", makeDoc("homepage", "homepage")],
@@ -102,12 +103,12 @@ test("does NOT write posttype:default — not a live surface in 6.3 (only homepa
 
   const written = await writeCompositionArtifacts(db, { outputDir: dir });
 
-  assert.equal(written.includes("posttype:default"), false);
+  assert.equal(written.includes("posttype:default"), true);
   const files = (await readdir(dir)).filter((f) => f.endsWith(".json")).sort();
-  assert.deepEqual(files, ["collection-default.json", "homepage.json"]);
+  assert.deepEqual(files, ["collection-default.json", "homepage.json", "posttype-default.json"]);
 });
 
-test("default surface ids derive from the live surface registry (homepage + collection:default)", async () => {
+test("default surface ids derive from the live surface registry (homepage + collection:default + posttype:default)", async () => {
   // No explicit surfaceIds → the helper uses the LIVE registry set. Asserting
   // the default keeps 6.4/6.5 honest: adding a live surface to SURFACES that
   // the helper should write must flow through automatically.
@@ -116,10 +117,11 @@ test("default surface ids derive from the live surface registry (homepage + coll
     new Map([
       ["homepage", makeDoc("homepage", "homepage")],
       ["collection:default", makeDoc("collection:default", "collection")],
+      ["posttype:default", makeDoc("posttype:default", "postType")],
     ]),
   );
   const written = await writeCompositionArtifacts(db, { outputDir: dir });
-  assert.deepEqual(written.sort(), ["collection:default", "homepage"]);
+  assert.deepEqual(written.sort(), ["collection:default", "homepage", "posttype:default"]);
 });
 
 test("per-surface error isolation: a failure writing homepage does NOT prevent collection:default", async () => {

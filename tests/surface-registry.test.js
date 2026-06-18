@@ -89,6 +89,53 @@ test("the listing entry is frozen", () => {
   assert.ok(Object.isFrozen(SURFACES.listing));
 });
 
+// ---- getSurface: posttype entry (6.4) ----
+
+test("getSurface('posttype') returns the posttype entry with the exact fields", () => {
+  const entry = getSurface("posttype");
+  assert.ok(entry, "posttype entry exists");
+  // Vocabulary casing trap (6.4 CRITICAL): the route segment + hub key are
+  // lowercase "posttype"; the composition kind + surface filter are camelCase
+  // "postType" (matching builtin-blocks placement.surfaces + the SURFACES vocab).
+  assert.equal(entry.routeKey, "posttype");
+  assert.equal(entry.surfaceId, "posttype:default");
+  assert.equal(entry.kind, "postType");
+  assert.equal(entry.surfaceFilter, "postType");
+  assert.equal(entry.hubKey, "posttype");
+});
+
+test("posttype entry wires the shared sidebarZoneModel by identity, with empty recipes and null treeBuilder", () => {
+  const entry = getSurface("posttype");
+  assert.equal(entry.zoneModel, sidebarZoneModel);
+  assert.deepEqual(entry.recipes, []);
+  assert.equal(entry.treeBuilder, null);
+});
+
+test("posttype declares NO arrangement capability (sidebar-only)", () => {
+  const entry = getSurface("posttype");
+  assert.equal("arrangements" in entry, false);
+  assert.equal(entry.arrangements, undefined);
+});
+
+test("posttype OMITS the live-preview capability (does not own the shared slot)", () => {
+  const entry = getSurface("posttype");
+  assert.equal(entry.supportsLivePreview, undefined);
+});
+
+test("posttype declares its OWN editor copy keys", () => {
+  const entry = getSurface("posttype");
+  assert.equal(entry.editorTitleKey, "siteConfig.design.editor.posttypeTitle");
+  assert.equal(entry.editorIntroKey, "siteConfig.design.editor.posttypeDescription");
+});
+
+test("getSurface('posttype') returns the same entry as SURFACES.posttype", () => {
+  assert.equal(getSurface("posttype"), SURFACES.posttype);
+});
+
+test("the posttype entry is frozen", () => {
+  assert.ok(Object.isFrozen(SURFACES.posttype));
+});
+
 // ---- getSurface: unknown / prototype-safe ----
 
 test("getSurface('unknown') returns null", () => {

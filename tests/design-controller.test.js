@@ -521,7 +521,7 @@ test("readFlash surfaces query flags as success/error vars", () => {
 
 // ---- hub ----
 
-test("GET / renders the hub with homepage + listing live, posttype/pages disabled", async () => {
+test("GET / renders the hub with homepage + listing + posttype live, pages disabled (6.4-T2)", async () => {
   const ik = makeIndiekit({
     compositions: [
       homepageDoc({ draftTree: baseTree(), draftUpdatedAt: "D" }),
@@ -530,6 +530,11 @@ test("GET / renders the hub with homepage + listing live, posttype/pages disable
         draftTree: sidebarDoc().tree,
         updatedAt: "2026-06-02T00:00:00.000Z",
       },
+      {
+        ...posttypeDoc(),
+        draftTree: posttypeDoc().tree,
+        updatedAt: "2026-06-03T00:00:00.000Z",
+      },
     ],
   });
   const res = await callRoute(makeRouter(ik), "get", "/");
@@ -537,7 +542,7 @@ test("GET / renders the hub with homepage + listing live, posttype/pages disable
   assert.equal(res.rendered.locals.activeTab, "design");
   const { surfaces } = res.rendered.locals;
   assert.equal(surfaces.length, 4);
-  // Order: homepage, listing (both enabled), then posttype, pages (disabled).
+  // Order: homepage, listing, posttype (all enabled), then pages (disabled).
   assert.deepEqual(surfaces[0], {
     key: "homepage", href: "/site-config/design/homepage", enabled: true,
     exists: true, hasDraft: true, updatedAt: "2026-06-01T00:00:00.000Z",
@@ -546,8 +551,12 @@ test("GET / renders the hub with homepage + listing live, posttype/pages disable
     key: "listing", href: "/site-config/design/listing", enabled: true,
     exists: true, hasDraft: true, updatedAt: "2026-06-02T00:00:00.000Z",
   });
-  assert.deepEqual(surfaces.slice(2).map((s) => s.key), ["posttype", "pages"]);
-  assert.deepEqual(surfaces.slice(2).map((s) => s.enabled), [false, false]);
+  // posttype enabled, lowercase route + hub key (the casing trap).
+  assert.deepEqual(surfaces[2], {
+    key: "posttype", href: "/site-config/design/posttype", enabled: true,
+    exists: true, hasDraft: true, updatedAt: "2026-06-03T00:00:00.000Z",
+  });
+  assert.deepEqual(surfaces[3], { key: "pages", enabled: false });
 });
 
 test("GET / hub: no composition → homepage exists false, hasDraft false", async () => {
@@ -576,12 +585,17 @@ test("resolveSurface 404s an unknown surface route", async () => {
   assert.equal(res.body, "Unknown design surface");
 });
 
-test("the not-yet-live placeholder surfaces (posttype/pages) 404 on the editor", async () => {
+test("the not-yet-live placeholder surface (pages) 404s on the editor; posttype is now live (6.4-T2)", async () => {
   const router = makeRouter(makeIndiekit());
-  for (const key of ["posttype", "pages"]) {
-    const res = await callRoute(router, "get", `/${key}`);
-    assert.equal(res.statusCode, 404, key);
-  }
+  // pages is still a placeholder.
+  const pages = await callRoute(router, "get", "/pages");
+  assert.equal(pages.statusCode, 404, "pages");
+  // posttype is registered in 6.4-T2 — its editor resolves (200, no crash).
+  const ik = makeIndiekit({ compositions: [posttypeDoc()] });
+  const posttype = await callRoute(makeRouter(ik), "get", "/posttype");
+  assert.equal(posttype.statusCode, 200, "posttype");
+  assert.equal(posttype.rendered.view, "site-config-design-homepage");
+  assert.equal(posttype.rendered.locals.supportsArrangement, false);
 });
 
 test("GET /listing resolves (200, no crash) now that the listing surface is registered", async () => {
@@ -1083,6 +1097,23 @@ test("POST arrangement stack→sidebar-right and invalid values", async () => {
 // stack → sections). zones from this tree have `sidebar` but no `main`.
 const sidebarDoc = () => ({
   _id: "collection:default", schemaVersion: 4, kind: "collection", status: "published",
+  tree: {
+    block: "container", id: "c_root", as: "stack", role: "root",
+    children: [
+      {
+        block: "container", id: "c_side", as: "stack", role: "complementary",
+        variant: { sticky: true },
+        children: [section("b_s1", "recent-posts", { maxItems: 5 })],
+      },
+    ],
+  },
+  updatedAt: "2026-06-01T00:00:00.000Z", updatedBy: "test",
+});
+
+// The postType (post sidebar) surface composition (6.4): same sidebar-only
+// shape as sidebarDoc, but _id "posttype:default" + kind "postType".
+const posttypeDoc = () => ({
+  _id: "posttype:default", schemaVersion: 4, kind: "postType", status: "published",
   tree: {
     block: "container", id: "c_root", as: "stack", role: "root",
     children: [
@@ -1718,6 +1749,85 @@ test("publishing the listing surface does NOT rotate/overwrite the shared homepa
   // bumped) and NO preview-draft artifact was written.
   assert.deepEqual(previewState(ik), { token: "homepage-token", revision: 9 });
   assert.equal(previews.length, 0);
+});
+
+// ---- postType (post sidebar) surface capabilities (6.4-T2) ----
+//
+// The postType surface mirrors the listing surface: sidebar-only, NO
+// arrangement axis, NO live-preview ownership. The casing trap: routeKey/hubKey
+// are lowercase "posttype"; surfaceFilter/kind are camelCase "postType".
+
+test("POST /posttype/arrangement 404s (no arrangement axis) without writing a draft (6.4-T2)", async () => {
+  const ik = makeIndiekit({ compositions: [posttypeDoc()] });
+  const res = await callRoute(makeRouter(ik), "post", "/posttype/arrangement", { arrangement: "stack" });
+  assert.equal(res.statusCode, 404);
+  // The capability gate precedes any zone access — no draft written.
+  assert.equal("draftTree" in ik._db.stores.compositions.get("posttype:default"), false);
+});
+
+test("POST /posttype/preview 404s (no live-preview capability) and never touches the shared slot (6.4-T2)", async () => {
+  // Seed a homepage-owned preview slot so we can prove it stays untouched.
+  const ik = makeIndiekit({
+    compositions: [posttypeDoc()],
+    siteConfig: [{ _id: "primary", previewToken: "homepage-token", previewRevision: 7 }],
+  });
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  const res = await callRoute(router, "post", "/posttype/preview");
+  assert.equal(res.statusCode, 404);
+  // No preview draft written — the gate precedes the write.
+  assert.equal(previews.length, 0);
+  // The shared homepage preview slot is byte-identical (token NOT rotated,
+  // revision NOT bumped).
+  const slot = ik._db.stores.siteConfig.get("primary");
+  assert.equal(slot.previewToken, "homepage-token");
+  assert.equal(slot.previewRevision, 7);
+});
+
+test("publishing the posttype surface succeeds but does NOT rotate/overwrite the shared homepage preview slot (6.4-T2)", async () => {
+  const ik = makeIndiekit({
+    compositions: [
+      { ...posttypeDoc(), draftTree: posttypeDoc().tree, draftUpdatedAt: "D1" },
+    ],
+    // A homepage-owned preview slot seeded BEFORE the posttype publish.
+    siteConfig: [{ _id: "primary", previewToken: "homepage-token", previewRevision: 9 }],
+  });
+  const previews = [];
+  const router = makeRouter(ik, {
+    writeArtifact: async () => {},
+    writePreviewArtifact: async (input) => previews.push(input),
+  });
+  const res = await callRoute(router, "post", "/posttype/publish");
+  // Publish itself succeeds (db promote + writeCompositionJson + redirect).
+  assert.match(flag(res, "published"), /^\d{13,}$/);
+  const doc = ik._db.stores.compositions.get("posttype:default");
+  assert.equal("draftTree" in doc, false); // draft promoted
+  assert.equal(doc.status, "published");
+  // The shared preview slot is byte-identical and NO preview-draft was written.
+  assert.deepEqual(previewState(ik), { token: "homepage-token", revision: 9 });
+  assert.equal(previews.length, 0);
+});
+
+test("groupAvailableBlocks (surfaceFilter 'postType', regions ['sidebar']) offers the post-sidebar blocks — NOT an empty picker (6.4 casing-trap guard)", () => {
+  // The casing trap: surfaceFilter MUST be camelCase "postType" to match the
+  // placement.surfaces strings in builtin-blocks.js. With lowercase "posttype"
+  // the picker would be empty (the 6.3-class CRITICAL bug). availableRegions
+  // ["sidebar"] = the sidebar zone-model's region values.
+  const groups = groupAvailableBlocks(BUILTIN_BLOCKS, new Set(), {
+    surfaceFilter: "postType",
+    availableRegions: ["sidebar"],
+  });
+  const ids = groups.flatMap((g) => g.blocks).map((b) => b.id);
+  // postType + sidebar blocks must be offered.
+  for (const id of ["toc", "post-categories", "share", "author-card"]) {
+    assert.ok(ids.includes(id), `${id} must be offered on the postType sidebar`);
+  }
+  // A homepage-only / non-postType block must NOT leak in (e.g. featured-posts:
+  // surfaces [homepage, collection], region main — fails both gates).
+  assert.equal(ids.includes("featured-posts"), false, "featured-posts is not a postType sidebar block");
+  // social-activity is homepage-only (surfaces ["homepage"]) — excluded by the
+  // surface gate even though it's a sidebar block.
+  assert.equal(ids.includes("social-activity"), false, "social-activity (homepage-only) must not appear");
 });
 
 // ---- build-status API (Phase 5 S2) ----
