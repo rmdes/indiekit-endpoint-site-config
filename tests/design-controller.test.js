@@ -47,6 +47,73 @@ function makeDb(seed = {}) {
   for (const [name, docs] of Object.entries(seed)) {
     stores[name] = new Map(docs.map((doc) => [doc._id, structuredClone(doc)]));
   }
+
+  // Dotted-path helpers (ported from preview-state-per-surface.test.js): the
+  // per-surface preview-state ($set/$inc on `previews.<routeKey>.token` etc.)
+  // requires the mock to materialize nested objects, NOT store the dotted
+  // string as a literal flat key — otherwise `doc.previews[routeKey]` is
+  // undefined and the controller's preview path throws.
+  const getPath = (doc, path) => {
+    let cur = doc;
+    for (const part of path.split(".")) {
+      if (cur == null || typeof cur !== "object") return undefined;
+      cur = cur[part];
+    }
+    return cur;
+  };
+  const hasPath = (doc, path) => {
+    let cur = doc;
+    const parts = path.split(".");
+    for (let i = 0; i < parts.length; i++) {
+      if (cur == null || typeof cur !== "object" || !(parts[i] in cur)) {
+        return false;
+      }
+      cur = cur[parts[i]];
+    }
+    return true;
+  };
+  const setPath = (doc, path, value) => {
+    const parts = path.split(".");
+    let cur = doc;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (cur[parts[i]] == null || typeof cur[parts[i]] !== "object") {
+        cur[parts[i]] = {};
+      }
+      cur = cur[parts[i]];
+    }
+    cur[parts.at(-1)] = value;
+  };
+  const matchesFilter = (doc, filter) =>
+    doc &&
+    Object.entries(filter).every(([key, cond]) => {
+      if (key === "_id") return true;
+      if (cond && typeof cond === "object" && "$exists" in cond) {
+        return hasPath(doc, key) === cond.$exists;
+      }
+      return getPath(doc, key) === cond;
+    });
+  const applyUpdate = (doc, update) => {
+    for (const [k, v] of Object.entries(update.$set ?? {})) setPath(doc, k, v);
+    for (const [k, v] of Object.entries(update.$inc ?? {})) {
+      setPath(doc, k, (getPath(doc, k) ?? 0) + v);
+    }
+    for (const k of Object.keys(update.$unset ?? {})) {
+      const parts = k.split(".");
+      let cur = doc;
+      for (let i = 0; i < parts.length - 1; i++) cur = cur?.[parts[i]];
+      if (cur) delete cur[parts.at(-1)];
+    }
+  };
+  const insertFromUpsert = (store, filter, update) => {
+    const inserted = { _id: filter._id };
+    for (const [k, v] of Object.entries(update.$setOnInsert ?? {})) {
+      setPath(inserted, k, v);
+    }
+    applyUpdate(inserted, update);
+    store.set(filter._id, inserted);
+    return inserted;
+  };
+
   return {
     stores,
     collection(name) {
@@ -57,42 +124,25 @@ function makeDb(seed = {}) {
         },
         async updateOne(filter, update, options = {}) {
           const doc = store.get(filter._id);
-          const matches =
-            doc &&
-            Object.entries(filter).every(([key, cond]) => {
-              if (key === "_id") return true;
-              if (cond && typeof cond === "object" && "$exists" in cond) {
-                return (key in doc) === cond.$exists;
-              }
-              return doc[key] === cond;
-            });
-          if (!matches) {
+          if (!matchesFilter(doc, filter)) {
             if (options.upsert && !store.has(filter._id)) {
-              const inserted = { _id: filter._id };
-              for (const [k, v] of Object.entries(update.$setOnInsert ?? {})) inserted[k] = v;
-              for (const [k, v] of Object.entries(update.$set ?? {})) inserted[k] = v;
-              for (const [k, v] of Object.entries(update.$inc ?? {})) inserted[k] = (inserted[k] ?? 0) + v;
-              store.set(filter._id, inserted);
+              insertFromUpsert(store, filter, update);
               return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1 };
             }
             return { matchedCount: 0, modifiedCount: 0 };
           }
-          for (const [k, v] of Object.entries(update.$set ?? {})) doc[k] = v;
-          for (const [k, v] of Object.entries(update.$inc ?? {})) doc[k] = (doc[k] ?? 0) + v;
-          for (const k of Object.keys(update.$unset ?? {})) delete doc[k];
+          applyUpdate(doc, update);
           return { matchedCount: 1, modifiedCount: 1 };
         },
         // preview-state's bumpRevision (driver v6 shape: returns the doc).
         async findOneAndUpdate(filter, update, options = {}) {
           let doc = store.get(filter._id);
-          if (!doc) {
+          if (!matchesFilter(doc, filter)) {
             if (!options.upsert) return null;
-            doc = { _id: filter._id };
-            for (const [k, v] of Object.entries(update.$setOnInsert ?? {})) doc[k] = v;
-            store.set(filter._id, doc);
+            doc = insertFromUpsert(store, filter, update);
+          } else {
+            applyUpdate(doc, update);
           }
-          for (const [k, v] of Object.entries(update.$set ?? {})) doc[k] = v;
-          for (const [k, v] of Object.entries(update.$inc ?? {})) doc[k] = (doc[k] ?? 0) + v;
           return structuredClone(doc);
         },
         async replaceOne({ _id }, doc, options = {}) {
@@ -1496,9 +1546,13 @@ test("POST discard drops the draft", async () => {
 
 // ---- preview (Phase 5) ----
 
-const previewState = (ik) => {
-  const doc = ik._db.stores.siteConfig.get("primary") ?? {};
-  return { token: doc.previewToken, revision: doc.previewRevision };
+// Per-surface preview slot reader (#32-T3): state now lives at
+// previews.<routeKey>.{token,revision} on the siteConfig singleton, NOT the
+// flat previewToken/previewRevision fields. Defaults to homepage so the
+// homepage call sites stay terse.
+const previewState = (ik, routeKey = "homepage") => {
+  const slot = ik._db.stores.siteConfig.get("primary")?.previews?.[routeKey];
+  return { token: slot?.token, revision: slot?.revision };
 };
 
 test("POST preview (no-JS) writes the artifact and redirects with pane + revision", async () => {
@@ -1513,9 +1567,10 @@ test("POST preview (no-JS) writes the artifact and redirects with pane + revisio
   const state = previewState(ik);
   assert.equal(state.token.length, 22);
   assert.equal(state.revision, 1);
-  // artifact carries the PUBLISHED tree (no draft exists) + token + revision
+  // artifact carries the surface routeKey + PUBLISHED tree (no draft exists) +
+  // token + revision
   assert.equal(previews.length, 1);
-  assert.deepEqual(previews[0], { tree: baseTree(), revision: 1, token: state.token });
+  assert.deepEqual(previews[0], { surface: "homepage", tree: baseTree(), revision: 1, token: state.token });
 });
 
 test("POST preview uses the DRAFT tree when one exists", async () => {
@@ -1592,35 +1647,59 @@ test("POST preview with no database → 503", async () => {
   assert.equal(res.statusCode, 503);
 });
 
-// ---- live-preview capability gate (6.3 #31 stopgap) ----
+// ---- per-surface preview slots (#32-T3, D3) ----
 //
-// The preview is a SINGLE shared slot (preview-draft.json + one token on the
-// siteConfig singleton). Only the surface that OWNS it (homepage) may write it.
-// The listing surface OMITS supportsLivePreview → its /preview route 404s
-// BEFORE writing, so it can never overwrite (corrupt) the homepage slot.
+// Every surface previews now. Each surface owns an ISOLATED slot keyed by
+// routeKey (previews.<routeKey>.{token,revision} + preview-<routeKey>.json), so
+// the old single-owner supportsLivePreview 404 gate is GONE — listing/posttype
+// preview/publish succeed and write their OWN slot, NEVER another surface's.
+// The independence safety property (the 6.4 lesson: no path writes another
+// surface's slot) is proven by the cross-surface assertions below.
 
-test("POST /listing/preview 404s (no live-preview capability) and never touches the shared slot", async () => {
-  // Real registry: listing is live and OMITS supportsLivePreview. Seed a
-  // homepage preview slot (token/revision) so we can prove it stays untouched.
-  const ik = makeIndiekit({
-    compositions: [sidebarDoc()],
-    siteConfig: [{ _id: "primary", previewToken: "homepage-token", previewRevision: 7 }],
-  });
+test("POST /listing/preview SUCCEEDS (no 404): writes the listing's OWN slot + artifact", async () => {
+  // Real registry: listing is sidebar-only and previews now. The artifact is
+  // stamped surface:"listing"; the slot lives at previews.listing.
+  const ik = makeIndiekit({ compositions: [sidebarDoc()] });
   const previews = [];
   const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
   const res = await callRoute(router, "post", "/listing/preview");
-  assert.equal(res.statusCode, 404);
-  // No preview draft written — the gate precedes the write.
-  assert.equal(previews.length, 0);
-  // The shared homepage preview slot is byte-identical (token NOT rotated,
-  // revision NOT bumped).
-  const slot = ik._db.stores.siteConfig.get("primary");
-  assert.equal(slot.previewToken, "homepage-token");
-  assert.equal(slot.previewRevision, 7);
+  assert.equal(res.redirected.status, 303);
+  assert.equal(flag(res, "pane"), "preview");
+  assert.equal(flag(res, "previewing"), "1");
+  // The listing's own slot is minted (token ≈22 chars, revision bumped to 1).
+  const state = previewState(ik, "listing");
+  assert.equal(state.token.length, 22);
+  assert.equal(state.revision, 1);
+  // The artifact carries surface:"listing" + the listing tree.
+  assert.equal(previews.length, 1);
+  assert.deepEqual(previews[0], {
+    surface: "listing",
+    tree: sidebarDoc().tree,
+    revision: 1,
+    token: state.token,
+  });
 });
 
-test("POST /homepage/preview still writes the shared slot (capability owner unchanged)", async () => {
-  // Regression guard: the gate must not break the homepage owner.
+test("POST /posttype/preview SUCCEEDS (no 404): writes the posttype's OWN slot + artifact (6.4 casing)", async () => {
+  const ik = makeIndiekit({ compositions: [posttypeDoc()] });
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  const res = await callRoute(router, "post", "/posttype/preview");
+  assert.equal(res.redirected.status, 303);
+  assert.equal(flag(res, "pane"), "preview");
+  const state = previewState(ik, "posttype");
+  assert.equal(state.token.length, 22);
+  assert.equal(state.revision, 1);
+  assert.equal(previews.length, 1);
+  assert.deepEqual(previews[0], {
+    surface: "posttype",
+    tree: posttypeDoc().tree,
+    revision: 1,
+    token: state.token,
+  });
+});
+
+test("POST /homepage/preview still writes the homepage slot (regression guard)", async () => {
   const ik = makeIndiekit();
   const previews = [];
   const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
@@ -1628,6 +1707,29 @@ test("POST /homepage/preview still writes the shared slot (capability owner unch
   assert.equal(res.redirected.status, 303);
   assert.equal(flag(res, "pane"), "preview");
   assert.equal(previews.length, 1);
+  assert.equal(previews[0].surface, "homepage");
+});
+
+test("INDEPENDENCE: previewing /listing does NOT touch the homepage slot or file", async () => {
+  // A homepage slot seeded BEFORE the listing preview. Previewing listing must
+  // mint previews.listing + preview-listing.json and leave previews.homepage +
+  // any homepage artifact byte-identical (the per-surface isolation property).
+  const ik = makeIndiekit({
+    compositions: [sidebarDoc()],
+    siteConfig: [{ _id: "primary", previews: { homepage: { token: "homepage-token", revision: 7 } } }],
+  });
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  const res = await callRoute(router, "post", "/listing/preview");
+  assert.equal(res.redirected.status, 303);
+  // Listing's own slot was written.
+  assert.equal(previewState(ik, "listing").revision, 1);
+  // The homepage slot is byte-identical (token NOT rotated, revision NOT bumped).
+  assert.deepEqual(previewState(ik, "homepage"), { token: "homepage-token", revision: 7 });
+  // Exactly one artifact, for the listing surface — NO homepage file written.
+  assert.equal(previews.length, 1);
+  assert.equal(previews[0].surface, "listing");
+  assert.equal(previews.some((p) => p.surface === "homepage"), false);
 });
 
 // ---- per-surface editor locals (6.3 #31 + #28) ----
@@ -1649,8 +1751,29 @@ test("editorLocals: listing exposes supportsLivePreview false + its own editor c
   assert.equal(locals.editorIntroKey, "siteConfig.design.editor.listingDescription");
 });
 
+test("editorLocals: passes previewRouteKey for the per-surface iframe URL /preview/<routeKey>/<token>/ (#32-T3, D6)", async () => {
+  // The shared view builds the iframe src from previewRouteKey + the slot token
+  // (T5/T6). Homepage → "homepage"; listing → "listing"; posttype → "posttype".
+  const home = await callRoute(makeRouter(makeIndiekit()), "get", "/homepage");
+  assert.equal(home.rendered.locals.previewRouteKey, "homepage");
+
+  const listing = await callRoute(
+    makeRouter(makeIndiekit({ compositions: [sidebarDoc()] })),
+    "get",
+    "/listing",
+  );
+  assert.equal(listing.rendered.locals.previewRouteKey, "listing");
+
+  const posttype = await callRoute(
+    makeRouter(makeIndiekit({ compositions: [posttypeDoc()] })),
+    "get",
+    "/posttype",
+  );
+  assert.equal(posttype.rendered.locals.previewRouteKey, "posttype");
+});
+
 test("GET /homepage pane state: default structural, ?pane=preview selects preview", async () => {
-  const ik = makeIndiekit({ siteConfig: [{ _id: "primary", previewToken: "tok22", previewRevision: 4 }] });
+  const ik = makeIndiekit({ siteConfig: [{ _id: "primary", previews: { homepage: { token: "tok22", revision: 4 } } }] });
   const router = makeRouter(ik);
   const structural = await callRoute(router, "get", "/homepage");
   assert.equal(structural.rendered.locals.pane, "structural");
@@ -1674,7 +1797,7 @@ test("publish rotates the token, bumps the revision, writes a FRESH preview-draf
   draft.children[1].children[0].children[0].config = { maxItems: 42 };
   const ik = makeIndiekit({
     compositions: [homepageDoc({ draftTree: draft, draftUpdatedAt: "D1" })],
-    siteConfig: [{ _id: "primary", previewToken: "old-token", previewRevision: 5 }],
+    siteConfig: [{ _id: "primary", previews: { homepage: { token: "old-token", revision: 5 } } }],
   });
   const previews = [];
   const router = makeRouter(ik, {
@@ -1687,9 +1810,10 @@ test("publish rotates the token, bumps the revision, writes a FRESH preview-draf
   assert.notEqual(state.token, "old-token"); // rotated unconditionally
   assert.equal(state.token.length, 22);
   assert.equal(state.revision, 6);
-  // fresh artifact: the NOW-PUBLISHED tree under the NEW token/revision
+  // fresh artifact: the NOW-PUBLISHED tree under the NEW token/revision, stamped
+  // with the homepage routeKey
   assert.equal(previews.length, 1);
-  assert.deepEqual(previews[0], { tree: draft, revision: 6, token: state.token });
+  assert.deepEqual(previews[0], { surface: "homepage", tree: draft, revision: 6, token: state.token });
 });
 
 test("rejected publish (invalid draft) does NOT rotate the token or write a preview", async () => {
@@ -1697,7 +1821,7 @@ test("rejected publish (invalid draft) does NOT rotate the token or write a prev
   badTree.children[1].children[0].children[0].config = { maxItems: 999 };
   const ik = makeIndiekit({
     compositions: [homepageDoc({ draftTree: badTree, draftUpdatedAt: "D1" })],
-    siteConfig: [{ _id: "primary", previewToken: "old-token", previewRevision: 5 }],
+    siteConfig: [{ _id: "primary", previews: { homepage: { token: "old-token", revision: 5 } } }],
   });
   const previews = [];
   const router = makeRouter(ik, {
@@ -1728,18 +1852,16 @@ test("a preview-rotation failure after a successful publish still redirects publ
   }
 });
 
-test("publishing the listing surface does NOT rotate/overwrite the shared homepage preview slot (6.3 #31)", async () => {
-  // Sibling of the /preview gate: the publish handler's preview-rotation block
-  // writes the SINGLE shared slot (siteConfig token/revision + preview-draft.json).
-  // The listing surface OMITS supportsLivePreview, so a listing publish must NOT
-  // touch that slot — otherwise it rotates the homepage token and overwrites the
-  // homepage preview-draft with the sidebar-only listing tree.
+test("publishing the listing surface rotates ONLY the listing slot — the homepage slot is untouched (#32-T3 independence)", async () => {
+  // Per-surface rotation: a listing publish rotates previews.listing + writes
+  // preview-listing.json. The homepage slot (seeded BEFORE) must stay
+  // byte-identical — proving no publish path rotates another surface's slot.
   const ik = makeIndiekit({
     compositions: [
       { ...sidebarDoc(), draftTree: sidebarDoc().tree, draftUpdatedAt: "D1" },
     ],
     // A homepage-owned preview slot seeded BEFORE the listing publish.
-    siteConfig: [{ _id: "primary", previewToken: "homepage-token", previewRevision: 9 }],
+    siteConfig: [{ _id: "primary", previews: { homepage: { token: "homepage-token", revision: 9 } } }],
   });
   const previews = [];
   const router = makeRouter(ik, {
@@ -1752,10 +1874,16 @@ test("publishing the listing surface does NOT rotate/overwrite the shared homepa
   const doc = ik._db.stores.compositions.get("collection:default");
   assert.equal("draftTree" in doc, false); // draft promoted
   assert.equal(doc.status, "published");
-  // The shared preview slot is byte-identical (token NOT rotated, revision NOT
-  // bumped) and NO preview-draft artifact was written.
-  assert.deepEqual(previewState(ik), { token: "homepage-token", revision: 9 });
-  assert.equal(previews.length, 0);
+  // The listing's OWN slot rotated: fresh token, revision bumped from 0 → 1.
+  const listing = previewState(ik, "listing");
+  assert.equal(listing.token.length, 22);
+  assert.equal(listing.revision, 1);
+  // The homepage slot is byte-identical (token NOT rotated, revision NOT bumped).
+  assert.deepEqual(previewState(ik, "homepage"), { token: "homepage-token", revision: 9 });
+  // The only artifact written is for the listing surface (NO homepage file).
+  assert.equal(previews.length, 1);
+  assert.equal(previews[0].surface, "listing");
+  assert.equal(previews.some((p) => p.surface === "homepage"), false);
 });
 
 // ---- postType (post sidebar) surface capabilities (6.4-T2) ----
@@ -1772,32 +1900,34 @@ test("POST /posttype/arrangement 404s (no arrangement axis) without writing a dr
   assert.equal("draftTree" in ik._db.stores.compositions.get("posttype:default"), false);
 });
 
-test("POST /posttype/preview 404s (no live-preview capability) and never touches the shared slot (6.4-T2)", async () => {
-  // Seed a homepage-owned preview slot so we can prove it stays untouched.
+test("INDEPENDENCE: previewing /posttype does NOT touch the homepage slot or file (#32-T3, 6.4 casing)", async () => {
+  // Per-surface preview: /posttype/preview mints previews.posttype +
+  // preview-posttype.json and leaves the seeded homepage slot byte-identical.
   const ik = makeIndiekit({
     compositions: [posttypeDoc()],
-    siteConfig: [{ _id: "primary", previewToken: "homepage-token", previewRevision: 7 }],
+    siteConfig: [{ _id: "primary", previews: { homepage: { token: "homepage-token", revision: 7 } } }],
   });
   const previews = [];
   const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
   const res = await callRoute(router, "post", "/posttype/preview");
-  assert.equal(res.statusCode, 404);
-  // No preview draft written — the gate precedes the write.
-  assert.equal(previews.length, 0);
-  // The shared homepage preview slot is byte-identical (token NOT rotated,
-  // revision NOT bumped).
-  const slot = ik._db.stores.siteConfig.get("primary");
-  assert.equal(slot.previewToken, "homepage-token");
-  assert.equal(slot.previewRevision, 7);
+  assert.equal(res.redirected.status, 303);
+  // posttype's own slot was minted.
+  assert.equal(previewState(ik, "posttype").revision, 1);
+  // The homepage slot is byte-identical.
+  assert.deepEqual(previewState(ik, "homepage"), { token: "homepage-token", revision: 7 });
+  // The only artifact is for the posttype surface (NO homepage file).
+  assert.equal(previews.length, 1);
+  assert.equal(previews[0].surface, "posttype");
+  assert.equal(previews.some((p) => p.surface === "homepage"), false);
 });
 
-test("publishing the posttype surface succeeds but does NOT rotate/overwrite the shared homepage preview slot (6.4-T2)", async () => {
+test("publishing the posttype surface rotates ONLY the posttype slot — the homepage slot is untouched (#32-T3 independence)", async () => {
   const ik = makeIndiekit({
     compositions: [
       { ...posttypeDoc(), draftTree: posttypeDoc().tree, draftUpdatedAt: "D1" },
     ],
     // A homepage-owned preview slot seeded BEFORE the posttype publish.
-    siteConfig: [{ _id: "primary", previewToken: "homepage-token", previewRevision: 9 }],
+    siteConfig: [{ _id: "primary", previews: { homepage: { token: "homepage-token", revision: 9 } } }],
   });
   const previews = [];
   const router = makeRouter(ik, {
@@ -1810,9 +1940,15 @@ test("publishing the posttype surface succeeds but does NOT rotate/overwrite the
   const doc = ik._db.stores.compositions.get("posttype:default");
   assert.equal("draftTree" in doc, false); // draft promoted
   assert.equal(doc.status, "published");
-  // The shared preview slot is byte-identical and NO preview-draft was written.
-  assert.deepEqual(previewState(ik), { token: "homepage-token", revision: 9 });
-  assert.equal(previews.length, 0);
+  // posttype's OWN slot rotated; the homepage slot is byte-identical.
+  const posttype = previewState(ik, "posttype");
+  assert.equal(posttype.token.length, 22);
+  assert.equal(posttype.revision, 1);
+  assert.deepEqual(previewState(ik, "homepage"), { token: "homepage-token", revision: 9 });
+  // The only artifact written is for the posttype surface (NO homepage file).
+  assert.equal(previews.length, 1);
+  assert.equal(previews[0].surface, "posttype");
+  assert.equal(previews.some((p) => p.surface === "homepage"), false);
 });
 
 test("groupAvailableBlocks (surfaceFilter 'postType', regions ['sidebar']) offers the post-sidebar blocks — NOT an empty picker (6.4 casing-trap guard)", () => {
