@@ -186,6 +186,40 @@ for (const locale of LOCALES) {
   });
 }
 
+// #40 — every locale must carry the SAME keys under siteConfig.design. A
+// missing key in a non-default locale silently falls back to the key path (or
+// English), e.g. the French listing/postType editor H1 showed a raw key. This
+// parity guard fails loudly if en and a translated locale drift apart.
+const flattenKeys = (obj, prefix = "") => {
+  const keys = [];
+  for (const [k, v] of Object.entries(obj)) {
+    const key = prefix ? `${prefix}.${k}` : k;
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      keys.push(...flattenKeys(v, key));
+    } else {
+      keys.push(key);
+    }
+  }
+  return keys;
+};
+
+const designNamespace = (locale) =>
+  lookupCatalog(locale, "siteConfig.design");
+
+test("every locale has the same siteConfig.design keys as en (no i18n gaps)", () => {
+  const enKeys = new Set(flattenKeys(designNamespace("en")));
+  for (const locale of LOCALES) {
+    if (locale === "en") continue;
+    const localeKeys = new Set(flattenKeys(designNamespace(locale)));
+    const missing = [...enKeys].filter((k) => !localeKeys.has(k));
+    assert.deepEqual(
+      missing,
+      [],
+      `${locale}.json siteConfig.design is missing: ${missing.join(", ")}`,
+    );
+  }
+});
+
 test("i18n eats unmapped {{var}} placeholders (defect mechanism)", () => {
   // Documents WHY self-mapping is required: without args, mustache replaces
   // the missing variable with an empty string. If this ever stops holding,

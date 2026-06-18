@@ -167,6 +167,10 @@
       "editor": {
         "title": "Design de la page d'accueil",
         "description": "Organisez les blocs qui composent votre page d'accueil. Les modifications sont enregistrées comme brouillon jusqu'à publication.",
+        "listingTitle": "Design de la liste du blog",
+        "listingDescription": "Organisez les blocs de la barre latérale de votre liste du blog. Les modifications sont enregistrées comme brouillon jusqu'à publication.",
+        "posttypeTitle": "Design de la barre latérale d'article",
+        "posttypeDescription": "Organisez les blocs de la barre latérale de vos articles. Les modifications sont enregistrées comme brouillon jusqu'à publication.",
         "surfaceNoun": {
           "homepage": "page d'accueil",
           "listing": "liste du blog",
@@ -287,7 +291,8 @@
         "building": "Construction de l'aperçu… (~{{seconds}} s sur ce site)",
         "buildingUnknown": "Construction de l'aperçu…",
         "ready": "L'aperçu est à jour.",
-        "slow": "C'est plus long que d'habitude — l'aperçu apparaîtra à la fin de la construction. Utilisez « Recharger l'aperçu » pour vérifier."
+        "slow": "C'est plus long que d'habitude — l'aperçu apparaîtra à la fin de la construction. Utilisez « Recharger l'aperçu » pour vérifier.",
+        "unavailable": "L'aperçu en direct n'est pas encore disponible pour cette surface — consultez directement vos pages de liste du blog (par ex. /articles/, /notes/) pour voir la barre latérale."
       },
       "buildStatus": {
         "building": "Reconstruction en cours — environ {{seconds}} s sur ce site. Votre site actuel reste en ligne.",
