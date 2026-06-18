@@ -218,6 +218,114 @@ test("updateBlockConfig unknown id → not-found", () => {
   assert.equal(result.error, "not-found");
 });
 
+// ---- LISTING surface (sidebar-only) — no hero/main/footer/arrangement ----
+//
+// The listing zone-model (editor/zone-models/listing.js `recognize`) yields a
+// zones object shaped { sidebar: [...], _containerIds: {...} } — there is NO
+// hero, NO main, NO footer, NO arrangement. Block-ops MUST introspect the
+// actual zones rather than assuming the homepage shape; the hardcoded version
+// crashed with `Cannot read properties of undefined (reading 'findIndex')`
+// (zones.main undefined) on every mutation. These tests pin the surface-aware
+// behavior.
+
+const listingZones = () => ({
+  sidebar: [
+    section("b_a", "recent-posts", { maxItems: 5 }),
+    section("b_b", "categories"),
+    section("b_c", "author-card"),
+  ],
+  _containerIds: { root: "c_root", sidebar: "c_side" },
+});
+
+/** Run an op on listing-shape zones and assert the input was not mutated. */
+const unmutatedListing = (op) => {
+  const zones = listingZones();
+  const snapshot = structuredClone(zones);
+  const result = op(zones);
+  assert.deepEqual(zones, snapshot, "input listing zones mutated");
+  return result;
+};
+
+test("listing: findBlock locates a sidebar block (via removeBlock report)", () => {
+  const result = unmutatedListing((zones) => removeBlock(zones, { blockId: "b_b" }));
+  assert.equal(result.error, undefined);
+  assert.equal(result.removed.zone, "sidebar");
+  assert.equal(result.removed.index, 1);
+  assert.equal(result.removed.node.id, "b_b");
+});
+
+test("listing: moveBlock reorders within the sidebar (up and down)", () => {
+  const down = unmutatedListing((zones) => moveBlock(zones, { blockId: "b_a", direction: "down" }));
+  assert.equal(down.error, undefined);
+  assert.deepEqual(down.zones.sidebar.map((n) => n.id), ["b_b", "b_a", "b_c"]);
+  const up = moveBlock(down.zones, { blockId: "b_a", direction: "up" });
+  assert.deepEqual(up.zones.sidebar.map((n) => n.id), ["b_a", "b_b", "b_c"]);
+  // metadata preserved through the ops
+  assert.deepEqual(up.zones._containerIds, { root: "c_root", sidebar: "c_side" });
+});
+
+test("listing: moveBlock at the edges is an equal-but-fresh no-op", () => {
+  const zones = listingZones();
+  for (const [blockId, direction] of [["b_a", "up"], ["b_c", "down"]]) {
+    const result = moveBlock(zones, { blockId, direction });
+    assert.equal(result.error, undefined, blockId);
+    assert.deepEqual(result.zones, zones, blockId);
+    assert.notEqual(result.zones, zones, blockId);
+  }
+});
+
+test("listing: addBlock appends a fresh node to the sidebar", () => {
+  const result = unmutatedListing((zones) =>
+    addBlock(zones, { zone: "sidebar", type: "search", config: { placeholder: "go" }, idFactory: makeIds() }),
+  );
+  assert.equal(result.error, undefined);
+  assert.equal(result.zones.sidebar.length, 4);
+  assert.deepEqual(result.zones.sidebar[3], {
+    block: "section", id: "b_000001", type: "search", v: 0, config: { placeholder: "go" },
+  });
+});
+
+test("listing: removeBlock removes from the sidebar and reports {zone:'sidebar'}", () => {
+  const result = unmutatedListing((zones) => removeBlock(zones, { blockId: "b_a" }));
+  assert.deepEqual(result.zones.sidebar.map((n) => n.id), ["b_b", "b_c"]);
+  assert.equal(result.removed.zone, "sidebar");
+});
+
+test("listing: removeBlock + restoreBlock round-trips exactly", () => {
+  const zones = listingZones();
+  const { zones: after, removed } = removeBlock(zones, { blockId: "b_b" });
+  const { zones: restored, error } = restoreBlock(after, removed);
+  assert.equal(error, undefined);
+  assert.deepEqual(restored, zones);
+});
+
+test("listing: updateBlockConfig replaces config, id/type/v untouched", () => {
+  const result = unmutatedListing((zones) =>
+    updateBlockConfig(zones, { blockId: "b_a", config: { maxItems: 12 } }),
+  );
+  assert.deepEqual(result.zones.sidebar[0], {
+    block: "section", id: "b_a", type: "recent-posts", v: 0, config: { maxItems: 12 },
+  });
+});
+
+test("listing: unknown id → not-found, zones equal-but-fresh (no metadata loss)", () => {
+  const zones = listingZones();
+  const result = removeBlock(zones, { blockId: "b_nope" });
+  assert.equal(result.error, "not-found");
+  assert.deepEqual(result.zones, zones);
+  assert.notEqual(result.zones, zones);
+  assert.deepEqual(result.zones._containerIds, zones._containerIds);
+});
+
+test("listing: ops return fresh sidebar array (no aliasing back into the input)", () => {
+  const zones = listingZones();
+  const { zones: next } = addBlock(zones, { zone: "sidebar", type: "search", idFactory: makeIds() });
+  assert.notEqual(next, zones);
+  assert.notEqual(next.sidebar, zones.sidebar);
+  next.sidebar.push(section("b_leak", "search"));
+  assert.equal(zones.sidebar.length, 3);
+});
+
 // ---- shared immutability depth ----
 
 test("ops return fresh zone arrays (no aliasing back into the input)", () => {
