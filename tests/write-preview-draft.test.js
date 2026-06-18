@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   writePreviewDraft,
-  PREVIEW_DRAFT_FILE,
+  previewDraftFile,
 } from "../lib/render/write-preview-draft.js";
 
 const TREE = {
@@ -18,21 +18,31 @@ const TREE = {
   ],
 };
 
-const INPUT = { tree: TREE, revision: 3, token: "tok_abc123" };
+const INPUT = { surface: "homepage", tree: TREE, revision: 3, token: "tok_abc123" };
 
-test("writes EXACTLY the spec §2.4 preview shape (schemaVersion 4, kind preview)", async () => {
+test("writes EXACTLY the spec §2.4 preview shape (schemaVersion 4, kind preview, surface)", async () => {
   const dir = await mkdtemp(join(tmpdir(), "preview-draft-"));
   const path = await writePreviewDraft(INPUT, dir);
   const onDisk = JSON.parse(await readFile(path, "utf8"));
   assert.deepEqual(
     Object.keys(onDisk).sort(),
-    ["generatedAt", "kind", "revision", "schemaVersion", "token", "tree"],
+    ["generatedAt", "kind", "revision", "schemaVersion", "surface", "token", "tree"],
   );
   assert.equal(onDisk.schemaVersion, 4);
   assert.equal(onDisk.kind, "preview");
+  assert.equal(onDisk.surface, "homepage");
   assert.equal(onDisk.revision, 3);
   assert.equal(onDisk.token, "tok_abc123");
   assert.deepEqual(onDisk.tree, TREE);
+});
+
+test("stamps the surface routeKey into the artifact", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "preview-draft-"));
+  for (const surface of ["homepage", "listing", "posttype"]) {
+    const path = await writePreviewDraft({ ...INPUT, surface }, dir);
+    const onDisk = JSON.parse(await readFile(path, "utf8"));
+    assert.equal(onDisk.surface, surface);
+  }
 });
 
 test("extra input fields can never leak (artifact is built, not picked)", async () => {
@@ -60,11 +70,38 @@ test("generatedAt is an ISO 8601 string (workspace date convention), injectable"
   assert.ok(realOnDisk.generatedAt.match(/^\d{4}-\d{2}-\d{2}T.*Z$/));
 });
 
-test("writes to <outputDir>/preview-draft.json", async () => {
+test("writes to <outputDir>/preview-<surface>.json", async () => {
   const dir = await mkdtemp(join(tmpdir(), "preview-draft-"));
   const path = await writePreviewDraft(INPUT, dir);
-  assert.equal(path, join(dir, PREVIEW_DRAFT_FILE));
-  assert.equal(PREVIEW_DRAFT_FILE, "preview-draft.json");
+  assert.equal(path, join(dir, "preview-homepage.json"));
+  assert.equal(previewDraftFile("homepage"), "preview-homepage.json");
+  assert.equal(previewDraftFile("listing"), "preview-listing.json");
+  assert.equal(previewDraftFile("posttype"), "preview-posttype.json");
+});
+
+test("different surfaces write DIFFERENT files (no overwrite)", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "preview-draft-"));
+  const homepagePath = await writePreviewDraft(
+    { ...INPUT, surface: "homepage", revision: 1 },
+    dir,
+  );
+  const listingPath = await writePreviewDraft(
+    { ...INPUT, surface: "listing", revision: 2 },
+    dir,
+  );
+  assert.notEqual(homepagePath, listingPath);
+
+  // Writing listing did NOT clobber homepage's file.
+  const homepageOnDisk = JSON.parse(await readFile(homepagePath, "utf8"));
+  const listingOnDisk = JSON.parse(await readFile(listingPath, "utf8"));
+  assert.equal(homepageOnDisk.surface, "homepage");
+  assert.equal(homepageOnDisk.revision, 1);
+  assert.equal(listingOnDisk.surface, "listing");
+  assert.equal(listingOnDisk.revision, 2);
+
+  // Both files coexist on disk.
+  const files = (await readdir(dir)).sort();
+  assert.deepEqual(files, ["preview-homepage.json", "preview-listing.json"]);
 });
 
 test("default outputDir is /app/data/content/_data/compositions", async () => {
@@ -87,7 +124,7 @@ test("unlinks the tmp file (best-effort) and rethrows when rename fails", async 
   const dir = await mkdtemp(join(tmpdir(), "preview-draft-"));
   // Simulate rename failure: occupy the target path with a DIRECTORY —
   // rename(file → existing directory) fails with EISDIR on POSIX.
-  await mkdir(join(dir, PREVIEW_DRAFT_FILE));
+  await mkdir(join(dir, previewDraftFile("homepage")));
   await assert.rejects(() => writePreviewDraft(INPUT, dir));
   const leftovers = (await readdir(dir)).filter((f) => f.includes(".tmp"));
   assert.deepEqual(leftovers, []); // tmp cleaned up despite the failure
