@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { reseedListingComposition } from "../lib/storage/reseed-listing.js";
+import { reseedListingComposition } from "../lib/storage/reseed-sidebar-surface.js";
 
 // Deterministic id factory for assertions.
 const makeIds = () => { let n = 0; return (prefix) => `${prefix}_${String(++n).padStart(6, "0")}`; };

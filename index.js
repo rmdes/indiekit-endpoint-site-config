@@ -16,7 +16,7 @@ import { getHomepageConfig } from "./lib/storage/get-homepage-config.js";
 import { maybeSeedFromEnv  } from "./lib/storage/seed-from-env.js";
 import { maybeBackfillIdentity } from "./lib/storage/backfill-identity.js";
 import { migrateV3toV4 } from "./lib/storage/migrate-v3-to-v4.js";
-import { reseedListingComposition } from "./lib/storage/reseed-listing.js";
+import { reseedListingComposition, reseedSidebarSurface } from "./lib/storage/reseed-sidebar-surface.js";
 
 import { writeThemeCss    } from "./lib/render/write-theme-css.js";
 import { writeCriticalCss } from "./lib/render/write-critical-css.js";
@@ -184,6 +184,33 @@ export default class SiteConfigEndpoint {
         console.warn("[site-config] listing re-seed failed:", error?.message ?? String(error));
       }
 
+      // 6.4-T3 one-time forced re-seed (design D6): the EXACT same mechanism as
+      // the listing re-seed above, for the postType surface — carry the
+      // operator's CURRENT blog-tab blogPostSidebar into posttype:default ONCE
+      // at the 6.4 cutover. Gated on siteConfig.migrations.posttypeReseed, an
+      // INDEPENDENT gate from listingReseed (re-seeding one surface never
+      // sets/consumes the other's gate). MUST run BEFORE the artifact write
+      // below so the re-seeded posttype:default tree is flushed to
+      // posttype-default.json on the cutover boot. Separate try/catch — never
+      // crashes boot.
+      try {
+        const db = Indiekit.database;
+        if (db) {
+          const { ran, reseeded } = await reseedSidebarSurface(db, {
+            surfaceId: "posttype:default", kind: "postType",
+            target: { postType: "default" }, sourceField: "blogPostSidebar",
+            gateField: "posttypeReseed",
+          });
+          if (ran) {
+            console.log(
+              `[site-config] posttype re-seed: ran=true reseeded=${reseeded}`,
+            );
+          }
+        }
+      } catch (error) {
+        console.warn("[site-config] posttype re-seed failed:", error?.message ?? String(error));
+      }
+
       // Phase 3 cutover: (re)write the composition artifact — THE theme
       // activation switch (Tier-0 renders the homepage from the v4 path when
       // compositions/homepage.json exists). Boot self-heals the artifact on
@@ -192,13 +219,14 @@ export default class SiteConfigEndpoint {
       // migration failure and never crashes boot.
       try {
         const db = Indiekit.database;
-        // Write ONE artifact per LIVE surface (6.3: homepage + collection:default;
-        // the id list is derived from the surface registry inside the helper, so
-        // 6.4/6.5 surfaces auto-extend). The per-doc `doc?.tree` guard inside the
-        // helper still skips draft-only docs (apply-recipe on a fresh install can
-        // insert a draft-only doc with no published tree — writing that would
-        // activate the theme's v4 path with an empty artifact). posttype:default
-        // is NOT in the live registry until 6.4, so it is never written here.
+        // Write ONE artifact per LIVE surface (6.4: homepage + collection:default
+        // + posttype:default; the id list is derived from the surface registry
+        // inside the helper, so 6.5 surfaces auto-extend). The per-doc `doc?.tree`
+        // guard inside the helper still skips draft-only docs (apply-recipe on a
+        // fresh install can insert a draft-only doc with no published tree —
+        // writing that would activate the theme's v4 path with an empty artifact).
+        // posttype:default IS now a live surface (registered in T2, re-seeded just
+        // above) and is written here to posttype-default.json.
         const written = db ? await writeCompositionArtifacts(db) : [];
         for (const surfaceId of written) {
           console.log(`[site-config] composition artifact written: ${surfaceId}`);
