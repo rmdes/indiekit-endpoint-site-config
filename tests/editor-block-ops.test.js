@@ -220,7 +220,7 @@ test("updateBlockConfig unknown id → not-found", () => {
 
 // ---- LISTING surface (sidebar-only) — no hero/main/footer/arrangement ----
 //
-// The listing zone-model (editor/zone-models/listing.js `recognize`) yields a
+// The sidebar zone-model (editor/zone-models/sidebar.js `recognize`) yields a
 // zones object shaped { sidebar: [...], _containerIds: {...} } — there is NO
 // hero, NO main, NO footer, NO arrangement. Block-ops MUST introspect the
 // actual zones rather than assuming the homepage shape; the hardcoded version

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { SURFACES, getSurface } from "../lib/editor/surface-registry.js";
 import { homepageZoneModel } from "../lib/editor/zone-models/homepage.js";
-import { listingZoneModel } from "../lib/editor/zone-models/listing.js";
+import { sidebarZoneModel } from "../lib/editor/zone-models/sidebar.js";
 import { LAYOUT_PRESETS } from "../lib/presets/layout-presets.js";
 import { buildHomepageTree } from "../lib/storage/migrate-v3-to-v4.js";
 
@@ -60,7 +60,7 @@ test("getSurface('listing') returns the listing entry with the exact fields", ()
 
 test("listing entry wires the listing zoneModel by identity, with empty recipes and null treeBuilder", () => {
   const entry = getSurface("listing");
-  assert.equal(entry.zoneModel, listingZoneModel);
+  assert.equal(entry.zoneModel, sidebarZoneModel);
   assert.deepEqual(entry.recipes, []);
   assert.equal(entry.treeBuilder, null);
 });
