@@ -31,6 +31,17 @@ test("homepage declares the arrangement capability (stack + sidebar-right)", () 
   assert.deepEqual([...entry.arrangements], ["stack", "sidebar-right"]);
 });
 
+test("homepage declares the live-preview capability (owns the shared slot)", () => {
+  const entry = getSurface("homepage");
+  assert.equal(entry.supportsLivePreview, true);
+});
+
+test("homepage editor copy keys are the EXISTING editor.title/description (byte-identical)", () => {
+  const entry = getSurface("homepage");
+  assert.equal(entry.editorTitleKey, "siteConfig.design.editor.title");
+  assert.equal(entry.editorIntroKey, "siteConfig.design.editor.description");
+});
+
 test("getSurface('homepage') returns the same entry as SURFACES.homepage", () => {
   assert.equal(getSurface("homepage"), SURFACES.homepage);
 });
@@ -57,6 +68,17 @@ test("listing entry wires the listing zoneModel by identity, with empty recipes 
 test("listing declares NO arrangement capability (sidebar-only)", () => {
   const entry = getSurface("listing");
   assert.equal(entry.arrangements, undefined);
+});
+
+test("listing OMITS the live-preview capability (does not own the shared slot)", () => {
+  const entry = getSurface("listing");
+  assert.equal(entry.supportsLivePreview, undefined);
+});
+
+test("listing declares its OWN editor copy keys (not the homepage ones)", () => {
+  const entry = getSurface("listing");
+  assert.equal(entry.editorTitleKey, "siteConfig.design.editor.listingTitle");
+  assert.equal(entry.editorIntroKey, "siteConfig.design.editor.listingDescription");
 });
 
 test("getSurface('listing') returns the same entry as SURFACES.listing", () => {

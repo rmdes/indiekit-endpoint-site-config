@@ -166,7 +166,9 @@
       },
       "editor": {
         "title": "Homepage design",
-        "description": "Arrange the blocks that make up your homepage. Changes are saved as a draft until you publish."
+        "description": "Arrange the blocks that make up your homepage. Changes are saved as a draft until you publish.",
+        "listingTitle": "Blog listing design",
+        "listingDescription": "Arrange the blocks in your blog listing sidebar. Changes are saved as a draft until you publish."
       },
       "zones": {
         "hero": "Hero",
@@ -282,7 +284,8 @@
         "building": "Building preview… (~{{seconds}}s on this site)",
         "buildingUnknown": "Building preview…",
         "ready": "Preview is up to date.",
-        "slow": "This is taking longer than usual — the preview will appear once the build finishes. Use “Reload preview” to check again."
+        "slow": "This is taking longer than usual — the preview will appear once the build finishes. Use “Reload preview” to check again.",
+        "unavailable": "Live preview isn't available for this surface yet — view your blog listing pages directly (e.g. /articles/, /notes/) to see the sidebar."
       },
       "buildStatus": {
         "building": "Rebuilding — usually ~{{seconds}}s on this site. Your current site stays online.",

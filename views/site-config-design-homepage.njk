@@ -53,8 +53,12 @@
 <script type="application/json" id="sc-editor-i18n">{{ editorI18n | dump | replace("</", "<\\/") | safe }}</script>
 
 <header class="page-header">
-  <h1 class="page-header__title">{{ __("siteConfig.design.editor.title") }}</h1>
-  <p class="page-header__description">{{ __("siteConfig.design.editor.description") }}</p>
+  {# Per-surface editor copy (6.3 #28): editorTitleKey/editorIntroKey are i18n
+     KEYS from the surface registry. Homepage resolves to the existing
+     editor.title/description strings (byte-identical); listing resolves to its
+     own listingTitle/listingDescription. #}
+  <h1 class="page-header__title">{{ __(editorTitleKey) }}</h1>
+  <p class="page-header__description">{{ __(editorIntroKey) }}</p>
 </header>
 
 {% include "partials/tab-strip.njk" %}
@@ -305,6 +309,14 @@
      PRODUCTION renderer at /preview/<token>/). Pane choice is server state
      (?pane=preview) via plain links, so no-JS toggles by full reload. #}
   <div class="sc-design__pane">
+    {# Live-preview pane is a per-surface capability (6.3 #31 stopgap): the
+       preview is a SINGLE shared slot (homepage-only). When the surface owns it
+       (supportsLivePreview), render the Structural/Preview toggle + the chosen
+       pane exactly as before — homepage is byte-identical. When it does NOT
+       (listing), render NEITHER the toggle NOR the preview iframe; show a short
+       notice instead. The structural editing pane (the block list) is unchanged
+       either way — it lives in sc-design__editor above. #}
+    {% if supportsLivePreview %}
     <nav class="sc-pane-toggle" aria-label="{{ __('siteConfig.design.previewPane.toggleLabel') }}">
       <a class="sc-pane-toggle__link" href="{{ surfaceBase }}"
         {%- if pane != "preview" %} aria-current="true"{% endif %}>{{ __("siteConfig.design.previewPane.structural") }}</a>
@@ -315,6 +327,11 @@
     {% include "partials/design-preview-live.njk" %}
     {% else %}
     {% include "partials/design-preview.njk" %}
+    {% endif %}
+    {% else %}
+    <div class="sc-preview-unavailable" data-sc-preview-unavailable>
+      <p class="sc-preview-unavailable__note">{{ __("siteConfig.design.previewPane.unavailable") }}</p>
+    </div>
     {% endif %}
   </div>
 </div>

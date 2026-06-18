@@ -1139,12 +1139,15 @@ const RENDER_BASE = {
   activeTab: "design", recipes: [{ id: "blog", label: "Blog", description: "d" }],
   mode: "advanced", isDraft: true, draftUpdatedAt: "2026-06-12T08:00:00.000Z",
   undo: null, pane: "structural", preview: { token: "t", revision: 1 }, previewing: null,
+  // Per-surface copy keys (6.3 #28); the test __() mock echoes the key back.
+  editorTitleKey: "siteConfig.design.editor.title",
+  editorIntroKey: "siteConfig.design.editor.description",
 };
 
 test("editor view renders ALL homepage zones + arrangement form when zoneNames=4 and supportsArrangement", () => {
   const blocks = RENDER_BLOCKS();
   const html = renderEditorContent({
-    ...RENDER_BASE, supportsArrangement: true,
+    ...RENDER_BASE, supportsArrangement: true, supportsLivePreview: true,
     surfaceBase: "/site-config/design/homepage",
     zoneNames: ["hero", "main", "sidebar", "footer"],
     zones: { arrangement: "sidebar-right", ...blocks },
@@ -1159,7 +1162,7 @@ test("editor view renders ALL homepage zones + arrangement form when zoneNames=4
 test("editor view renders ONLY the sidebar zone (no hero/main/footer, no arrangement form) when zoneNames=['sidebar']", () => {
   const blocks = RENDER_BLOCKS();
   const html = renderEditorContent({
-    ...RENDER_BASE, supportsArrangement: false,
+    ...RENDER_BASE, supportsArrangement: false, supportsLivePreview: false,
     surfaceBase: "/site-config/design/listing",
     zoneNames: ["sidebar"],
     zones: { sidebar: blocks.sidebar },
@@ -1170,6 +1173,61 @@ test("editor view renders ONLY the sidebar zone (no hero/main/footer, no arrange
     assert.doesNotMatch(html, new RegExp(`data-sc-zone="${zone}"`), `listing must NOT render zone ${zone}`);
   }
   assert.doesNotMatch(html, /class="sc-arrangement"/, "listing must NOT render arrangement form");
+});
+
+// ---- live-preview pane gating (6.3 #31 stopgap) ----
+
+test("editor view (supportsLivePreview=true) renders the preview pane + Structural/Preview toggle (homepage)", () => {
+  const blocks = RENDER_BLOCKS();
+  const html = renderEditorContent({
+    ...RENDER_BASE, supportsArrangement: true, supportsLivePreview: true,
+    surfaceBase: "/site-config/design/homepage",
+    zoneNames: ["hero", "main", "sidebar", "footer"],
+    zones: { arrangement: "sidebar-right", ...blocks },
+    blocks, availableBlocks: RENDER_AVAILABLE(),
+  });
+  // Structural/Preview toggle nav + the structural preview pane are present;
+  // the "unavailable" notice is NOT.
+  assert.match(html, /class="sc-pane-toggle"/, "homepage missing the Structural/Preview toggle");
+  assert.match(html, /sc-design__preview/, "homepage missing the preview pane");
+  assert.doesNotMatch(html, /data-sc-preview-unavailable/, "homepage must NOT show the unavailable notice");
+});
+
+test("editor view (supportsLivePreview=false) renders NEITHER the preview pane NOR the toggle — shows a notice (listing)", () => {
+  const blocks = RENDER_BLOCKS();
+  const html = renderEditorContent({
+    ...RENDER_BASE, supportsArrangement: false, supportsLivePreview: false,
+    surfaceBase: "/site-config/design/listing",
+    zoneNames: ["sidebar"],
+    zones: { sidebar: blocks.sidebar },
+    blocks: { sidebar: blocks.sidebar }, availableBlocks: RENDER_AVAILABLE(),
+  });
+  // No preview iframe, no Structural/Preview toggle.
+  assert.doesNotMatch(html, /class="sc-pane-toggle"/, "listing must NOT render the Structural/Preview toggle");
+  assert.doesNotMatch(html, /sc-preview-frame/, "listing must NOT render the preview iframe");
+  // The structural editing pane (block list) stays — the sidebar zone renders.
+  assert.match(html, /data-sc-zone="sidebar"/, "listing must keep the structural block list");
+  // The notice is shown instead.
+  assert.match(html, /data-sc-preview-unavailable/, "listing missing the preview-unavailable notice");
+  assert.match(html, /siteConfig\.design\.previewPane\.unavailable/, "listing missing the unavailable i18n string");
+});
+
+test("editor view renders the per-surface editor title/intro keys (6.3 #28)", () => {
+  const blocks = RENDER_BLOCKS();
+  const html = renderEditorContent({
+    ...RENDER_BASE, supportsArrangement: false, supportsLivePreview: false,
+    surfaceBase: "/site-config/design/listing",
+    zoneNames: ["sidebar"],
+    zones: { sidebar: blocks.sidebar },
+    blocks: { sidebar: blocks.sidebar }, availableBlocks: RENDER_AVAILABLE(),
+    editorTitleKey: "siteConfig.design.editor.listingTitle",
+    editorIntroKey: "siteConfig.design.editor.listingDescription",
+  });
+  // The view resolves __(editorTitleKey)/__(editorIntroKey) — the mock echoes
+  // the key, proving the H1/intro are NOT hardcoded to the homepage strings.
+  assert.match(html, /siteConfig\.design\.editor\.listingTitle/, "listing H1 must use editorTitleKey");
+  assert.match(html, /siteConfig\.design\.editor\.listingDescription/, "listing intro must use editorIntroKey");
+  assert.doesNotMatch(html, /siteConfig\.design\.editor\.title/, "listing must NOT render the homepage title key");
 });
 
 // ---- recipes ----
@@ -1376,6 +1434,63 @@ test("POST preview with no database → 503", async () => {
   ik.database = null;
   const res = await callRoute(makeRouter(ik), "post", "/homepage/preview");
   assert.equal(res.statusCode, 503);
+});
+
+// ---- live-preview capability gate (6.3 #31 stopgap) ----
+//
+// The preview is a SINGLE shared slot (preview-draft.json + one token on the
+// siteConfig singleton). Only the surface that OWNS it (homepage) may write it.
+// The listing surface OMITS supportsLivePreview → its /preview route 404s
+// BEFORE writing, so it can never overwrite (corrupt) the homepage slot.
+
+test("POST /listing/preview 404s (no live-preview capability) and never touches the shared slot", async () => {
+  // Real registry: listing is live and OMITS supportsLivePreview. Seed a
+  // homepage preview slot (token/revision) so we can prove it stays untouched.
+  const ik = makeIndiekit({
+    compositions: [sidebarDoc()],
+    siteConfig: [{ _id: "primary", previewToken: "homepage-token", previewRevision: 7 }],
+  });
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  const res = await callRoute(router, "post", "/listing/preview");
+  assert.equal(res.statusCode, 404);
+  // No preview draft written — the gate precedes the write.
+  assert.equal(previews.length, 0);
+  // The shared homepage preview slot is byte-identical (token NOT rotated,
+  // revision NOT bumped).
+  const slot = ik._db.stores.siteConfig.get("primary");
+  assert.equal(slot.previewToken, "homepage-token");
+  assert.equal(slot.previewRevision, 7);
+});
+
+test("POST /homepage/preview still writes the shared slot (capability owner unchanged)", async () => {
+  // Regression guard: the gate must not break the homepage owner.
+  const ik = makeIndiekit();
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  const res = await callRoute(router, "post", "/homepage/preview");
+  assert.equal(res.redirected.status, 303);
+  assert.equal(flag(res, "pane"), "preview");
+  assert.equal(previews.length, 1);
+});
+
+// ---- per-surface editor locals (6.3 #31 + #28) ----
+
+test("editorLocals: homepage exposes supportsLivePreview true + the existing editor copy keys", async () => {
+  const res = await callRoute(makeRouter(makeIndiekit()), "get", "/homepage");
+  const { locals } = res.rendered;
+  assert.equal(locals.supportsLivePreview, true);
+  assert.equal(locals.editorTitleKey, "siteConfig.design.editor.title");
+  assert.equal(locals.editorIntroKey, "siteConfig.design.editor.description");
+});
+
+test("editorLocals: listing exposes supportsLivePreview false + its own editor copy keys", async () => {
+  const ik = makeIndiekit({ compositions: [sidebarDoc()] });
+  const res = await callRoute(makeRouter(ik), "get", "/listing");
+  const { locals } = res.rendered;
+  assert.equal(locals.supportsLivePreview, false);
+  assert.equal(locals.editorTitleKey, "siteConfig.design.editor.listingTitle");
+  assert.equal(locals.editorIntroKey, "siteConfig.design.editor.listingDescription");
 });
 
 test("GET /homepage pane state: default structural, ?pane=preview selects preview", async () => {
