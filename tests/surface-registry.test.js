@@ -42,6 +42,19 @@ test("homepage editor copy keys are the EXISTING editor.title/description (byte-
   assert.equal(entry.editorIntroKey, "siteConfig.design.editor.description");
 });
 
+test("every live surface declares a per-surface editorNounKey (#39 — kills the 'homepage' copy leak)", () => {
+  // The shared editor view interpolates {{surface}} from __(editorNounKey) into
+  // confirm/draft/empty/custom/error copy, so each surface MUST supply a noun key.
+  for (const routeKey of ["homepage", "listing", "posttype"]) {
+    const entry = getSurface(routeKey);
+    assert.equal(
+      entry.editorNounKey,
+      `siteConfig.design.editor.surfaceNoun.${routeKey}`,
+      `${routeKey} editorNounKey`,
+    );
+  }
+});
+
 test("getSurface('homepage') returns the same entry as SURFACES.homepage", () => {
   assert.equal(getSurface("homepage"), SURFACES.homepage);
 });

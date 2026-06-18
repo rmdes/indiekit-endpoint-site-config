@@ -106,6 +106,86 @@ for (const locale of LOCALES) {
   });
 }
 
+// #39 — the shared editor view is rendered for EVERY surface (homepage,
+// listing, postType). Copy that hardcodes "homepage" leaks onto the other
+// surfaces. The fix parameterises these strings with a {{surface}} noun
+// supplied per-surface via __(editorNounKey). These tests guard that (a) the
+// noun catalog exists in every locale, (b) the shared strings are
+// surface-parameterised (contain {{surface}}, not a hardcoded surface noun),
+// and (c) interpolation resolves to clean copy with no eaten placeholder.
+const SHARED_SURFACE_KEYS = [
+  "siteConfig.design.confirms.discard",
+  "siteConfig.design.confirms.remove",
+  "siteConfig.design.draftBar.live",
+  "siteConfig.design.empty.explainer",
+  "siteConfig.design.custom.notice",
+  "siteConfig.design.errors.duplicate",
+  "siteConfig.design.errors.no-composition",
+  "siteConfig.design.errors.custom-tree",
+];
+
+// Hardcoded surface nouns that must NOT appear in the shared (surface-agnostic)
+// strings — per locale. Their presence means the string still leaks.
+const LEAKED_NOUN = { en: "homepage", fr: "page d'accueil" };
+
+for (const locale of LOCALES) {
+  test(`surfaceNoun catalog is complete (${locale})`, () => {
+    for (const routeKey of ["homepage", "listing", "posttype"]) {
+      const noun = lookupCatalog(
+        locale,
+        `siteConfig.design.editor.surfaceNoun.${routeKey}`,
+      );
+      assert.equal(typeof noun, "string", `${locale} surfaceNoun.${routeKey}`);
+      assert.ok(noun.length > 0, `${locale} surfaceNoun.${routeKey} non-empty`);
+    }
+  });
+
+  test(`shared editor strings are surface-parameterised, not homepage-hardcoded (${locale})`, () => {
+    for (const key of SHARED_SURFACE_KEYS) {
+      const str = lookupCatalog(locale, key);
+      assert.equal(typeof str, "string", `${locale} has ${key}`);
+      assert.ok(
+        str.includes("{{surface}}"),
+        `${key} (${locale}) uses {{surface}}: ${str}`,
+      );
+      assert.ok(
+        !str.includes(LEAKED_NOUN[locale]),
+        `${key} (${locale}) no longer hardcodes "${LEAKED_NOUN[locale]}": ${str}`,
+      );
+    }
+  });
+
+  test(`{{surface}} resolves server-side with no eaten placeholder (${locale})`, () => {
+    const i18n = new I18n({
+      locales: LOCALES,
+      directory: localesDir,
+      objectNotation: true,
+      updateFiles: false,
+      defaultLocale: locale,
+    });
+    const noun = i18n.__({
+      phrase: "siteConfig.design.editor.surfaceNoun.posttype",
+      locale,
+    });
+    const rendered = i18n.__(
+      { phrase: "siteConfig.design.draftBar.live", locale },
+      { surface: noun },
+    );
+    assert.ok(
+      rendered.includes(noun),
+      `${locale} draftBar.live carries the post-sidebar noun: ${rendered}`,
+    );
+    assert.ok(
+      !rendered.includes("{{surface}}"),
+      `${locale} draftBar.live has no leftover placeholder: ${rendered}`,
+    );
+    assert.ok(
+      !rendered.includes(LEAKED_NOUN[locale]),
+      `${locale} draftBar.live on postType does not say "${LEAKED_NOUN[locale]}": ${rendered}`,
+    );
+  });
+}
+
 test("i18n eats unmapped {{var}} placeholders (defect mechanism)", () => {
   // Documents WHY self-mapping is required: without args, mustache replaces
   // the missing variable with an empty string. If this ever stops holding,

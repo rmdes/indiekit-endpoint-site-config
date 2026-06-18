@@ -170,7 +170,12 @@
         "listingTitle": "Blog listing design",
         "listingDescription": "Arrange the blocks in your blog listing sidebar. Changes are saved as a draft until you publish.",
         "posttypeTitle": "Post sidebar design",
-        "posttypeDescription": "Arrange the blocks in your post sidebar. Changes are saved as a draft until you publish."
+        "posttypeDescription": "Arrange the blocks in your post sidebar. Changes are saved as a draft until you publish.",
+        "surfaceNoun": {
+          "homepage": "homepage",
+          "listing": "blog listing",
+          "posttype": "post sidebar"
+        }
       },
       "zones": {
         "hero": "Hero",
@@ -192,8 +197,8 @@
         "close": "Close"
       },
       "confirms": {
-        "remove": "Remove “{{label}}” from your homepage? You can undo right after.",
-        "discard": "Discard the draft and return to the published homepage?"
+        "remove": "Remove “{{label}}” from your {{{surface}}}? You can undo right after.",
+        "discard": "Discard the draft and return to the published {{{surface}}}?"
       },
       "mode": {
         "advanced": "Advanced mode",
@@ -230,13 +235,13 @@
       "draftBar": {
         "draft": "Draft",
         "autosaved": "autosaved",
-        "live": "Live — matches the published homepage."
+        "live": "Live — matches the published {{{surface}}}."
       },
       "empty": {
-        "explainer": "No homepage composition exists yet. Pick a recipe below to create one — you'll be able to rearrange everything afterwards."
+        "explainer": "No {{{surface}}} composition exists yet. Pick a recipe below to create one — you'll be able to rearrange everything afterwards."
       },
       "custom": {
-        "notice": "This homepage uses a custom hand-built layout that the visual editor can't safely edit.",
+        "notice": "This {{{surface}}} uses a custom hand-built layout that the visual editor can't safely edit.",
         "hint": "The composition is read-only here. Apply a recipe from an empty state or edit the stored tree directly to make changes."
       },
       "flash": {
@@ -257,10 +262,10 @@
         "invalid-zone": "That zone doesn't exist.",
         "unknown-type": "Unknown block type.",
         "placement": "That block can't be placed in that zone.",
-        "duplicate": "That block is already on the homepage and can only appear once.",
+        "duplicate": "That block is already on the {{{surface}}} and can only appear once.",
         "hero-occupied": "The hero slot is already occupied.",
-        "no-composition": "No homepage composition exists yet — apply a recipe first.",
-        "custom-tree": "This homepage uses a custom layout and is read-only in the editor.",
+        "no-composition": "No {{{surface}}} composition exists yet — apply a recipe first.",
+        "custom-tree": "This {{{surface}}} uses a custom layout and is read-only in the editor.",
         "not-found": "That block no longer exists — the page may be out of date.",
         "invalid-index": "Invalid position.",
         "undo-invalid": "This undo link is no longer valid.",

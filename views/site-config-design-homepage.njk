@@ -91,7 +91,7 @@
   {% if error %}
   {{ notificationBanner({
     type: "error",
-    text: __("siteConfig.design.errors." + error)
+    text: __("siteConfig.design.errors." + error, { surface: __(editorNounKey) })
   }) }}
   {% endif %}
   {% if fieldErrors and fieldErrors.length %}
@@ -104,7 +104,7 @@
 
 {% if noComposition %}
 <div class="sc-empty-state">
-  <p>{{ __("siteConfig.design.empty.explainer") }}</p>
+  <p>{{ __("siteConfig.design.empty.explainer", { surface: __(editorNounKey) }) }}</p>
   <h2>{{ __("siteConfig.design.recipes.title") }}</h2>
   <p>{{ __("siteConfig.design.recipes.intro") }}</p>
   {{ recipeForms(recipes, false) }}
@@ -114,7 +114,7 @@
 <div class="sc-custom-notice">
   {{ notificationBanner({
     type: "message",
-    text: __("siteConfig.design.custom.notice")
+    text: __("siteConfig.design.custom.notice", { surface: __(editorNounKey) })
   }) }}
   <p>{{ __("siteConfig.design.custom.hint") }}</p>
 </div>
@@ -265,11 +265,11 @@
       </form>
       <form method="post" action="{{ surfaceBase }}/discard" class="sc-mini-form"
         onsubmit="return window.confirm(this.dataset.confirm)"
-        data-confirm="{{ __('siteConfig.design.confirms.discard') }}">
+        data-confirm="{{ __('siteConfig.design.confirms.discard', { surface: __(editorNounKey) }) }}">
         <button class="button button--small button--secondary">{{ __("siteConfig.design.actions.discard") }}</button>
       </form>
       {% else %}
-      <p class="sc-draft-bar__status">{{ __("siteConfig.design.draftBar.live") }}</p>
+      <p class="sc-draft-bar__status">{{ __("siteConfig.design.draftBar.live", { surface: __(editorNounKey) }) }}</p>
       {# Publish-flow build-status strip (Phase 5 S2): renders ONLY on the
          publish flash (?published=<epoch> — the value is the publish time,
          never rendered) with the LAST-KNOWN status server-side (no-JS path;

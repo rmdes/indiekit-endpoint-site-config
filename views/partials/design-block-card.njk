@@ -47,7 +47,7 @@
     {% endif %}
     <form method="post" action="{{ blockBase }}/remove" class="sc-mini-form sc-block-card__remove"
       onsubmit="return window.confirm(this.dataset.confirm)"
-      data-confirm="{{ __('siteConfig.design.confirms.remove', { label: card.label }) }}">
+      data-confirm="{{ __('siteConfig.design.confirms.remove', { label: card.label, surface: __(editorNounKey) }) }}">
       <button class="button button--small button--secondary" aria-label="{{ __('siteConfig.design.actions.remove') }} — {{ card.label }}">{{ __("siteConfig.design.actions.remove") }}</button>
     </form>
   </div>

@@ -166,7 +166,12 @@
       },
       "editor": {
         "title": "Design de la page d'accueil",
-        "description": "Organisez les blocs qui composent votre page d'accueil. Les modifications sont enregistrées comme brouillon jusqu'à publication."
+        "description": "Organisez les blocs qui composent votre page d'accueil. Les modifications sont enregistrées comme brouillon jusqu'à publication.",
+        "surfaceNoun": {
+          "homepage": "page d'accueil",
+          "listing": "liste du blog",
+          "posttype": "barre latérale d'article"
+        }
       },
       "zones": {
         "hero": "En-tête (hero)",
@@ -188,8 +193,8 @@
         "close": "Fermer"
       },
       "confirms": {
-        "remove": "Supprimer « {{label}} » de votre page d'accueil ? Vous pourrez annuler juste après.",
-        "discard": "Abandonner le brouillon et revenir à la page d'accueil publiée ?"
+        "remove": "Supprimer « {{label}} » de votre {{{surface}}} ? Vous pourrez annuler juste après.",
+        "discard": "Abandonner le brouillon et revenir à la {{{surface}}} publiée ?"
       },
       "mode": {
         "advanced": "Mode avancé",
@@ -226,13 +231,13 @@
       "draftBar": {
         "draft": "Brouillon",
         "autosaved": "enregistré automatiquement",
-        "live": "En ligne — identique à la page d'accueil publiée."
+        "live": "En ligne — identique à la {{{surface}}} publiée."
       },
       "empty": {
-        "explainer": "Aucune composition de page d'accueil n'existe encore. Choisissez un modèle ci-dessous pour en créer une — vous pourrez tout réorganiser ensuite."
+        "explainer": "Aucune composition de {{{surface}}} n'existe encore. Choisissez un modèle ci-dessous pour en créer une — vous pourrez tout réorganiser ensuite."
       },
       "custom": {
-        "notice": "Cette page d'accueil utilise une mise en page personnalisée que l'éditeur visuel ne peut pas modifier en toute sécurité.",
+        "notice": "Cette {{{surface}}} utilise une mise en page personnalisée que l'éditeur visuel ne peut pas modifier en toute sécurité.",
         "hint": "La composition est en lecture seule ici. Appliquez un modèle depuis un état vide ou modifiez directement l'arborescence enregistrée."
       },
       "flash": {
@@ -253,10 +258,10 @@
         "invalid-zone": "Cette zone n'existe pas.",
         "unknown-type": "Type de bloc inconnu.",
         "placement": "Ce bloc ne peut pas être placé dans cette zone.",
-        "duplicate": "Ce bloc figure déjà sur la page d'accueil et ne peut apparaître qu'une seule fois.",
+        "duplicate": "Ce bloc figure déjà sur la {{{surface}}} et ne peut apparaître qu'une seule fois.",
         "hero-occupied": "L'emplacement héros est déjà occupé.",
-        "no-composition": "Aucune composition de page d'accueil n'existe encore — appliquez d'abord un modèle.",
-        "custom-tree": "Cette page d'accueil utilise une mise en page personnalisée et est en lecture seule dans l'éditeur.",
+        "no-composition": "Aucune composition de {{{surface}}} n'existe encore — appliquez d'abord un modèle.",
+        "custom-tree": "Cette {{{surface}}} utilise une mise en page personnalisée et est en lecture seule dans l'éditeur.",
         "not-found": "Ce bloc n'existe plus — la page est peut-être obsolète.",
         "invalid-index": "Position invalide.",
         "undo-invalid": "Ce lien d'annulation n'est plus valide.",

@@ -596,6 +596,13 @@ test("the not-yet-live placeholder surface (pages) 404s on the editor; posttype 
   assert.equal(posttype.statusCode, 200, "posttype");
   assert.equal(posttype.rendered.view, "site-config-design-homepage");
   assert.equal(posttype.rendered.locals.supportsArrangement, false);
+  // #39: the shared view interpolates {{surface}} from editorNounKey, so the
+  // editor locals must carry the postType noun key (not a homepage-hardcoded
+  // string). Without this the view would render "...published homepage" copy.
+  assert.equal(
+    posttype.rendered.locals.editorNounKey,
+    "siteConfig.design.editor.surfaceNoun.posttype",
+  );
 });
 
 test("GET /listing resolves (200, no crash) now that the listing surface is registered", async () => {
