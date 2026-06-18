@@ -340,6 +340,86 @@ test("groupAvailableBlocks with NO surfaceFilter applies no surface gate (restri
   );
 });
 
+// ---- availableRegions exclusion + constraint (6.3 #29) ----
+//
+// A block is placeable on a surface iff its placement.regions intersect the
+// surface's AVAILABLE REGIONS (= the values of its zone-model's regionMap).
+// groupAvailableBlocks must (1) EXCLUDE blocks with an empty intersection and
+// (2) CONSTRAIN each offered block's regions to that intersection, so the
+// view's Zone dropdown only ever offers the surface's actual zones.
+
+const homepageRegions = () => Object.values(homepageZoneModel.regionMap); // [hero,main,sidebar,footer]
+const listingRegions = () => Object.values(listingZoneModel.regionMap); // [sidebar]
+
+test("groupAvailableBlocks (LISTING regions [sidebar]): excludes Featured Posts (main-only), constrains sidebar blocks to ['sidebar'] (6.3 #29)", () => {
+  const groups = groupAvailableBlocks(BUILTIN_BLOCKS, new Set(), {
+    surfaceFilter: "collection",
+    availableRegions: listingRegions(),
+  });
+  const blocks = groups.flatMap((g) => g.blocks);
+  const byId = new Map(blocks.map((b) => [b.id, b]));
+
+  // Featured Posts passes the surfaceFilter (surfaces incl. "collection") but
+  // its only region is "main" — no sidebar placement, so it must NOT be listed.
+  assert.equal(byId.has("featured-posts"), false, "Featured Posts (main-only) must be excluded from the listing picker");
+
+  // The five sidebar-capable collection blocks ARE offered, each constrained to
+  // exactly ["sidebar"] (no phantom "main"/"footer" zone option).
+  for (const id of ["author-card", "categories", "recent-posts", "search", "custom-html"]) {
+    const b = byId.get(id);
+    assert.ok(b, `${id} should be offered on the listing surface`);
+    assert.deepEqual(b.regions, ["sidebar"], `${id} regions must be constrained to ['sidebar']`);
+  }
+});
+
+test("groupAvailableBlocks (HOMEPAGE regions [hero,main,sidebar,footer]): byte-identical to current — Featured Posts present with ['main'] (6.3 #29)", () => {
+  const withRegions = groupAvailableBlocks(BUILTIN_BLOCKS, new Set(), {
+    surfaceFilter: "homepage",
+    availableRegions: homepageRegions(),
+  });
+  // The intersection with all four regions is the block's own regions, so the
+  // grouped output must equal the pre-fix call (no availableRegions) exactly.
+  const current = groupAvailableBlocks(BUILTIN_BLOCKS, new Set(), { surfaceFilter: "homepage" });
+  assert.deepEqual(withRegions, current, "homepage availableBlocks must be unchanged by availableRegions");
+
+  const byId = new Map(withRegions.flatMap((g) => g.blocks).map((b) => [b.id, b]));
+  const featured = byId.get("featured-posts");
+  assert.ok(featured, "Featured Posts must still be offered on homepage");
+  assert.deepEqual(featured.regions, ["main"], "Featured Posts keeps its ['main'] region on homepage");
+  // recent-posts keeps BOTH of its regions on homepage.
+  assert.deepEqual(byId.get("recent-posts").regions, ["main", "sidebar"]);
+});
+
+test("groupAvailableBlocks: an ABSENT availableRegions applies no region gate (back-compat)", () => {
+  // Callers that don't pass availableRegions (and existing tests) must see the
+  // block's full regions, no exclusion.
+  const catalog = [
+    { id: "main-only", label: "M", placement: { regions: ["main"], surfaces: ["collection"] } },
+  ];
+  const groups = groupAvailableBlocks(catalog, new Set(), { surfaceFilter: "collection" });
+  const blocks = groups.flatMap((g) => g.blocks);
+  assert.equal(blocks.length, 1, "main-only block still offered when no availableRegions gate");
+  assert.deepEqual(blocks[0].regions, ["main"]);
+});
+
+test("groupAvailableBlocks: availableRegions intersection composes with the stack sidebar-drop", () => {
+  // Under arrangement==="stack" the sidebar zone is hidden, so a sidebar-only
+  // block has an empty region set after the drop and must be excluded; a block
+  // with both main+sidebar keeps only main. availableRegions = all four.
+  const catalog = [
+    { id: "both", label: "B", placement: { regions: ["main", "sidebar"], surfaces: ["homepage"] } },
+    { id: "side-only", label: "S", placement: { regions: ["sidebar"], surfaces: ["homepage"] } },
+  ];
+  const groups = groupAvailableBlocks(catalog, new Set(), {
+    surfaceFilter: "homepage",
+    availableRegions: homepageRegions(),
+    arrangement: "stack",
+  });
+  const byId = new Map(groups.flatMap((g) => g.blocks).map((b) => [b.id, b]));
+  assert.deepEqual(byId.get("both").regions, ["main"], "stack drops sidebar from a main+sidebar block");
+  assert.equal(byId.has("side-only"), false, "a sidebar-only block has no placeable zone under stack");
+});
+
 // A mock alternate zone-model: NOT homepage's vocabulary. `featured` is a
 // single slot (node | null, like homepage's hero); `main` is a list zone.
 // This proves the zone helpers derive their slots from the model and don't
@@ -928,8 +1008,11 @@ test("stack arrangement hides the sidebar zone everywhere: add gated, legalZones
   assert.deepEqual(locals.blocks.main[0].legalZones, []); // recent-posts: main+sidebar → sidebar filtered
   assert.deepEqual(locals.blocks.main[1].legalZones, ["footer"]); // custom-html keeps footer only
   const groups = Object.fromEntries(locals.availableBlocks.map((g) => [g.group, g.blocks]));
-  const ghost = groups["Removed endpoint"].find((b) => b.id === "ghost-widget");
-  assert.deepEqual(ghost.regions, []); // sidebar-only block has nowhere to go (picker skips it)
+  // 6.3 #29: a sidebar-only block has no placeable zone under "stack" (sidebar
+  // hidden) → EXCLUDED from the picker entirely. Its whole group (only
+  // ghost-widget) drops out. (Pre-fix it was offered with regions:[]; the view
+  // already skipped empty-region entries, so the rendered picker is unchanged.)
+  assert.equal("Removed endpoint" in groups, false, "sidebar-only block's group is excluded under stack");
   const recent = groups["built-in"].find((b) => b.id === "recent-posts");
   assert.deepEqual(recent.regions, ["main"]);
 });
@@ -1210,6 +1293,41 @@ test("editor view (supportsLivePreview=false) renders NEITHER the preview pane N
   // The notice is shown instead.
   assert.match(html, /data-sc-preview-unavailable/, "listing missing the preview-unavailable notice");
   assert.match(html, /siteConfig\.design\.previewPane\.unavailable/, "listing missing the unavailable i18n string");
+});
+
+test("editor view (no-JS add path): a listing sidebar zone offers a constrained ['sidebar'] block, not a main-only one (6.3 #29)", () => {
+  // The noscript per-zone add forms render an add form for each available block
+  // whose regions INCLUDE the zone ({% if zone.name in entry.regions %}). With
+  // groupAvailableBlocks constraining regions to the surface's zones, a block
+  // constrained to ["sidebar"] surfaces in the sidebar zone; a (hypothetical,
+  // unconstrained) main-only block does NOT — there is no main zone here.
+  const blocks = RENDER_BLOCKS();
+  const html = renderEditorContent({
+    ...RENDER_BASE, supportsArrangement: false, supportsLivePreview: false,
+    surfaceBase: "/site-config/design/listing",
+    zoneNames: ["sidebar"],
+    zones: { sidebar: blocks.sidebar },
+    blocks: { sidebar: blocks.sidebar },
+    availableBlocks: [
+      { group: "built-in", blocks: [
+        { id: "author-card", label: "Author", icon: "user", description: "", regions: ["sidebar"], dormant: false },
+        // A main-only block must never reach the sidebar zone's add forms.
+        { id: "featured-posts", label: "Featured", icon: "star", description: "", regions: ["main"], dormant: false },
+      ]},
+    ],
+  });
+  // The noscript sidebar add-form for the sidebar-constrained block is present.
+  assert.match(
+    html,
+    /<input type="hidden" name="type" value="author-card">\s*<input type="hidden" name="zone" value="sidebar">/,
+    "sidebar-constrained block must offer a sidebar add form",
+  );
+  // The main-only block has no sidebar add form (zone.name 'sidebar' ∉ ['main']).
+  assert.doesNotMatch(
+    html,
+    /name="type" value="featured-posts"/,
+    "main-only block must NOT appear in the listing's sidebar add forms",
+  );
 });
 
 test("editor view renders the per-surface editor title/intro keys (6.3 #28)", () => {
