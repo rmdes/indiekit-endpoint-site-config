@@ -6,6 +6,9 @@ import {
   publishDraft,
   discardDraft,
   createDraftFromTree,
+  createPage,
+  listPages,
+  deleteComposition,
 } from "../lib/storage/composition-draft.js";
 import { BUILTIN_BLOCKS } from "../lib/presets/builtin-blocks.js";
 
@@ -25,6 +28,18 @@ function makeDb(docs = []) {
         async findOne({ _id }) {
           calls.push(["findOne", name, _id]);
           return store.get(_id) ?? null;
+        },
+        // Equality-filter find (used by listPages). Supports {kind, status}.
+        find(filter = {}) {
+          const matches = (doc) =>
+            Object.entries(filter).every(([key, value]) => doc[key] === value);
+          const docs = [...store.values()].filter(matches).map((d) => structuredClone(d));
+          return { async toArray() { return docs; } };
+        },
+        async deleteOne({ _id }) {
+          calls.push(["deleteOne", name, _id]);
+          const existed = store.delete(_id);
+          return { deletedCount: existed ? 1 : 0 };
         },
         // Filter-aware (equality + {$exists}) with upsert/$setOnInsert
         // support — mirrors the driver semantics the publish conflict guard
@@ -362,4 +377,105 @@ test("createDraftFromTree → publishDraft promotes the first-ever publish", asy
   assert.equal(stored.status, "published");
   assert.equal("draftTree" in stored, false);
   assert.deepEqual(artifacts[0].tree, tree);
+});
+
+// ---- createPage (atomic create-only — pages create path, D6) ----
+
+const pageTarget = (slug = "about") => ({ route: `/${slug}/`, title: "About me" });
+
+test("createPage inserts a draft-only page doc with target when none exists", async () => {
+  const db = makeDb();
+  const tree = validTree({ maxItems: 4 });
+  const result = await createPage(db, "about", pageTarget("about"), tree, { now });
+  assert.deepEqual(result, { ok: true });
+  const stored = db.store.get("page:about");
+  assert.equal(stored.schemaVersion, 4);
+  assert.equal(stored.kind, "page");
+  assert.equal(stored.status, "draft");
+  assert.deepEqual(stored.target, { route: "/about/", title: "About me" });
+  assert.deepEqual(stored.draftTree, tree);
+  assert.equal(stored.draftUpdatedAt, NOW);
+  assert.equal("tree" in stored, false); // nothing published until publishDraft
+});
+
+test("createPage NEVER overwrites an existing page (atomic, returns exists)", async () => {
+  // Seed an existing page with its OWN draft. createPage MUST refuse and leave
+  // the existing draft byte-unchanged (the upsert-silent-overwrite trap).
+  const existingDraft = validTree({ maxItems: 9 });
+  const db = makeDb([
+    makeDoc({
+      _id: "page:about", kind: "page", status: "published",
+      target: { route: "/about/", title: "Original" },
+      tree: validTree({ maxItems: 1 }),
+      draftTree: existingDraft, draftUpdatedAt: "2026-01-01T00:00:00.000Z",
+    }),
+  ]);
+  const result = await createPage(db, "about", pageTarget("about"), validTree({ maxItems: 4 }), { now });
+  assert.deepEqual(result, { ok: false, error: "exists" });
+  const stored = db.store.get("page:about");
+  // The existing draft and target are untouched — NO overwrite.
+  assert.deepEqual(stored.draftTree, existingDraft);
+  assert.equal(stored.draftUpdatedAt, "2026-01-01T00:00:00.000Z");
+  assert.deepEqual(stored.target, { route: "/about/", title: "Original" });
+  assert.deepEqual(stored.tree, validTree({ maxItems: 1 }));
+});
+
+test("createPage → getEditorState round-trips the new page draft", async () => {
+  const db = makeDb();
+  const tree = validTree({ maxItems: 4 });
+  await createPage(db, "now", pageTarget("now"), tree, { now });
+  const state = await getEditorState(db, "page:now");
+  assert.equal(state.isDraft, true);
+  assert.deepEqual(state.tree, tree);
+});
+
+// ---- listPages (hub list helper, T5 consumer) ----
+
+test("listPages returns published + draft page docs with summary shape", async () => {
+  const db = makeDb([
+    makeDoc(), // homepage — excluded (kind !== page)
+    makeDoc({
+      _id: "page:about", kind: "page", status: "published",
+      target: { route: "/about/", title: "About" },
+      tree: validTree(), updatedAt: "2026-06-02T00:00:00.000Z",
+    }),
+    makeDoc({
+      _id: "page:now", kind: "page", status: "draft",
+      target: { route: "/now/", title: "Now" },
+      draftTree: validTree(), draftUpdatedAt: "2026-06-03T00:00:00.000Z",
+    }),
+  ]);
+  const pages = await listPages(db);
+  assert.equal(pages.length, 2);
+  const about = pages.find((p) => p.slug === "about");
+  const nowPage = pages.find((p) => p.slug === "now");
+  assert.deepEqual(about, {
+    slug: "about", route: "/about/", title: "About",
+    hasDraft: false, status: "published", updatedAt: "2026-06-02T00:00:00.000Z",
+  });
+  assert.equal(nowPage.slug, "now");
+  assert.equal(nowPage.route, "/now/");
+  assert.equal(nowPage.hasDraft, true);
+});
+
+test("listPages returns [] when there are no page docs", async () => {
+  const db = makeDb([makeDoc()]);
+  assert.deepEqual(await listPages(db), []);
+});
+
+// ---- deleteComposition (delete/unpublish, D2) ----
+
+test("deleteComposition removes the page doc (leaves the published set)", async () => {
+  const db = makeDb([
+    makeDoc({ _id: "page:about", kind: "page", target: { route: "/about/", title: "About" } }),
+  ]);
+  const result = await deleteComposition(db, "page:about");
+  assert.deepEqual(result, { ok: true, deleted: true });
+  assert.equal(db.store.has("page:about"), false);
+});
+
+test("deleteComposition on a non-existent doc is a graceful no-op", async () => {
+  const db = makeDb();
+  const result = await deleteComposition(db, "page:ghost");
+  assert.deepEqual(result, { ok: true, deleted: false });
 });
