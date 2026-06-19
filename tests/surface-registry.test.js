@@ -149,6 +149,66 @@ test("the posttype entry is frozen", () => {
   assert.ok(Object.isFrozen(SURFACES.posttype));
 });
 
+// ---- getSurface: pages entry (6.5) — a COLLECTION surface ----
+
+test("getSurface('pages') returns the pages entry with the exact fields", () => {
+  const entry = getSurface("pages");
+  assert.ok(entry, "pages entry exists");
+  assert.equal(entry.routeKey, "pages");
+  assert.equal(entry.kind, "page");
+  // Vocab casing trap (6.4 class): the surfaceFilter MUST be the catalog vocab
+  // token "standalone" (block-entry.js SURFACES + builtin-blocks placement) —
+  // mismatching it empties the block picker.
+  assert.equal(entry.surfaceFilter, "standalone");
+  assert.equal(entry.hubKey, "pages");
+  // Shared editor view (same one homepage/listing/posttype reuse).
+  assert.equal(entry.editorView, "site-config-design-homepage");
+});
+
+test("pages is marked as a collection (isCollection: true — N docs, one surface)", () => {
+  const entry = getSurface("pages");
+  assert.equal(entry.isCollection, true);
+});
+
+test("pages uses the full-page (homepage-shaped) zone-model — pages are full-page compositions", () => {
+  // Pages are full-page compositions (hero/main/sidebar/footer), so they reuse
+  // the homepage multi-zone model — NOT the sidebar-only listing/posttype one.
+  const entry = getSurface("pages");
+  assert.equal(entry.zoneModel, homepageZoneModel);
+});
+
+test("pages declares the arrangement capability like homepage (pages choose layout)", () => {
+  const entry = getSurface("pages");
+  assert.deepEqual([...entry.arrangements], ["stack", "sidebar-right"]);
+});
+
+test("pages declares its OWN editor copy keys (title/intro/noun)", () => {
+  const entry = getSurface("pages");
+  assert.equal(entry.editorTitleKey, "siteConfig.design.editor.pagesTitle");
+  assert.equal(entry.editorIntroKey, "siteConfig.design.editor.pagesDescription");
+  assert.equal(entry.editorNounKey, "siteConfig.design.editor.surfaceNoun.pages");
+});
+
+test("pages has NO static surfaceId that names a single doc (surfaceId is request-derived per slug)", () => {
+  // A collection surface has N docs (page:<slug>), so the registry entry must
+  // NOT pin a single static surfaceId — it is injected per-request (D2).
+  const entry = getSurface("pages");
+  assert.equal("surfaceId" in entry, false);
+});
+
+test("pages carries NO supportsLivePreview field (retired #32 — per-surface preview)", () => {
+  const entry = getSurface("pages");
+  assert.equal("supportsLivePreview" in entry, false);
+});
+
+test("getSurface('pages') returns the same entry as SURFACES.pages", () => {
+  assert.equal(getSurface("pages"), SURFACES.pages);
+});
+
+test("the pages entry is frozen", () => {
+  assert.ok(Object.isFrozen(SURFACES.pages));
+});
+
 // ---- getSurface: unknown / prototype-safe ----
 
 test("getSurface('unknown') returns null", () => {

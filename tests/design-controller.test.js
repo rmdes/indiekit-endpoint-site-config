@@ -2188,3 +2188,112 @@ test("POST /mode rejects unknown modes", async () => {
   assert.equal(flag(res, "error"), "invalid-mode");
   assert.equal(ik._db.stores.siteConfig.size, 0);
 });
+
+// ---- pages surface: per-slug surfaceId injection routing (6.5-T1) ----
+
+// A page composition doc keyed by `page:<slug>` with a homepage-shaped tree so
+// the homepage zone-model recognizes it (pages are full-page compositions).
+const pageDoc = (slug, extra = {}) => ({
+  _id: `page:${slug}`, schemaVersion: 4, kind: "page", status: "published",
+  target: { route: `/${slug}/`, title: slug },
+  tree: baseTree(), updatedAt: "2026-06-01T00:00:00.000Z", updatedBy: "test", ...extra,
+});
+
+function makePagesIndiekit(slugs = ["about"]) {
+  return makeIndiekit({ compositions: [homepageDoc(), ...slugs.map((s) => pageDoc(s))] });
+}
+
+test("GET /pages/about resolves the page:about composition (surfaceId injected per slug)", async () => {
+  const ik = makePagesIndiekit(["about"]);
+  const res = await callRoute(makeRouter(ik), "get", "/pages/about");
+  assert.equal(res.rendered.view, "site-config-design-homepage");
+  // The editor rendered the page's tree (3 zone-decorated blocks from baseTree).
+  assert.ok(res.rendered.locals.zones, "page editor loaded zones for page:about");
+  assert.equal(res.rendered.locals.noComposition, undefined);
+});
+
+test("GET /pages/<missing> 404s as a missing composition? no — resolves entry but no doc → noComposition", async () => {
+  // page:missing has no doc; the editor shows the no-composition state (same as
+  // an unseeded singleton), NOT a routing 404 — the pages ENTRY exists.
+  const ik = makePagesIndiekit(["about"]);
+  const res = await callRoute(makeRouter(ik), "get", "/pages/missing");
+  assert.equal(res.rendered.locals.noComposition, true);
+});
+
+test("a page-editor request injects surfaceId='page:<slug>' onto a per-request CLONE, never mutating the frozen entry", async () => {
+  const frozen = getSurface("pages");
+  const before = Object.isFrozen(frozen);
+  assert.equal(before, true);
+  assert.equal("surfaceId" in frozen, false, "frozen entry has no surfaceId before");
+
+  // Add a block to page:about — the add handler reads request.surface.surfaceId.
+  const ik = makePagesIndiekit(["about"]);
+  const res = await callRoute(makeRouter(ik), "post", "/pages/about/blocks/add", {
+    zone: "main", type: "recent-posts",
+  });
+  assert.equal(flag(res, "added"), "1", "block added to page:about");
+  // The draft was written to the page:about doc — proving surfaceId was injected.
+  assert.ok(ik._db.stores.compositions.get("page:about").draftTree, "draft on page:about");
+
+  // The frozen registry entry is untouched.
+  assert.ok(Object.isFrozen(getSurface("pages")), "pages entry still frozen");
+  assert.equal("surfaceId" in getSurface("pages"), false, "no surfaceId leaked onto frozen entry");
+  assert.equal(getSurface("pages"), frozen, "same frozen object");
+});
+
+test("page-editor redirects/flash are slug-aware (homeOf includes the slug)", async () => {
+  const ik = makePagesIndiekit(["about"]);
+  // Trigger a flashError: add into an invalid zone.
+  const res = await callRoute(makeRouter(ik), "post", "/pages/about/blocks/add", {
+    zone: "attic", type: "recent-posts",
+  });
+  assert.equal(res.redirected.url, "/site-config/design/pages/about?error=invalid-zone");
+});
+
+test("page-editor success redirect includes the slug", async () => {
+  const ik = makePagesIndiekit(["about"]);
+  const res = await callRoute(makeRouter(ik), "post", "/pages/about/blocks/add", {
+    zone: "main", type: "recent-posts",
+  });
+  assert.equal(res.redirected.url, "/site-config/design/pages/about?added=1");
+});
+
+test("page-editor GET surfaceBase locals points at the slug-scoped base path", async () => {
+  const ik = makePagesIndiekit(["about"]);
+  const res = await callRoute(makeRouter(ik), "get", "/pages/about");
+  assert.equal(res.rendered.locals.surfaceBase, "/site-config/design/pages/about");
+});
+
+test("two different page slugs write to their OWN composition docs (no cross-talk)", async () => {
+  const ik = makePagesIndiekit(["about", "now"]);
+  const router = makeRouter(ik);
+  await callRoute(router, "post", "/pages/about/blocks/add", { zone: "main", type: "recent-posts" });
+  assert.ok(ik._db.stores.compositions.get("page:about").draftTree, "about got a draft");
+  // The about draft did NOT leak onto the page:now doc.
+  assert.equal(ik._db.stores.compositions.get("page:now").draftTree, undefined);
+  // And page:now is independently editable via its own slug.
+  await callRoute(router, "post", "/pages/now/blocks/add", { zone: "main", type: "recent-posts" });
+  assert.ok(ik._db.stores.compositions.get("page:now").draftTree, "now got its own draft");
+});
+
+// ---- singleton routes BYTE-behavior-unchanged (regression guard) ----
+
+test("singleton homepage routes are unchanged by the pages addition", async () => {
+  const ik = makeIndiekit();
+  const res = await callRoute(makeRouter(ik), "post", "/homepage/blocks/add", {
+    zone: "main", type: "recent-posts",
+  });
+  assert.equal(res.redirected.url, "/site-config/design/homepage?added=1");
+  assert.ok(ik._db.stores.compositions.get("homepage").draftTree);
+});
+
+test("the generic /:surface=pages route (no slug) does NOT resolve as a singleton editor", async () => {
+  // pages is a collection — a bare /pages must not render a single-doc editor.
+  const ik = makePagesIndiekit(["about"]);
+  const res = await callRoute(makeRouter(ik), "get", "/pages").catch((e) => e);
+  // Either a 404 or a non-editor response; it must NOT render the editor view
+  // keyed off a static page surfaceId (there is none).
+  if (res?.rendered) {
+    assert.notEqual(res.rendered.view, "site-config-design-homepage");
+  }
+});

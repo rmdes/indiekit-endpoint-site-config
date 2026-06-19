@@ -171,10 +171,13 @@
         "listingDescription": "Arrange the blocks in your blog listing sidebar. Changes are saved as a draft until you publish.",
         "posttypeTitle": "Post sidebar design",
         "posttypeDescription": "Arrange the blocks in your post sidebar. Changes are saved as a draft until you publish.",
+        "pagesTitle": "Page design",
+        "pagesDescription": "Arrange the blocks that make up this page. Changes are saved as a draft until you publish.",
         "surfaceNoun": {
           "homepage": "homepage",
           "listing": "blog listing",
-          "posttype": "post sidebar"
+          "posttype": "post sidebar",
+          "pages": "page"
         }
       },
       "zones": {

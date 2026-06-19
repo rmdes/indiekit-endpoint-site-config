@@ -171,10 +171,13 @@
         "listingDescription": "Organisez les blocs de la barre latérale de votre liste du blog. Les modifications sont enregistrées comme brouillon jusqu'à publication.",
         "posttypeTitle": "Design de la barre latérale d'article",
         "posttypeDescription": "Organisez les blocs de la barre latérale de vos articles. Les modifications sont enregistrées comme brouillon jusqu'à publication.",
+        "pagesTitle": "Design de la page",
+        "pagesDescription": "Organisez les blocs qui composent cette page. Les modifications sont enregistrées comme brouillon jusqu'à publication.",
         "surfaceNoun": {
           "homepage": "page d'accueil",
           "listing": "liste du blog",
-          "posttype": "barre latérale d'article"
+          "posttype": "barre latérale d'article",
+          "pages": "page"
         }
       },
       "zones": {
