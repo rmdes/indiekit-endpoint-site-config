@@ -84,6 +84,34 @@ test("surfaceFileName maps surface ids to file names (colon → dash, spec §2.4
   assert.equal(surfaceFileName("posttype:default"), "posttype-default");
 });
 
+test("surfaceFileName preserves the existing singleton + page names (no hardening regression)", () => {
+  assert.equal(surfaceFileName("homepage"), "homepage");
+  assert.equal(surfaceFileName("collection:default"), "collection-default");
+  assert.equal(surfaceFileName("posttype:default"), "posttype-default");
+  assert.equal(surfaceFileName("page:cv"), "page-cv");
+  assert.equal(surfaceFileName("page:about-me"), "page-about-me");
+});
+
+test("surfaceFileName REJECTS a traversal-crafted id (defense-in-depth — SECURITY LOW)", () => {
+  // A crafted `_id` with slashes/dots would escape the output dir if only
+  // colons were replaced (`page:../../passwd` → `page-../../passwd`). The guard
+  // must throw rather than return a name containing path separators or `..`.
+  assert.throws(() => surfaceFileName("page:../../passwd"));
+  assert.throws(() => surfaceFileName("page:../../etc/passwd"));
+  assert.throws(() => surfaceFileName("a/b"));
+  assert.throws(() => surfaceFileName("..%2f..%2fx"));
+});
+
+test("surfaceFileName result never contains a path separator or parent ref", () => {
+  // For every accepted id, the result is a single safe path segment.
+  for (const id of ["homepage", "collection:default", "posttype:default", "page:cv", "page:about-me"]) {
+    const name = surfaceFileName(id);
+    assert.equal(name.includes("/"), false, `${id} → ${name} has no slash`);
+    assert.equal(name.includes("\\"), false, `${id} → ${name} has no backslash`);
+    assert.equal(name.includes(".."), false, `${id} → ${name} has no parent ref`);
+  }
+});
+
 test("writes to <outputDir>/<surfaceFileName(doc._id)>.json", async () => {
   const dir = await mkdtemp(join(tmpdir(), "composition-"));
   const doc = { ...DOC, _id: "collection:default", kind: "collection", target: { collection: "default" } };

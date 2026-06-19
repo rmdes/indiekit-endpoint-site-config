@@ -2421,3 +2421,106 @@ test("POST /pages/<bad-slug>/delete 404s on the routing slug gate", async () => 
   // The injectPageSurface slug gate 404s a malformed slug before any delete.
   if (res?.statusCode !== undefined) assert.equal(res.statusCode, 404);
 });
+
+// ---- pages.json ARRAY rewrite wiring (6.5-T4): publish + delete ----
+//
+// A published page renders from the SINGLE `pages.json` ARRAY artifact, NOT a
+// per-page single file. So a page publish must NOT write a `page-<slug>.json`
+// single file via publishDraft's doc-shaped writeArtifact; instead the route
+// rewrites the whole published-pages array. Delete (unpublish) rewrites it too
+// (the removed page leaves the published set). The `writePagesArtifact` seam
+// captures the array-rewrite calls.
+
+// A page doc needs a draftTree to publish (publishDraft promotes draftTree→tree).
+const draftPageDoc = (slug, extra = {}) =>
+  pageDoc(slug, { status: "draft", draftTree: baseTree(), draftUpdatedAt: "2026-06-01T01:00:00.000Z", ...extra });
+
+test("publishing a page:<slug> rewrites pages.json (array writer), NOT a per-page single file", async () => {
+  const ik = makePagesIndiekit([]);
+  // Seed a draft-only page:team so publish has something to promote.
+  ik._db.stores.compositions.set("page:team", structuredClone(draftPageDoc("team")));
+  delete ik._db.stores.compositions.get("page:team").tree; // draft-only
+
+  const arrayWrites = [];
+  const docWrites = [];
+  const router = makeRouter(ik, {
+    writePagesArtifact: async (db) => { arrayWrites.push(db); },
+    writeArtifact: async (doc) => { docWrites.push(doc); },
+  });
+  const res = await callRoute(router, "post", "/pages/team/publish");
+
+  assert.equal(res.redirected.status, 303);
+  assert.match(res.redirected.url, /\/site-config\/design\/pages\/team\?published=/);
+  // The page is now published.
+  assert.equal(ik._db.stores.compositions.get("page:team").status, "published");
+  // The ARRAY writer ran; the per-doc single-file writer did NOT (no page-team.json).
+  assert.equal(arrayWrites.length, 1, "pages.json array rewritten once");
+  assert.equal(docWrites.length, 0, "no per-page single-file artifact written");
+});
+
+test("publishing a second page → pages.json array contains both (re-find all published)", async () => {
+  // Use the REAL writePagesJson against a temp dir to prove the array reflects
+  // the full published set after each publish, not just the publishing doc.
+  const dir = await mkdtemp(join(tmpdir(), "pages-pub-"));
+  const ik = makePagesIndiekit([]);
+  ik._db.stores.compositions.set("page:a", structuredClone(draftPageDoc("a")));
+  delete ik._db.stores.compositions.get("page:a").tree;
+  ik._db.stores.compositions.set("page:b", structuredClone(draftPageDoc("b")));
+  delete ik._db.stores.compositions.get("page:b").tree;
+
+  const { writePagesJson } = await import("../lib/render/write-composition-json.js");
+  const router = makeRouter(ik, {
+    writePagesArtifact: (db) => writePagesJson(db, dir),
+  });
+
+  await callRoute(router, "post", "/pages/a/publish");
+  let onDisk = JSON.parse(readFileSync(join(dir, "pages.json"), "utf8"));
+  assert.deepEqual(onDisk.map((p) => p.target.route).sort(), ["/a/"]);
+
+  await callRoute(router, "post", "/pages/b/publish");
+  onDisk = JSON.parse(readFileSync(join(dir, "pages.json"), "utf8"));
+  assert.deepEqual(onDisk.map((p) => p.target.route).sort(), ["/a/", "/b/"]);
+});
+
+test("deleting a published page rewrites pages.json without it", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "pages-del-"));
+  const ik = makePagesIndiekit(["about", "now"]); // both published
+  const { writePagesJson } = await import("../lib/render/write-composition-json.js");
+  const router = makeRouter(ik, {
+    writePagesArtifact: (db) => writePagesJson(db, dir),
+  });
+
+  const res = await callRoute(router, "post", "/pages/about/delete");
+  assert.equal(res.redirected.status, 303);
+  assert.equal(ik._db.stores.compositions.has("page:about"), false);
+  const onDisk = JSON.parse(readFileSync(join(dir, "pages.json"), "utf8"));
+  assert.deepEqual(onDisk.map((p) => p.target.route).sort(), ["/now/"]);
+});
+
+test("delete invokes the pages.json array rewrite seam exactly once", async () => {
+  const ik = makePagesIndiekit(["about"]);
+  const arrayWrites = [];
+  const router = makeRouter(ik, {
+    writePagesArtifact: async () => { arrayWrites.push(1); },
+  });
+  await callRoute(router, "post", "/pages/about/delete");
+  assert.equal(arrayWrites.length, 1);
+});
+
+test("publishing a SINGLETON surface still writes its per-doc artifact (no pages array rewrite)", async () => {
+  // Regression guard: the array-rewrite path is page-only. A homepage publish
+  // must keep using publishDraft's doc-shaped writeArtifact and must NOT call
+  // the pages array writer.
+  const ik = makeIndiekit({ compositions: [homepageDoc({ draftTree: baseTree(), draftUpdatedAt: "2026-06-01T01:00:00.000Z" })] });
+  const docWrites = [];
+  const arrayWrites = [];
+  const router = makeRouter(ik, {
+    writeArtifact: async (doc) => { docWrites.push(doc); },
+    writePagesArtifact: async () => { arrayWrites.push(1); },
+  });
+  const res = await callRoute(router, "post", "/homepage/publish");
+  assert.equal(res.redirected.status, 303);
+  assert.equal(docWrites.length, 1, "homepage wrote its per-doc artifact");
+  assert.equal(docWrites[0]._id, "homepage");
+  assert.equal(arrayWrites.length, 0, "no pages array rewrite for a singleton");
+});

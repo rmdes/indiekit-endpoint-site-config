@@ -22,7 +22,7 @@ import { writeCriticalCss } from "./lib/render/write-critical-css.js";
 import { writeSiteJson    } from "./lib/render/write-site-json.js";
 import { writeHomepageJson } from "./lib/render/write-homepage-json.js";
 import { writeBlockCatalogJson } from "./lib/render/write-block-catalog-json.js";
-import { writeCompositionArtifacts } from "./lib/render/write-composition-json.js";
+import { writeCompositionArtifacts, writePagesJson } from "./lib/render/write-composition-json.js";
 
 import { scanPlugins } from "./lib/discovery/scan-plugins.js";
 
@@ -231,6 +231,15 @@ export default class SiteConfigEndpoint {
         }
         if (written.length === 0) {
           console.log("[site-config] composition artifact skipped: no published compositions");
+        }
+
+        // Standalone pages (6.5) render from a SINGLE pages.json ARRAY artifact
+        // — separate write path from the singleton per-surface loop above
+        // (writeCompositionArtifacts cannot enumerate N page:<slug> docs). Boot
+        // self-heals the array on every start; an empty published set writes [].
+        if (db) {
+          const pagesPath = await writePagesJson(db);
+          console.log(`[site-config] pages artifact written: ${pagesPath}`);
         }
       } catch (error) {
         console.warn("[site-config] composition artifact write failed:", error?.message ?? String(error));
