@@ -278,6 +278,31 @@ for (const locale of LOCALES) {
   });
 }
 
+// 6.5 fix — the pages CREATE/DELETE flash now lands on the hub, which renders a
+// banner reusing the SHARED errors map (the same one the editor uses) plus a
+// `deleted` flash. The create route maps guard failures to these codes; each
+// must have a human message in BOTH locales. Plus the pages-card clarifying
+// copy that distinguishes composed layout pages from Micropub content pages.
+const PAGES_FLASH_KEYS = [
+  "siteConfig.design.errors.page-title-required",
+  "siteConfig.design.errors.reserved-route",
+  "siteConfig.design.errors.route-taken",
+  "siteConfig.design.errors.route-unverifiable",
+  "siteConfig.design.errors.invalid-route",
+  "siteConfig.design.flash.deleted",
+  "siteConfig.design.hub.pages.clarify",
+];
+
+for (const locale of LOCALES) {
+  test(`pages create/delete flash + clarify i18n keys exist and are non-empty (${locale})`, () => {
+    for (const key of PAGES_FLASH_KEYS) {
+      const str = lookupCatalog(locale, key);
+      assert.equal(typeof str, "string", `${locale} has ${key}`);
+      assert.ok(str.length > 0, `${locale} ${key} non-empty`);
+    }
+  });
+}
+
 test("i18n eats unmapped {{var}} placeholders (defect mechanism)", () => {
   // Documents WHY self-mapping is required: without args, mustache replaces
   // the missing variable with an empty string. If this ever stops holding,

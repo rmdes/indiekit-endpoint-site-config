@@ -173,7 +173,8 @@
           "empty": "No pages yet. Create one below.",
           "editPage": "Edit page",
           "deletePage": "Delete",
-          "confirmDelete": "Delete this page? It will be removed from your site on the next publish."
+          "confirmDelete": "Delete this page? It will be removed from your site on the next publish.",
+          "clarify": "These are composed layout pages built from blocks. They are separate from content pages (like /about) written through the Posts editor."
         }
       },
       "editor": {
@@ -269,11 +270,17 @@
         "discarded": "Draft discarded.",
         "arranged": "Arrangement updated.",
         "removed": "“{{label}}” removed.",
+        "deleted": "Page deleted.",
         "sidebarMoved": "{{count}} sidebar block(s) moved to the main column.",
         "undoUnavailable": "Undo isn't available for this removal.",
         "dismiss": "Dismiss"
       },
       "errors": {
+        "page-title-required": "A page needs a title.",
+        "reserved-route": "That route is reserved — choose another.",
+        "route-taken": "A page with that route already exists.",
+        "route-unverifiable": "That route couldn't be verified — try again.",
+        "invalid-route": "That route isn't valid — use a simple path like /about/.",
         "invalid-zone": "That zone doesn't exist.",
         "unknown-type": "Unknown block type.",
         "placement": "That block can't be placed in that zone.",

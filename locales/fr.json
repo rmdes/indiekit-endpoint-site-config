@@ -173,7 +173,8 @@
           "empty": "Aucune page pour l'instant. Créez-en une ci-dessous.",
           "editPage": "Modifier la page",
           "deletePage": "Supprimer",
-          "confirmDelete": "Supprimer cette page ? Elle sera retirée de votre site à la prochaine publication."
+          "confirmDelete": "Supprimer cette page ? Elle sera retirée de votre site à la prochaine publication.",
+          "clarify": "Ce sont des pages de mise en page composées de blocs. Elles sont distinctes des pages de contenu (comme /about) rédigées via l'éditeur d'articles."
         }
       },
       "editor": {
@@ -269,11 +270,17 @@
         "discarded": "Brouillon abandonné.",
         "arranged": "Disposition mise à jour.",
         "removed": "« {{label}} » supprimé.",
+        "deleted": "Page supprimée.",
         "sidebarMoved": "{{count}} bloc(s) de la barre latérale déplacé(s) vers la colonne principale.",
         "undoUnavailable": "L'annulation n'est pas disponible pour cette suppression.",
         "dismiss": "Fermer"
       },
       "errors": {
+        "page-title-required": "Une page doit avoir un titre.",
+        "reserved-route": "Cette route est réservée — choisissez-en une autre.",
+        "route-taken": "Une page avec cette route existe déjà.",
+        "route-unverifiable": "Cette route n'a pas pu être vérifiée — réessayez.",
+        "invalid-route": "Cette route n'est pas valide — utilisez un chemin simple comme /a-propos/.",
         "invalid-zone": "Cette zone n'existe pas.",
         "unknown-type": "Type de bloc inconnu.",
         "placement": "Ce bloc ne peut pas être placé dans cette zone.",

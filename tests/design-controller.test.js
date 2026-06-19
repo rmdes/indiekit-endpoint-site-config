@@ -716,6 +716,71 @@ test("hub view: pages card renders the page list (titles escaped), a New page fo
   assert.doesNotMatch(html, /\{\{|\}\}/, "no raw {{...}} leakage");
 });
 
+// ---- hub flash (6.5): create-error + delete-confirm land here, not the 404 ----
+
+test("GET / hub with ?error=reserved-route carries the flash error code into locals", async () => {
+  const ik = makeIndiekit({ compositions: [homepageDoc()] });
+  const res = await callRoute(makeRouter(ik), "get", "/?error=reserved-route");
+  assert.equal(res.rendered.view, "site-config-design");
+  assert.ok(res.rendered.locals.flash, "hub locals carry a flash object");
+  assert.equal(res.rendered.locals.flash.error, "reserved-route");
+});
+
+test("GET / hub with ?deleted=1 carries a delete confirmation into locals", async () => {
+  const ik = makeIndiekit({ compositions: [homepageDoc()] });
+  const res = await callRoute(makeRouter(ik), "get", "/?deleted=1");
+  assert.ok(res.rendered.locals.flash, "hub locals carry a flash object");
+  assert.equal(res.rendered.locals.flash.success, "deleted");
+});
+
+test("GET / hub with no flash query → no flash (or an empty one) in locals", async () => {
+  const ik = makeIndiekit({ compositions: [homepageDoc()] });
+  const res = await callRoute(makeRouter(ik), "get", "/");
+  const { flash } = res.rendered.locals;
+  // Either undefined or an empty object — never an error/success surfaced.
+  assert.ok(!flash || (!flash.error && !flash.success));
+});
+
+test("hub view: an error flash renders a notificationBanner with the shared errors message", () => {
+  const surfaces = [
+    { key: "homepage", href: "/site-config/design/homepage", enabled: true, exists: true, hasDraft: false, updatedAt: null },
+  ];
+  const html = renderHubContent({
+    activeTab: "design",
+    surfaces,
+    flash: { error: "reserved-route" },
+  });
+  // The banner uses the SAME shared errors map the editor uses.
+  assert.match(html, /notificationBanner/);
+  assert.match(html, /siteConfig\.design\.errors\.reserved-route/, "reuses the shared error message key");
+});
+
+test("hub view: a delete confirmation renders a success notificationBanner", () => {
+  const surfaces = [
+    { key: "homepage", href: "/site-config/design/homepage", enabled: true, exists: true, hasDraft: false, updatedAt: null },
+  ];
+  const html = renderHubContent({
+    activeTab: "design",
+    surfaces,
+    flash: { success: "deleted" },
+  });
+  assert.match(html, /notificationBanner/);
+  assert.match(html, /siteConfig\.design\.flash\.deleted/, "uses the deleted flash message key");
+});
+
+test("hub view: pages card includes the clarifying copy distinguishing layout pages from Micropub content pages", () => {
+  const surfaces = [
+    {
+      key: "pages", enabled: true, isCollection: true,
+      createHref: "/site-config/design/pages",
+      pages: [],
+    },
+  ];
+  const html = renderHubContent({ activeTab: "design", surfaces });
+  // The clarifying copy key is referenced (the test __() mock echoes keys).
+  assert.match(html, /siteConfig\.design\.hub\.pages\.clarify/, "pages card references the clarifying copy");
+});
+
 test("GET / hub: no composition → homepage exists false, hasDraft false", async () => {
   const res = await callRoute(makeRouter(makeIndiekit({ compositions: [] })), "get", "/");
   const [homepage] = res.rendered.locals.surfaces;
@@ -2575,14 +2640,16 @@ test("POST /pages rejects a reserved slug (auth) with a clear flash, no doc crea
   const ik = makeIndiekit({ compositions: [homepageDoc()] });
   const res = await callRoute(makeRouter(ik), "post", "/pages", { route: "auth", title: "Hax" });
   assert.equal(res.redirected.status, 303);
-  assert.match(res.redirected.url, /\/site-config\/design\/pages\?error=/);
+  // 6.5 fix: the create-error flash lands on the HUB (/site-config/design/),
+  // NOT the bare /pages collection route (which is DESIGNED to 404).
+  assert.equal(res.redirected.url, "/site-config/design/?error=reserved-route");
   assert.equal(ik._db.stores.compositions.has("page:auth"), false);
 });
 
 test("POST /pages rejects a reserved slug (preview)", async () => {
   const ik = makeIndiekit({ compositions: [homepageDoc()] });
   const res = await callRoute(makeRouter(ik), "post", "/pages", { route: "preview", title: "X" });
-  assert.match(res.redirected.url, /error=/);
+  assert.equal(res.redirected.url, "/site-config/design/?error=reserved-route");
   assert.equal(ik._db.stores.compositions.has("page:preview"), false);
 });
 
@@ -2590,7 +2657,7 @@ test("POST /pages rejects a colliding slug (existing page composition)", async (
   const ik = makePagesIndiekit(["about"]); // page:about exists
   const res = await callRoute(makeRouter(ik), "post", "/pages", { route: "about", title: "Dup" });
   assert.equal(res.redirected.status, 303);
-  assert.match(res.redirected.url, /error=/);
+  assert.equal(res.redirected.url, "/site-config/design/?error=route-taken");
   // existing page:about untouched (no overwrite via the create route)
   assert.equal(ik._db.stores.compositions.get("page:about").target.title, "about");
 });
@@ -2599,7 +2666,7 @@ test("POST /pages rejects a bad-shape slug (traversal) with a flash, never a 500
   const ik = makeIndiekit({ compositions: [homepageDoc()] });
   const res = await callRoute(makeRouter(ik), "post", "/pages", { route: "../x", title: "Evil" });
   assert.equal(res.redirected.status, 303);
-  assert.match(res.redirected.url, /error=/);
+  assert.equal(res.redirected.url, "/site-config/design/?error=invalid-route");
 });
 
 test("POST /pages: a create race (createPage returns exists) → conflict flash, not 500", async () => {
@@ -2614,8 +2681,16 @@ test("POST /pages: a create race (createPage returns exists) → conflict flash,
   const ik = makePagesIndiekit(["about"]);
   const res = await callRoute(makeRouter(ik), "post", "/pages", { route: "about", title: "Race" });
   assert.equal(res.redirected.status, 303);
-  assert.match(res.redirected.url, /error=/);
+  assert.equal(res.redirected.url, "/site-config/design/?error=route-taken");
   assert.notEqual(res.statusCode, 500);
+});
+
+test("POST /pages with an empty title → page-title-required flash on the HUB (not the bare /pages 404)", async () => {
+  const ik = makeIndiekit({ compositions: [homepageDoc()] });
+  const res = await callRoute(makeRouter(ik), "post", "/pages", { route: "team", title: "  " });
+  assert.equal(res.redirected.status, 303);
+  assert.equal(res.redirected.url, "/site-config/design/?error=page-title-required");
+  assert.equal(ik._db.stores.compositions.has("page:team"), false);
 });
 
 test("POST /pages with no database → 503", async () => {
@@ -2631,7 +2706,9 @@ test("POST /pages/about/delete removes the page:about doc and redirects to the h
   const ik = makePagesIndiekit(["about", "now"]);
   const res = await callRoute(makeRouter(ik), "post", "/pages/about/delete");
   assert.equal(res.redirected.status, 303);
-  assert.match(res.redirected.url, /\/site-config\/design/);
+  // 6.5 fix: delete confirmation lands on the HUB (?deleted=1), NOT the bare
+  // /pages collection route (which 404s).
+  assert.equal(res.redirected.url, "/site-config/design/?deleted=1");
   assert.equal(ik._db.stores.compositions.has("page:about"), false, "page:about removed");
   assert.ok(ik._db.stores.compositions.has("page:now"), "other pages untouched");
 });

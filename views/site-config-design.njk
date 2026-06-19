@@ -2,6 +2,7 @@
 
 {% from "badge/macro.njk" import badge with context %}
 {% from "button/macro.njk" import button with context %}
+{% from "notification-banner/macro.njk" import notificationBanner with context %}
 
 {% block content %}
 <link rel="stylesheet" href="/assets/@rmdes-indiekit-endpoint-site-config/editor.css">
@@ -12,6 +13,26 @@
 </header>
 
 {% include "partials/tab-strip.njk" %}
+
+{# Hub flash (6.5): the pages create/delete routes redirect here with a flash
+   (an error code or a deleted=1 confirmation) rather than the bare /pages 404.
+   Error messages reuse the SAME shared errors map the editor uses; the delete
+   confirmation uses the shared flash map. #}
+{% if flash.error %}
+<div class="sc-flash" aria-live="polite">
+  {{ notificationBanner({
+    type: "error",
+    text: __("siteConfig.design.errors." + flash.error)
+  }) }}
+</div>
+{% elif flash.success %}
+<div class="sc-flash" aria-live="polite">
+  {{ notificationBanner({
+    type: "success",
+    text: __("siteConfig.design.flash." + flash.success)
+  }) }}
+</div>
+{% endif %}
 
 <div class="sc-hub-grid">
   {% for surface in surfaces %}
@@ -52,7 +73,11 @@
     {% if surface.isCollection %}
       {# COLLECTION card (6.5-T5): a list of page:<slug> compositions + a "New
          page" create form. page title/route are OPERATOR INPUT — rendered via
-         {{ }} (Nunjucks autoescape), NEVER | safe (stored-XSS defense). #}
+         {{ }} (Nunjucks autoescape), NEVER | safe (stored-XSS defense).
+         Clarifying copy (6.5): these are COMPOSED LAYOUT pages built from
+         blocks here, distinct from Micropub CONTENT pages created via the
+         posts flow. #}
+      <p class="sc-hub-card__meta sc-hub-pages__clarify">{{ __("siteConfig.design.hub.pages.clarify") }}</p>
       {% if surface.pages.length %}
       <ul class="sc-hub-pages">
         {% for page in surface.pages %}
