@@ -237,3 +237,97 @@ test("a container with no children key is a legitimate empty container", () => {
   assert.equal(result.ok, true, result.errors.join("; "));
   assert.deepEqual(result.value.tree.children, []);
 });
+
+// --- 6.5-T2: target validation for kind:"page" (defense in depth) ---
+
+const PAGE_GOOD = {
+  _id: "page:about", schemaVersion: 4, kind: "page", status: "published",
+  target: { route: "/about/", title: "About me" },
+  tree: { block: "container", as: "stack", role: "root", children: [
+    { block: "section", id: "b_hero1", type: "hero", v: 1, config: {} },
+  ] },
+};
+
+test("page: a valid target.route + target.title passes", () => {
+  const result = validateComposition(PAGE_GOOD, CATALOG);
+  assert.equal(result.ok, true, result.errors.join("; "));
+});
+
+test("page: missing target fails (publish-path defense, even if save-time guard bypassed)", () => {
+  const doc = structuredClone(PAGE_GOOD);
+  delete doc.target;
+  const result = validateComposition(doc, CATALOG);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((e) => /target/i.test(e)), result.errors.join("; "));
+});
+
+test("page: non-object target fails", () => {
+  for (const bad of ["x", 42, [], null]) {
+    const doc = structuredClone(PAGE_GOOD);
+    doc.target = bad;
+    const result = validateComposition(doc, CATALOG);
+    assert.equal(result.ok, false, JSON.stringify(bad));
+    assert.ok(result.errors.some((e) => /target/i.test(e)));
+  }
+});
+
+test("page: a bad target.route fails (shape mirrors the slug guard)", () => {
+  for (const badRoute of [
+    "/About/", "/a/b/", "../x", "/", "/a b/", "/a.b/",
+    "//about/", "/-about/", "/about-/", undefined, 42, "/a%2fb/",
+  ]) {
+    const doc = structuredClone(PAGE_GOOD);
+    doc.target = { route: badRoute, title: "X" };
+    const result = validateComposition(doc, CATALOG);
+    assert.equal(result.ok, false, `route=${JSON.stringify(badRoute)}`);
+    assert.ok(result.errors.some((e) => /target\.route/i.test(e)));
+  }
+});
+
+test("page: an accepted route normalizes the same single-segment shape", () => {
+  const doc = structuredClone(PAGE_GOOD);
+  doc.target = { route: "/my-page/", title: "My Page" };
+  assert.equal(validateComposition(doc, CATALOG).ok, true);
+});
+
+test("page: missing or empty target.title fails", () => {
+  for (const badTitle of [undefined, "", "   ", 42, null, {}]) {
+    const doc = structuredClone(PAGE_GOOD);
+    doc.target = { route: "/about/", title: badTitle };
+    const result = validateComposition(doc, CATALOG);
+    assert.equal(result.ok, false, JSON.stringify(badTitle));
+    assert.ok(result.errors.some((e) => /target\.title/i.test(e)));
+  }
+});
+
+test("page: an over-long target.title fails (length cap)", () => {
+  const doc = structuredClone(PAGE_GOOD);
+  doc.target = { route: "/about/", title: "T".repeat(500) };
+  const result = validateComposition(doc, CATALOG);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((e) => /target\.title/i.test(e)));
+});
+
+test("page: a target.title at the cap passes", () => {
+  const doc = structuredClone(PAGE_GOOD);
+  doc.target = { route: "/about/", title: "T".repeat(120) };
+  assert.equal(validateComposition(doc, CATALOG).ok, true);
+});
+
+test("non-page kinds: target validation is UNCHANGED (homepage/collection/postType)", () => {
+  // homepage with no target — still valid (target validation is page-only)
+  const home = structuredClone(GOOD);
+  assert.equal(validateComposition(home, CATALOG).ok, true);
+  // homepage with an empty target object — still valid
+  const home2 = { ...structuredClone(GOOD), target: {} };
+  assert.equal(validateComposition(home2, CATALOG).ok, true);
+  // collection with a {collection:...} target — still valid
+  const coll = { ...structuredClone(GOOD), kind: "collection", target: { collection: "default" } };
+  assert.equal(validateComposition(coll, CATALOG).ok, true);
+  // postType with a {postType:...} target — still valid
+  const pt = { ...structuredClone(GOOD), kind: "postType", target: { postType: "note" } };
+  assert.equal(validateComposition(pt, CATALOG).ok, true);
+  // a homepage with a malformed target.route is NOT rejected (page-only gate)
+  const home3 = { ...structuredClone(GOOD), target: { route: "/A B C/" } };
+  assert.equal(validateComposition(home3, CATALOG).ok, true);
+});
