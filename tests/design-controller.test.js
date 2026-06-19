@@ -742,9 +742,10 @@ test("resolveSurface 404s an unknown surface route", async () => {
   assert.equal(res.body, "Unknown design surface");
 });
 
-test("the not-yet-live placeholder surface (pages) 404s on the editor; posttype is now live (6.4-T2)", async () => {
+test("the bare /pages collection route 404s (pages are reached via /pages/:slug, 6.5-T1); posttype is live (6.4-T2)", async () => {
   const router = makeRouter(makeIndiekit());
-  // pages is still a placeholder.
+  // pages is a COLLECTION surface (isCollection) with no singleton surfaceId —
+  // the bare /:surface route 404s; an individual page is edited at /pages/<slug>.
   const pages = await callRoute(router, "get", "/pages");
   assert.equal(pages.statusCode, 404, "pages");
   // posttype is registered in 6.4-T2 — its editor resolves (200, no crash).
