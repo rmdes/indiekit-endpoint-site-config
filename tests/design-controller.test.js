@@ -2415,6 +2415,116 @@ test("two different page slugs write to their OWN composition docs (no cross-tal
   assert.ok(ik._db.stores.compositions.get("page:now").draftTree, "now got its own draft");
 });
 
+// ---- pages preview: single SHARED `pages` slot (6.5-T6, D4) ----
+//
+// ALL standalone pages share routeKey "pages" (only surfaceId="page:<slug>"
+// varies per slug — T1). The existing routeKey-driven /preview route therefore
+// writes the CURRENTLY-EDITED page's draft tree into ONE shared slot
+// (previews.pages + preview-pages.json, surface:"pages"). This is D4's
+// "single shared page-preview slot" decision: previewing page B overwrites
+// page A's preview artifact (acceptable — one-at-a-time editing). These tests
+// guard that the shared slot is written correctly and stays isolated from the
+// singleton surfaces' slots.
+
+test("POST /pages/<slug>/preview writes the edited page's draft into the SHARED `pages` slot + artifact", async () => {
+  const ik = makePagesIndiekit(["about"]);
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  const res = await callRoute(router, "post", "/pages/about/preview");
+  assert.equal(res.redirected.status, 303);
+  assert.equal(flag(res, "pane"), "preview");
+  assert.equal(flag(res, "previewing"), "1");
+  // The shared slot is keyed by routeKey "pages" (NOT per-slug).
+  const state = previewState(ik, "pages");
+  assert.equal(state.token.length, 22);
+  assert.equal(state.revision, 1);
+  // The artifact is stamped surface:"pages" and carries page:about's tree.
+  assert.equal(previews.length, 1);
+  assert.deepEqual(previews[0], {
+    surface: "pages",
+    tree: pageDoc("about").tree,
+    revision: 1,
+    token: state.token,
+  });
+});
+
+test("POST /pages/<slug>/preview uses the page's DRAFT tree when one exists", async () => {
+  const draft = baseTree();
+  draft.children[1].children[0].children[0].config = { maxItems: 99 };
+  const ik = makeIndiekit({
+    compositions: [homepageDoc(), pageDoc("about", { draftTree: draft, draftUpdatedAt: "D" })],
+  });
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  await callRoute(router, "post", "/pages/about/preview");
+  assert.deepEqual(previews[0].tree, draft);
+  assert.equal(previews[0].surface, "pages");
+});
+
+test("page-editor locals carry previewRouteKey='pages' (iframe targets /preview/pages/<token>/)", async () => {
+  const ik = makePagesIndiekit(["about"]);
+  const res = await callRoute(makeRouter(ik), "get", "/pages/about");
+  assert.equal(res.rendered.locals.previewRouteKey, "pages");
+});
+
+test("SINGLE-SLOT BY DESIGN: previewing page B overwrites page A's shared `pages` artifact", async () => {
+  // D4: pages share ONE slot. Previewing about then now leaves the shared slot
+  // holding now's tree (token reused, revision bumped) — the documented,
+  // intended clobber for one-at-a-time editing.
+  const ik = makePagesIndiekit(["about", "now"]);
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  await callRoute(router, "post", "/pages/about/preview");
+  const afterAbout = previewState(ik, "pages");
+  await callRoute(router, "post", "/pages/now/preview");
+  const afterNow = previewState(ik, "pages");
+  // Same shared slot: token reused (ensureToken never regenerates), revision bumped.
+  assert.equal(afterNow.token, afterAbout.token);
+  assert.equal(afterNow.revision, 2);
+  // Both writes hit surface:"pages"; the LAST artifact carries now's tree.
+  assert.deepEqual(previews.map((p) => p.surface), ["pages", "pages"]);
+  assert.deepEqual(previews[1].tree, pageDoc("now").tree);
+});
+
+test("INDEPENDENCE: previewing a page does NOT touch the homepage/listing/posttype slots", async () => {
+  // The singleton slots are seeded BEFORE the page preview. Previewing a page
+  // must mint ONLY previews.pages and leave the other surfaces' slots
+  // byte-identical (the per-routeKey isolation #32 proved).
+  const ik = makeIndiekit({
+    compositions: [homepageDoc(), pageDoc("about")],
+    siteConfig: [{
+      _id: "primary",
+      previews: {
+        homepage: { token: "homepage-token", revision: 7 },
+        listing: { token: "listing-token", revision: 3 },
+        posttype: { token: "posttype-token", revision: 5 },
+      },
+    }],
+  });
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  await callRoute(router, "post", "/pages/about/preview");
+  // The pages slot was written.
+  assert.equal(previewState(ik, "pages").revision, 1);
+  // The singleton slots are byte-identical (NOT rotated, NOT bumped).
+  assert.deepEqual(previewState(ik, "homepage"), { token: "homepage-token", revision: 7 });
+  assert.deepEqual(previewState(ik, "listing"), { token: "listing-token", revision: 3 });
+  assert.deepEqual(previewState(ik, "posttype"), { token: "posttype-token", revision: 5 });
+  // Exactly one artifact, for the pages surface — no singleton file written.
+  assert.equal(previews.length, 1);
+  assert.equal(previews[0].surface, "pages");
+  assert.equal(previews.some((p) => p.surface !== "pages"), false);
+});
+
+test("POST /pages/<slug>/preview with no composition → no-composition flash, nothing written", async () => {
+  const ik = makePagesIndiekit(["about"]);
+  const previews = [];
+  const router = makeRouter(ik, { writePreviewArtifact: async (input) => previews.push(input) });
+  const res = await callRoute(router, "post", "/pages/missing/preview");
+  assert.equal(flag(res, "error"), "no-composition");
+  assert.equal(previews.length, 0);
+});
+
 // ---- singleton routes BYTE-behavior-unchanged (regression guard) ----
 
 test("singleton homepage routes are unchanged by the pages addition", async () => {
