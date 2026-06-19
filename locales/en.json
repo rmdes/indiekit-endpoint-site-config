@@ -162,7 +162,19 @@
         "comingSoon": "Arrives in a later phase.",
         "lastEdited": "Last edited",
         "draftBadge": "Draft",
-        "edit": "Edit"
+        "edit": "Edit",
+        "pages": {
+          "newPage": "New page",
+          "create": "Create page",
+          "routeLabel": "Route",
+          "routePlaceholder": "/about/",
+          "titleLabel": "Title",
+          "titlePlaceholder": "About",
+          "empty": "No pages yet. Create one below.",
+          "editPage": "Edit page",
+          "deletePage": "Delete",
+          "confirmDelete": "Delete this page? It will be removed from your site on the next publish."
+        }
       },
       "editor": {
         "title": "Homepage design",

@@ -628,7 +628,92 @@ test("GET / renders the hub with homepage + listing + posttype live, pages disab
     key: "posttype", href: "/site-config/design/posttype", enabled: true,
     exists: true, hasDraft: true, updatedAt: "2026-06-03T00:00:00.000Z",
   });
-  assert.deepEqual(surfaces[3], { key: "pages", enabled: false });
+  // pages: a COLLECTION card (6.5-T5) — enabled, isCollection, an (empty here)
+  // pages list + a create affordance. NOT the old disabled placeholder.
+  assert.equal(surfaces[3].key, "pages");
+  assert.equal(surfaces[3].enabled, true);
+  assert.equal(surfaces[3].isCollection, true);
+  assert.deepEqual(surfaces[3].pages, []);
+  assert.equal(surfaces[3].createHref, "/site-config/design/pages");
+});
+
+// ---- pages hub card (6.5-T5) ----
+
+test("GET / hub: pages card is ENABLED, isCollection, lists each page with slug/route/title/hasDraft + editHref + a delete action", async () => {
+  const ik = makeIndiekit({
+    compositions: [
+      homepageDoc(),
+      pageDoc("about", { target: { route: "/about/", title: "About" } }),
+      pageDoc("now", { target: { route: "/now/", title: "Now" }, draftTree: baseTree() }),
+    ],
+  });
+  const res = await callRoute(makeRouter(ik), "get", "/");
+  const pages = res.rendered.locals.surfaces.find((s) => s.key === "pages");
+  assert.equal(pages.enabled, true);
+  assert.equal(pages.isCollection, true);
+  assert.equal(pages.createHref, "/site-config/design/pages");
+  assert.equal(pages.pages.length, 2);
+  const about = pages.pages.find((p) => p.slug === "about");
+  assert.equal(about.route, "/about/");
+  assert.equal(about.title, "About");
+  assert.equal(about.hasDraft, false);
+  // Per-page Edit link → the slug-scoped editor (T1 routing).
+  assert.equal(about.editHref, "/site-config/design/pages/about");
+  // Per-page Delete action → the T3 unpublish route.
+  assert.equal(about.deleteHref, "/site-config/design/pages/about/delete");
+  const now = pages.pages.find((p) => p.slug === "now");
+  assert.equal(now.hasDraft, true, "a page with a draftTree reports hasDraft");
+});
+
+test("GET / hub: 0 pages → enabled pages card with an empty list (empty-state + create affordance)", async () => {
+  const ik = makeIndiekit({ compositions: [homepageDoc()] });
+  const res = await callRoute(makeRouter(ik), "get", "/");
+  const pages = res.rendered.locals.surfaces.find((s) => s.key === "pages");
+  assert.equal(pages.enabled, true);
+  assert.equal(pages.isCollection, true);
+  assert.deepEqual(pages.pages, []);
+  assert.equal(pages.createHref, "/site-config/design/pages");
+});
+
+test("GET / hub: the singleton cards (homepage/listing/posttype) carry NO isCollection/pages fields (collection shape is pages-only)", async () => {
+  const ik = makeIndiekit({
+    compositions: [homepageDoc(), pageDoc("about")],
+  });
+  const res = await callRoute(makeRouter(ik), "get", "/");
+  for (const key of ["homepage", "listing", "posttype"]) {
+    const s = res.rendered.locals.surfaces.find((x) => x.key === key);
+    assert.equal(s.isCollection, undefined, `${key} must not be a collection`);
+    assert.equal(s.pages, undefined, `${key} must not carry a pages list`);
+    assert.equal(s.createHref, undefined, `${key} must not carry createHref`);
+  }
+});
+
+test("hub view: pages card renders the page list (titles escaped), a New page form POSTing to /pages, and per-page Edit/Delete — no {{...}} leakage", () => {
+  const surfaces = [
+    { key: "homepage", href: "/site-config/design/homepage", enabled: true, exists: true, hasDraft: false, updatedAt: null },
+    {
+      key: "pages", enabled: true, isCollection: true,
+      createHref: "/site-config/design/pages",
+      pages: [
+        { slug: "about", route: "/about/", title: "About <b>us</b>", hasDraft: true,
+          editHref: "/site-config/design/pages/about", deleteHref: "/site-config/design/pages/about/delete", updatedAt: null },
+      ],
+    },
+  ];
+  const html = renderHubContent({ activeTab: "design", surfaces });
+  // The create form posts to /pages with route + title inputs.
+  assert.match(html, /<form[^>]*action="\/site-config\/design\/pages"[^>]*method="post"/);
+  assert.match(html, /name="route"/, "create form has a route input");
+  assert.match(html, /name="title"/, "create form has a title input");
+  // The page is listed with its route + an Edit link to the slug editor.
+  assert.match(html, /\/site-config\/design\/pages\/about/, "Edit link to the page editor");
+  // Delete form to the T3 unpublish route.
+  assert.match(html, /action="\/site-config\/design\/pages\/about\/delete"/, "Delete form");
+  // SECURITY: the operator-supplied title is autoescaped, never raw HTML.
+  assert.match(html, /About &lt;b&gt;us&lt;\/b&gt;/, "title is HTML-escaped");
+  assert.doesNotMatch(html, /About <b>us<\/b>/, "title must NOT render raw HTML (no | safe)");
+  // No un-resolved nunjucks/i18n placeholders leaked into the markup.
+  assert.doesNotMatch(html, /\{\{|\}\}/, "no raw {{...}} leakage");
 });
 
 test("GET / hub: no composition → homepage exists false, hasDraft false", async () => {
@@ -1310,6 +1395,38 @@ function renderEditorContent(locals) {
   env.addFilter("truncate", (v, n) => String(v).slice(0, n));
   env.addFilter("round", (v) => Math.round(v));
   env.addFilter("dump", (v) => JSON.stringify(v));
+  return env.renderString(body, locals);
+}
+
+// Render the hub view's `{% block content %}` body directly (same technique as
+// renderEditorContent): strip extends/from/block, supply macros + filters as
+// globals. Exercises the EXACT pages-card markup the hub view ships.
+function renderHubContent(locals) {
+  const source = readFileSync(
+    new URL("../views/site-config-design.njk", import.meta.url),
+    "utf8",
+  );
+  const body = source
+    .replace(/\{% extends [^%]+%\}/g, "")
+    .replace(/\{% from [^%]+%\}/g, "")
+    .replace(/\{% block content %\}/g, "")
+    .replace(/\{% endblock %\}/g, "");
+  const env = new nunjucks.Environment(
+    new nunjucks.FileSystemLoader([
+      "views",
+      "views/partials",
+      "node_modules/@indiekit/frontend/components",
+      "node_modules/@indiekit/frontend",
+    ]),
+    { autoescape: true },
+  );
+  // Echo the key back (no args interpolation needed for the hub card copy).
+  env.addGlobal("__", (k) => k);
+  env.addGlobal("icon", (n) => `<icon>${n || ""}</icon>`);
+  for (const m of ["badge", "button", "details", "modalDialog", "notificationBanner", "toggleSwitch"]) {
+    env.addGlobal(m, (...a) => `<${m}>${JSON.stringify(a)}</${m}>`);
+  }
+  env.addFilter("date", (v, f) => `[date:${v}:${f}]`);
   return env.renderString(body, locals);
 }
 

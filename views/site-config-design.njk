@@ -45,11 +45,50 @@
     </div>
     <h2 class="sc-hub-card__title">
       {{ __("siteConfig.design.hub.surfaces." + surface.key) }}
-      {% if surface.enabled and surface.hasDraft %}
+      {% if surface.enabled and not surface.isCollection and surface.hasDraft %}
       {{ badge({ color: "purple", text: __("siteConfig.design.hub.draftBadge") }) }}
       {% endif %}
     </h2>
-    {% if surface.enabled %}
+    {% if surface.isCollection %}
+      {# COLLECTION card (6.5-T5): a list of page:<slug> compositions + a "New
+         page" create form. page title/route are OPERATOR INPUT — rendered via
+         {{ }} (Nunjucks autoescape), NEVER | safe (stored-XSS defense). #}
+      {% if surface.pages.length %}
+      <ul class="sc-hub-pages">
+        {% for page in surface.pages %}
+        <li class="sc-hub-pages__item">
+          <a class="sc-hub-pages__edit" href="{{ page.editHref }}">
+            <span class="sc-hub-pages__title">{{ page.title }}</span>
+            {% if page.hasDraft %}
+            {{ badge({ color: "purple", text: __("siteConfig.design.hub.draftBadge") }) }}
+            {% endif %}
+            <span class="sc-hub-pages__route">{{ page.route }}</span>
+          </a>
+          <form class="sc-hub-pages__delete" action="{{ page.deleteHref }}" method="post"
+            onsubmit="return confirm('{{ __('siteConfig.design.hub.pages.confirmDelete') }}');">
+            <button type="submit" class="button button--small button--destructive">{{ __("siteConfig.design.hub.pages.deletePage") }}</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="sc-hub-card__meta">{{ __("siteConfig.design.hub.pages.empty") }}</p>
+      {% endif %}
+      <form class="sc-hub-pages__create" action="{{ surface.createHref }}" method="post">
+        <h3 class="sc-hub-pages__create-title">{{ __("siteConfig.design.hub.pages.newPage") }}</h3>
+        <label class="sc-field">
+          <span class="sc-field__label">{{ __("siteConfig.design.hub.pages.titleLabel") }}</span>
+          <input class="input" type="text" name="title" required
+            placeholder="{{ __('siteConfig.design.hub.pages.titlePlaceholder') }}">
+        </label>
+        <label class="sc-field">
+          <span class="sc-field__label">{{ __("siteConfig.design.hub.pages.routeLabel") }}</span>
+          <input class="input" type="text" name="route" required
+            placeholder="{{ __('siteConfig.design.hub.pages.routePlaceholder') }}">
+        </label>
+        <button type="submit" class="button button--small">{{ __("siteConfig.design.hub.pages.create") }}</button>
+      </form>
+    {% elif surface.enabled %}
       {% if surface.updatedAt %}
       <p class="sc-hub-card__meta">{{ __("siteConfig.design.hub.lastEdited") }} {{ surface.updatedAt | date("PPp") }}</p>
       {% endif %}

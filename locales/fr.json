@@ -162,7 +162,19 @@
         "comingSoon": "Disponible dans une phase ultérieure.",
         "lastEdited": "Dernière modification",
         "draftBadge": "Brouillon",
-        "edit": "Modifier"
+        "edit": "Modifier",
+        "pages": {
+          "newPage": "Nouvelle page",
+          "create": "Créer la page",
+          "routeLabel": "Route",
+          "routePlaceholder": "/a-propos/",
+          "titleLabel": "Titre",
+          "titlePlaceholder": "À propos",
+          "empty": "Aucune page pour l'instant. Créez-en une ci-dessous.",
+          "editPage": "Modifier la page",
+          "deletePage": "Supprimer",
+          "confirmDelete": "Supprimer cette page ? Elle sera retirée de votre site à la prochaine publication."
+        }
       },
       "editor": {
         "title": "Design de la page d'accueil",

@@ -251,6 +251,33 @@ test("every locale has the same siteConfig.design keys as en (no i18n gaps)", ()
   }
 });
 
+// 6.5-T5 — the pages hub card needs its own copy: card title, "New page" /
+// create label, route + title field labels, empty-state, per-page Edit/Delete.
+// The parity test above also enforces en/fr coverage; these assert the specific
+// keys the card consumes exist and are non-empty in BOTH locales.
+const PAGES_CARD_KEYS = [
+  "siteConfig.design.hub.pages.newPage",
+  "siteConfig.design.hub.pages.create",
+  "siteConfig.design.hub.pages.routeLabel",
+  "siteConfig.design.hub.pages.routePlaceholder",
+  "siteConfig.design.hub.pages.titleLabel",
+  "siteConfig.design.hub.pages.titlePlaceholder",
+  "siteConfig.design.hub.pages.empty",
+  "siteConfig.design.hub.pages.editPage",
+  "siteConfig.design.hub.pages.deletePage",
+  "siteConfig.design.hub.pages.confirmDelete",
+];
+
+for (const locale of LOCALES) {
+  test(`pages hub card i18n keys exist and are non-empty (${locale})`, () => {
+    for (const key of PAGES_CARD_KEYS) {
+      const str = lookupCatalog(locale, key);
+      assert.equal(typeof str, "string", `${locale} has ${key}`);
+      assert.ok(str.length > 0, `${locale} ${key} non-empty`);
+    }
+  });
+}
+
 test("i18n eats unmapped {{var}} placeholders (defect mechanism)", () => {
   // Documents WHY self-mapping is required: without args, mustache replaces
   // the missing variable with an empty string. If this ever stops holding,
