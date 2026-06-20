@@ -32,6 +32,7 @@
     "colorparsley": "^0.1.8",
     "culori": "^4.0.1",
     "express": "^5.0.0",
+    "gray-matter": "^4.0.3",
     "isomorphic-dompurify": "^3.16.0"
   },
   "publishConfig": {

@@ -1,0 +1,97 @@
+{% extends "document.njk" %}
+
+{% block title %}{{ __('siteConfig.tabs.categories') }}{% endblock %}
+
+{% block content %}
+<style>
+  .sc-form { display: flex; flex-direction: column; gap: var(--space-xl, 2rem); }
+  .sc-section { background: var(--color-offset, #f5f5f5); border-radius: var(--border-radius-small, 0.5rem); padding: var(--space-m, 1.5rem); }
+  .sc-section h2 { font: var(--font-heading, bold 1.25rem/1.4 sans-serif); margin-block-end: var(--space-s, 0.75rem); padding-block-end: var(--space-xs, 0.5rem); border-block-end: 1px solid var(--color-outline-variant, #ddd); }
+  .sc-field { margin-block-end: var(--space-m, 1.25rem); }
+  .sc-field__label { display: block; font-weight: 600; margin-block-end: var(--space-xs, 0.4rem); }
+  .sc-field__input { width: 6rem; padding: var(--space-xs, 0.5rem) var(--space-s, 0.75rem); border: 1px solid var(--color-outline-variant, #ccc); border-radius: var(--border-radius-small, 0.375rem); font: inherit; }
+  .sc-field__hint { color: var(--color-on-offset, #666); font-size: 0.875rem; margin-block-start: var(--space-xs, 0.4rem); }
+  .sc-cat-summary { color: var(--color-on-offset, #666); margin-block-end: var(--space-m, 1.25rem); }
+  .sc-cat-table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
+  .sc-cat-table th, .sc-cat-table td { text-align: start; padding: var(--space-xs, 0.5rem); border-block-end: 1px solid var(--color-outline-variant, #e5e5e5); vertical-align: top; }
+  .sc-cat-table th { font-weight: 600; }
+  .sc-cat-table td.num { text-align: end; font-variant-numeric: tabular-nums; }
+  .sc-cat-table select { font: inherit; padding: 0.2rem 0.4rem; }
+  .sc-cat-below { opacity: 0.65; }
+  .sc-cat-merge-badge { display: inline-block; margin-inline-start: 0.4rem; padding: 0.05rem 0.4rem; font-size: 0.75rem; border-radius: 0.75rem; background: var(--color-warning-container, #fde68a); color: var(--color-on-warning-container, #713f12); }
+  .sc-cat-variants { color: var(--color-on-offset, #666); font-size: 0.8125rem; }
+</style>
+
+<header class="page-header">
+  <h1 class="page-header__title">{{ __("siteConfig.title") }}</h1>
+  <p class="page-header__description">{{ __("siteConfig.description") }}</p>
+</header>
+
+{% include "partials/tab-strip.njk" %}
+
+{% if saved %}
+<div class="notice notice--success" role="status">
+  <p>{{ __("siteConfig.categories.saved") }}</p>
+</div>
+{% endif %}
+
+<form method="post" action="/site-config/categories" class="sc-form">
+  <section class="sc-section">
+    <h2>{{ __("siteConfig.categories.title") }}</h2>
+    <p class="sc-cat-summary">{{ __("siteConfig.categories.intro") }}</p>
+
+    <div class="sc-field">
+      <label class="sc-field__label" for="threshold">{{ __("siteConfig.categories.threshold") }}</label>
+      <input class="sc-field__input" type="number" id="threshold" name="threshold" min="1" step="1" value="{{ threshold }}">
+      <p class="sc-field__hint">{{ __("siteConfig.categories.thresholdHint") }}</p>
+    </div>
+
+    <p class="sc-cat-summary">{{ __("siteConfig.categories.summary", { total: total, merge: mergeCandidateCount, below: belowThresholdCount }) }}</p>
+
+    <table class="sc-cat-table">
+      <thead>
+        <tr>
+          <th scope="col">{{ __("siteConfig.categories.colCategory") }}</th>
+          <th scope="col" class="num">{{ __("siteConfig.categories.colPosts") }}</th>
+          <th scope="col">{{ __("siteConfig.categories.colListing") }}</th>
+          <th scope="col">{{ __("siteConfig.categories.colFeed") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in categories %}
+        <tr class="{% if not c.meetsThreshold and c.listingState == 'auto' %}sc-cat-below{% endif %}">
+          <td>
+            <code>{{ c.name }}</code>
+            {% if c.isMergeCandidate %}
+            <span class="sc-cat-merge-badge" title="{% for v in c.variants %}{{ v.name }} ({{ v.count }}){% if not loop.last %}, {% endif %}{% endfor %}">{{ __("siteConfig.categories.mergeBadge") }}</span>
+            <div class="sc-cat-variants">{% for v in c.variants %}{{ v.name }} ({{ v.count }}){% if not loop.last %} · {% endif %}{% endfor %}</div>
+            {% endif %}
+          </td>
+          <td class="num">{{ c.count }}</td>
+          <td>
+            <label class="visually-hidden" for="listing-{{ c.slug }}">{{ c.name }} {{ __("siteConfig.categories.colListing") }}</label>
+            <select id="listing-{{ c.slug }}" name="override[{{ c.slug }}][listing]">
+              <option value="auto"{% if c.listingState == 'auto' %} selected{% endif %}>{{ __("siteConfig.categories.stateAuto") }}</option>
+              <option value="on"{% if c.listingState == 'on' %} selected{% endif %}>{{ __("siteConfig.categories.stateOn") }}</option>
+              <option value="off"{% if c.listingState == 'off' %} selected{% endif %}>{{ __("siteConfig.categories.stateOff") }}</option>
+            </select>
+          </td>
+          <td>
+            <label class="visually-hidden" for="feed-{{ c.slug }}">{{ c.name }} {{ __("siteConfig.categories.colFeed") }}</label>
+            <select id="feed-{{ c.slug }}" name="override[{{ c.slug }}][feed]">
+              <option value="auto"{% if c.feedState == 'auto' %} selected{% endif %}>{{ __("siteConfig.categories.stateAuto") }}</option>
+              <option value="on"{% if c.feedState == 'on' %} selected{% endif %}>{{ __("siteConfig.categories.stateOn") }}</option>
+              <option value="off"{% if c.feedState == 'off' %} selected{% endif %}>{{ __("siteConfig.categories.stateOff") }}</option>
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <div class="button-group">
+    <button type="submit" class="button button--primary">{{ __("siteConfig.categories.save") }}</button>
+  </div>
+</form>
+{% endblock %}

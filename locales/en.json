@@ -9,7 +9,8 @@
       "homepage": "Homepage",
       "blog": "Blog",
       "navigation": "Navigation",
-      "general": "General"
+      "general": "General",
+      "categories": "Categories"
     },
     "common": {
       "save": "Save",
@@ -36,46 +37,96 @@
       "saved": "Identity saved successfully. Refresh your site to see changes.",
       "profile": {
         "legend": "Profile",
-        "name":        { "label": "Name",        "hint": "The person's name, shown in the h-card, hero, and author cards. For the site/brand title, use Site title below." },
-        "title":       { "label": "Title",       "hint": "Job title or tagline (e.g. 'Middleware Engineer')" },
-        "avatar":      { "label": "Avatar URL",  "hint": "URL of your profile photo for the h-card" },
-        "pronoun":     { "label": "Pronouns",    "hint": "e.g. she/her, he/him, they/them" },
-        "bio":         { "label": "Short bio",   "hint": "One-paragraph bio for sidebars and h-card" },
-        "description": { "label": "Description", "hint": "Longer description (microformats h-card note)" }
+        "name": {
+          "label": "Name",
+          "hint": "The person's name, shown in the h-card, hero, and author cards. For the site/brand title, use Site title below."
+        },
+        "title": {
+          "label": "Title",
+          "hint": "Job title or tagline (e.g. 'Middleware Engineer')"
+        },
+        "avatar": {
+          "label": "Avatar URL",
+          "hint": "URL of your profile photo for the h-card"
+        },
+        "pronoun": {
+          "label": "Pronouns",
+          "hint": "e.g. she/her, he/him, they/them"
+        },
+        "bio": {
+          "label": "Short bio",
+          "hint": "One-paragraph bio for sidebars and h-card"
+        },
+        "description": {
+          "label": "Description",
+          "hint": "Longer description (microformats h-card note)"
+        }
       },
       "location": {
         "legend": "Location",
-        "locality": { "label": "City",         "hint": "City or town" },
-        "country":  { "label": "Country",      "hint": "Country (full name)" },
-        "org":      { "label": "Organization", "hint": "Optional organization/affiliation" }
+        "locality": {
+          "label": "City",
+          "hint": "City or town"
+        },
+        "country": {
+          "label": "Country",
+          "hint": "Country (full name)"
+        },
+        "org": {
+          "label": "Organization",
+          "hint": "Optional organization/affiliation"
+        }
       },
       "contact": {
         "legend": "Contact",
-        "url":    { "label": "URL",     "hint": "Your canonical site URL (used as rel=me)" },
-        "email":  { "label": "Email",   "hint": "Public contact email (optional)" },
-        "keyUrl": { "label": "PGP key", "hint": "URL of your public PGP key (optional, used for IndieAuth/rel=key)" }
+        "url": {
+          "label": "URL",
+          "hint": "Your canonical site URL (used as rel=me)"
+        },
+        "email": {
+          "label": "Email",
+          "hint": "Public contact email (optional)"
+        },
+        "keyUrl": {
+          "label": "PGP key",
+          "hint": "URL of your public PGP key (optional, used for IndieAuth/rel=key)"
+        }
       },
       "categories": {
         "legend": "Categories",
-        "tags": { "label": "Tags", "hint": "Comma-separated h-card categories (e.g. indieweb, devops, brussels)" }
+        "tags": {
+          "label": "Tags",
+          "hint": "Comma-separated h-card categories (e.g. indieweb, devops, brussels)"
+        }
       },
       "social": {
         "legend": "Social Links",
         "description": "Profiles linked from the h-card. Drag to reorder.",
-        "name":  { "label": "Name" },
-        "url":   { "label": "URL" },
-        "rel":   { "label": "Rel" },
-        "icon":  { "label": "Icon" }
+        "name": {
+          "label": "Name"
+        },
+        "url": {
+          "label": "URL"
+        },
+        "rel": {
+          "label": "Rel"
+        },
+        "icon": {
+          "label": "Icon"
+        }
       },
       "preferences": {
         "legend": "Site preferences"
       },
-      "siteName":        { "label": "Site title", "hint": "Shown in the site header, browser tab, and link previews. Leave blank to use your Name above (for single-author sites where the brand is the person)." },
-      "description":     "Description",
-      "tagline":         "Tagline",
-      "defaultOgImage":  "Default OpenGraph image URL",
-      "locale":          "Locale (ISO 639-1)",
-      "timezone":        "Timezone (IANA)"
+      "siteName": {
+        "label": "Site title",
+        "hint": "Shown in the site header, browser tab, and link previews. Leave blank to use your Name above (for single-author sites where the brand is the person)."
+      },
+      "description": "Description",
+      "tagline": "Tagline",
+      "defaultOgImage": "Default OpenGraph image URL",
+      "locale": "Locale (ISO 639-1)",
+      "timezone": "Timezone (IANA)"
     },
     "branding": {
       "title": "Branding",
@@ -418,6 +469,23 @@
       "sidebarEnabled": "Sidebar enabled",
       "sidebarSide": "Sidebar side",
       "navItems": "Navigation items"
+    },
+    "categories": {
+      "title": "Categories",
+      "intro": "Control which categories generate listing pages and feeds. Counts come from your published posts.",
+      "threshold": "Minimum posts to get a page + feeds",
+      "thresholdHint": "Categories with fewer posts are hidden unless overridden below.",
+      "save": "Save category settings",
+      "saved": "Category settings saved.",
+      "summary": "{{total}} categories — {{merge}} with duplicate casings, {{below}} below the threshold",
+      "colCategory": "Category",
+      "colPosts": "Posts",
+      "colListing": "Listing page",
+      "colFeed": "RSS/JSON feed",
+      "stateAuto": "Auto (threshold)",
+      "stateOn": "Always",
+      "stateOff": "Never",
+      "mergeBadge": "duplicate casings"
     }
   }
 }

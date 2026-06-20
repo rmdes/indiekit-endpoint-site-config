@@ -47,3 +47,28 @@ test("variant tie breaks deterministically by name (localeCompare)", () => {
   // Order is arbitrary but MUST be deterministic; localeCompare → lowercase first.
   assert.deepEqual(ai.variants.map((v) => v.name), ["ai", "AI"]);
 });
+
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { censusFromContentDir, invalidateCensusCache } from "../lib/storage/category-census.js";
+
+test("censusFromContentDir reads .md frontmatter categories recursively", () => {
+  const dir = mkdtempSync(join(tmpdir(), "census-"));
+  mkdirSync(join(dir, "notes"), { recursive: true });
+  writeFileSync(join(dir, "a.md"), "---\ncategory: Politics\n---\nbody");
+  writeFileSync(join(dir, "notes", "b.md"), "---\ncategory: politics\n---\nbody");
+  writeFileSync(join(dir, "notes", "c.md"), "---\ncategory:\n  - AI\n  - politics\n---\nbody");
+  writeFileSync(join(dir, "d.md"), "---\ntitle: no category\n---\nbody");
+  invalidateCensusCache();
+  const idx = censusFromContentDir(dir, { ttl: 0 });
+  assert.equal(idx.find((c) => c.slug === "politics").count, 3);
+  assert.equal(idx.find((c) => c.slug === "ai").count, 1);
+  // variants surface the casing split for the merge UI
+  assert.equal(idx.find((c) => c.slug === "politics").variants.length, 2);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("censusFromContentDir returns [] for a missing dir", () => {
+  assert.deepEqual(censusFromContentDir(join(tmpdir(), "no-such-census-xyz"), { ttl: 0 }), []);
+});

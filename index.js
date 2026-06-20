@@ -8,6 +8,7 @@ import { homepageRouter   } from "./lib/controllers/homepage.js";
 import { designRouter     } from "./lib/controllers/design.js";
 import { navigationRouter } from "./lib/controllers/navigation.js";
 import { generalRouter    } from "./lib/controllers/general.js";
+import { categoriesRouter } from "./lib/controllers/categories.js";
 import { publicApiRouter, adminApiRouter } from "./lib/controllers/api.js";
 
 import { getSiteConfig     } from "./lib/storage/get-site-config.js";
@@ -84,6 +85,7 @@ export default class SiteConfigEndpoint {
     protectedRouter.use("/design",     designRouter(Indiekit));
     protectedRouter.use("/navigation", navigationRouter(Indiekit));
     protectedRouter.use("/general",    generalRouter(Indiekit));
+    protectedRouter.use("/categories", categoriesRouter(Indiekit));
     protectedRouter.use("/api",        adminApiRouter(Indiekit));
 
     this.routes = protectedRouter;
