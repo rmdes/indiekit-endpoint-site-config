@@ -484,7 +484,14 @@
       "stateAuto": "Auto (seuil)",
       "stateOn": "Toujours",
       "stateOff": "Jamais",
-      "mergeBadge": "casses en double"
+      "mergeBadge": "casses en double",
+      "mergeSectionTitle": "Casses en double",
+      "mergeSectionIntro": "Ces catégories existent en plusieurs casses, répartissant leurs billets sur plusieurs pages. Fusionnez chacune vers un nom canonique (réécrit vos billets).",
+      "mergeInto": "Fusionner vers",
+      "mergeButton": "Fusionner",
+      "mergedFlash": "Fusionné — {{n}} fichier(s) de billet mis à jour. Une reconstruction est en cours.",
+      "mergeErrorFlash": "La fusion n'a pas pu être effectuée.",
+      "noMergeCandidates": "Aucune casse en double — vos catégories sont cohérentes."
     }
   }
 }

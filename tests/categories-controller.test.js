@@ -35,3 +35,19 @@ test("parseCategoriesBody tolerates missing/garbage override object", () => {
   assert.deepEqual(parseCategoriesBody({ override: "nope" }).overrides, {});
   assert.deepEqual(parseCategoriesBody({}).overrides, {});
 });
+
+import { buildMergeRenameMap } from "../lib/controllers/categories.js";
+
+test("buildMergeRenameMap maps all variants except the chosen canonical", () => {
+  const variants = [{ name: "politics", count: 12 }, { name: "Politics", count: 11 }, { name: "POLITICS", count: 1 }];
+  assert.deepEqual(buildMergeRenameMap(variants, "politics"), { Politics: "politics", POLITICS: "politics" });
+});
+
+test("buildMergeRenameMap: single variant equal to canonical → empty map (no-op)", () => {
+  assert.deepEqual(buildMergeRenameMap([{ name: "ai" }], "ai"), {});
+});
+
+test("buildMergeRenameMap tolerates missing/garbage variants", () => {
+  assert.deepEqual(buildMergeRenameMap(undefined, "x"), {});
+  assert.deepEqual(buildMergeRenameMap([{}, { name: 5 }, { name: "Real" }], "real"), { Real: "real" });
+});

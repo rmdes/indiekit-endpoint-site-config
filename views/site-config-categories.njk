@@ -34,6 +34,38 @@
   <p>{{ __("siteConfig.categories.saved") }}</p>
 </div>
 {% endif %}
+{% if merged %}
+<div class="notice notice--success" role="status">
+  <p>{{ __("siteConfig.categories.mergedFlash", { n: merged }) }}</p>
+</div>
+{% endif %}
+{% if mergeError %}
+<div class="notice notice--error" role="alert">
+  <p>{{ __("siteConfig.categories.mergeErrorFlash") }}</p>
+</div>
+{% endif %}
+
+{% if mergeCandidateCount > 0 %}
+<section class="sc-section">
+  <h2>{{ __("siteConfig.categories.mergeSectionTitle") }}</h2>
+  <p class="sc-cat-summary">{{ __("siteConfig.categories.mergeSectionIntro") }}</p>
+  <ul class="sc-cat-merge-list" style="list-style:none; padding:0; display:flex; flex-direction:column; gap:var(--space-s,0.75rem);">
+    {% for c in categories %}{% if c.isMergeCandidate %}
+    <li>
+      {# Separate form per candidate — NOT nested in the settings form below. #}
+      <form method="post" action="/site-config/categories/merge" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+        <input type="hidden" name="slug" value="{{ c.slug }}">
+        <span class="sc-cat-variants">{% for v in c.variants %}<code>{{ v.name }}</code> ({{ v.count }}){% if not loop.last %} · {% endif %}{% endfor %}</span>
+        <label>{{ __("siteConfig.categories.mergeInto") }}
+          <select name="toName">{% for v in c.variants %}<option value="{{ v.name }}"{% if loop.first %} selected{% endif %}>{{ v.name }}</option>{% endfor %}</select>
+        </label>
+        <button type="submit" class="button">{{ __("siteConfig.categories.mergeButton") }}</button>
+      </form>
+    </li>
+    {% endif %}{% endfor %}
+  </ul>
+</section>
+{% endif %}
 
 <form method="post" action="/site-config/categories" class="sc-form">
   <section class="sc-section">

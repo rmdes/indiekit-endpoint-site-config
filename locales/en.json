@@ -485,7 +485,14 @@
       "stateAuto": "Auto (threshold)",
       "stateOn": "Always",
       "stateOff": "Never",
-      "mergeBadge": "duplicate casings"
+      "mergeBadge": "duplicate casings",
+      "mergeSectionTitle": "Duplicate casings",
+      "mergeSectionIntro": "These categories exist in multiple casings, splitting their posts across pages. Merge each into one canonical name (rewrites your posts).",
+      "mergeInto": "Merge into",
+      "mergeButton": "Merge",
+      "mergedFlash": "Merged — {{n}} post file(s) updated. A rebuild is in progress.",
+      "mergeErrorFlash": "Merge could not be completed.",
+      "noMergeCandidates": "No duplicate casings — your categories are consistent."
     }
   }
 }
