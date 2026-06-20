@@ -107,3 +107,35 @@ test("syncMongoCategories renames + dedupes posts docs (mock db)", async () => {
   assert.deepEqual(updates.find((u) => u.id === 1).set, ["politics", "AI"]);
   assert.equal(updates.find((u) => u.id === 2).set, "politics");
 });
+
+test("block-array: single-quoted malformed item renamed (the RSS bug)", () => {
+  const input = fm("category:\n  - '[\"RSS\"]'");
+  const { content, changed } = rewriteCategoryFrontmatter(input, { '["RSS"]': "RSS" });
+  assert.equal(changed, true);
+  assert.equal(content, fm("category:\n  - RSS"));
+});
+
+test("block-array: double-quoted item renamed", () => {
+  const input = fm('category:\n  - "AI"');
+  const { content } = rewriteCategoryFrontmatter(input, { AI: "ai" });
+  assert.equal(content, fm("category:\n  - ai"));
+});
+
+test("inline: single-quoted value renamed", () => {
+  const input = fm("category: 'My Topic'");
+  const { content, changed } = rewriteCategoryFrontmatter(input, { "My Topic": "topic" });
+  assert.equal(changed, true);
+  assert.equal(content, fm("category: topic"));
+});
+
+test("renamed value needing quotes gets requoted", () => {
+  const input = fm("category: Foo");
+  const { content } = rewriteCategoryFrontmatter(input, { Foo: "a: b" });
+  assert.equal(content, fm('category: "a: b"'));
+});
+
+test("unchanged quoted array item preserved byte-for-byte", () => {
+  const input = fm("category:\n  - 'keep me'\n  - Politics");
+  const { content } = rewriteCategoryFrontmatter(input, { Politics: "politics" });
+  assert.equal(content, fm("category:\n  - 'keep me'\n  - politics"));
+});
