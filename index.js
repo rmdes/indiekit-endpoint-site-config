@@ -17,6 +17,7 @@ import { maybeSeedFromEnv  } from "./lib/storage/seed-from-env.js";
 import { maybeBackfillIdentity } from "./lib/storage/backfill-identity.js";
 import { migrateV3toV4 } from "./lib/storage/migrate-v3-to-v4.js";
 import { reseedListingComposition, reseedSidebarSurface } from "./lib/storage/reseed-sidebar-surface.js";
+import { migrateCvPage } from "./lib/storage/migrate-cv-page.js";
 
 import { writeThemeCss    } from "./lib/render/write-theme-css.js";
 import { writeCriticalCss } from "./lib/render/write-critical-css.js";
@@ -212,6 +213,24 @@ export default class SiteConfigEndpoint {
         }
       } catch (error) {
         console.warn("[site-config] posttype re-seed failed:", error?.message ?? String(error));
+      }
+
+      // Phase 7 — seed page:cv from the retired CV plugin's cvPageConfig layout
+      // (one-time, seed-if-absent). DRAFT-only, so it does NOT emit /cv/ until
+      // published (the /cv-collision guard while theme cv.njk still exists).
+      // Separate try/catch — never crashes boot.
+      try {
+        const db = Indiekit.database;
+        if (db) {
+          const { seeded, usedDefault } = await migrateCvPage(db);
+          if (seeded) {
+            console.log(
+              `[site-config] page:cv seeded (draft) from ${usedDefault ? "default" : "cvPageConfig"} layout`,
+            );
+          }
+        }
+      } catch (error) {
+        console.warn("[site-config] page:cv seed failed:", error?.message ?? String(error));
       }
 
       // Phase 3 cutover: (re)write the composition artifact — THE theme
