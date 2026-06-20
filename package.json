@@ -1,6 +1,6 @@
 {
   "name": "@rmdes/indiekit-endpoint-site-config",
-  "version": "1.0.0-beta.26",
+  "version": "1.0.0-beta.27",
   "type": "module",
   "description": "Site identity, branding, and navigation configuration for Indiekit",
   "main": "index.js",
@@ -28,6 +28,7 @@
   "dependencies": {
     "@indiekit/error": "^1.0.0-beta.25",
     "@indiekit/frontend": "^1.0.0-beta.25",
+    "@rmdes/indiekit-startup-gate": "^1.0.0",
     "apca-w3": "^0.1.9",
     "colorparsley": "^0.1.8",
     "culori": "^4.0.1",

@@ -26,6 +26,9 @@ import { writeBlockCatalogJson } from "./lib/render/write-block-catalog-json.js"
 import { writeCompositionArtifacts, writePagesJson } from "./lib/render/write-composition-json.js";
 
 import { scanPlugins } from "./lib/discovery/scan-plugins.js";
+import { refreshPublicationCategories } from "./lib/storage/publication-categories.js";
+
+import { waitForReady } from "@rmdes/indiekit-startup-gate";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -247,6 +250,23 @@ export default class SiteConfigEndpoint {
         console.warn("[site-config] composition artifact write failed:", error?.message ?? String(error));
       }
     });
+
+    // Category Governance L1 wiring: publish the canonical category list to
+    // Indiekit.publication.categories so normalise-on-write (jf2.js) and the
+    // ?q=category typeahead fold authored categories to existing casing. The
+    // census parses ~2,600 .md files, so defer it behind the startup gate
+    // (after the first Eleventy build) to stay clear of the build memory peak.
+    // Pre-gate writes still get trim/drop-empty/dedupe; only cross-post folding
+    // waits for the list. Hot restarts fire immediately (gate file present).
+    this._stopCategoriesGate = waitForReady(
+      () => refreshPublicationCategories(Indiekit),
+      { label: "site-config:categories" },
+    );
+  }
+
+  /** Cancel the category gate poll if the host tears the plugin down pre-build. */
+  destroy() {
+    this._stopCategoriesGate?.();
   }
 
   get routesPublic() {
