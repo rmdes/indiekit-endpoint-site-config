@@ -2,9 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { BUILTIN_BLOCKS } from "../lib/presets/builtin-blocks.js";
 import { validBlockEntry } from "../lib/discovery/block-entry.js";
-import { BUILTIN_SECTIONS } from "../lib/presets/builtin-sections.js";
-import { BUILTIN_WIDGETS } from "../lib/presets/builtin-widgets.js";
-import { BUILTIN_BLOG_POST_WIDGETS } from "../lib/presets/builtin-blog-post-widgets.js";
 import { DEFAULTS_HOMEPAGE } from "../lib/storage/defaults-homepage.js";
 import { validateConfigAgainstSchema } from "../lib/validators/block-schema.js";
 
@@ -33,25 +30,12 @@ test("every built-in block entry passes the strict validBlockEntry gate", () => 
   }
 });
 
-test("catalog ids exactly cover the legacy built-in ids (drift guard, both directions)", () => {
-  const legacyIds = new Set(
-    [...BUILTIN_SECTIONS, ...BUILTIN_WIDGETS, ...BUILTIN_BLOG_POST_WIDGETS]
-      .map((e) => e.id)
-      // Phase 7d: the 7 migrated widgets are plugin-owned now; they remain in
-      // the legacy presets but were removed from BUILTIN_BLOCKS by design.
-      .filter((id) => !MIGRATED_PLUGIN_IDS.has(id)),
-  );
-  const catalogIds = new Set(BUILTIN_BLOCKS.map((e) => e.id));
-  assert.deepEqual(
-    [...catalogIds].sort(),
-    [...legacyIds].sort(),
-    "builtin-blocks.js must mirror the legacy built-ins 1:1 — if a legacy built-in was added/removed, update the catalog (and vice versa)",
-  );
-  assert.equal(
-    BUILTIN_BLOCKS.length,
-    catalogIds.size,
-    "duplicate id inside BUILTIN_BLOCKS",
-  );
+// Phase 7d — the legacy-mirror drift guard was removed with the BUILTIN_SECTIONS/
+// WIDGETS/BLOG_POST_WIDGETS presets. The duplicate-id invariant it also enforced
+// is kept here standalone.
+test("BUILTIN_BLOCKS has no duplicate ids", () => {
+  const ids = BUILTIN_BLOCKS.map((e) => e.id);
+  assert.equal(new Set(ids).size, ids.length, "duplicate id inside BUILTIN_BLOCKS");
 });
 
 test("merged dual-origin entries carry both regions", () => {
@@ -59,48 +43,9 @@ test("merged dual-origin entries carry both regions", () => {
   assert.deepEqual([...recentPosts.placement.regions].sort(), ["main", "sidebar"]);
 });
 
-// Phase 7d — these 7 widget blocks were REMOVED from BUILTIN_BLOCKS: their
-// owning plugins now declare them via get blocks() (7b/7c), so their catalog
-// entry is plugin-provided at runtime, not in this seed. They still appear in
-// the LEGACY presets (BUILTIN_WIDGETS / BUILTIN_BLOG_POST_WIDGETS), so the
-// "every legacy id has a catalog entry" check excludes them — they're owned
-// elsewhere now, not dropped.
-const MIGRATED_PLUGIN_IDS = new Set([
-  "github-repos",
-  "funkwhale",
-  "blogroll",
-  "feedland",
-  "webmentions",
-  "recent-comments",
-  "fediverse-follow",
-]);
-
-test("every legacy configSchema field survives into the catalog schema (no dropped fields)", () => {
-  // Union field names per id across all three legacy arrays — this handles
-  // the four dual-origin merges (recent-posts, custom-html, ai-usage,
-  // recent-comments) automatically.
-  const legacyFields = new Map();
-  for (const entry of [
-    ...BUILTIN_SECTIONS,
-    ...BUILTIN_WIDGETS,
-    ...BUILTIN_BLOG_POST_WIDGETS,
-  ]) {
-    const fields = legacyFields.get(entry.id) ?? new Set();
-    for (const name of Object.keys(entry.configSchema ?? {})) fields.add(name);
-    legacyFields.set(entry.id, fields);
-  }
-  for (const [id, fields] of legacyFields) {
-    if (MIGRATED_PLUGIN_IDS.has(id)) continue; // plugin-owned now (Phase 7d)
-    const catalogEntry = BUILTIN_BLOCKS.find((e) => e.id === id);
-    assert.ok(catalogEntry, `no catalog entry for legacy id "${id}"`);
-    for (const field of fields) {
-      assert.ok(
-        Object.hasOwn(catalogEntry.schema.properties, field),
-        `${id}: legacy configSchema field "${field}" dropped from catalog schema`,
-      );
-    }
-  }
-});
+// Phase 7d — "every legacy configSchema field survives into the catalog schema"
+// was removed with the legacy presets (the migration-completeness check it
+// performed is moot now that the migrated fields are plugin-owned).
 
 test("no schema uses required (legacy configs may omit anything; migration must not fail)", () => {
   for (const entry of BUILTIN_BLOCKS) {
