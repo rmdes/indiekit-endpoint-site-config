@@ -35,9 +35,11 @@ test("every built-in block entry passes the strict validBlockEntry gate", () => 
 
 test("catalog ids exactly cover the legacy built-in ids (drift guard, both directions)", () => {
   const legacyIds = new Set(
-    [...BUILTIN_SECTIONS, ...BUILTIN_WIDGETS, ...BUILTIN_BLOG_POST_WIDGETS].map(
-      (e) => e.id,
-    ),
+    [...BUILTIN_SECTIONS, ...BUILTIN_WIDGETS, ...BUILTIN_BLOG_POST_WIDGETS]
+      .map((e) => e.id)
+      // Phase 7d: the 7 migrated widgets are plugin-owned now; they remain in
+      // the legacy presets but were removed from BUILTIN_BLOCKS by design.
+      .filter((id) => !MIGRATED_PLUGIN_IDS.has(id)),
   );
   const catalogIds = new Set(BUILTIN_BLOCKS.map((e) => e.id));
   assert.deepEqual(
@@ -57,6 +59,22 @@ test("merged dual-origin entries carry both regions", () => {
   assert.deepEqual([...recentPosts.placement.regions].sort(), ["main", "sidebar"]);
 });
 
+// Phase 7d — these 7 widget blocks were REMOVED from BUILTIN_BLOCKS: their
+// owning plugins now declare them via get blocks() (7b/7c), so their catalog
+// entry is plugin-provided at runtime, not in this seed. They still appear in
+// the LEGACY presets (BUILTIN_WIDGETS / BUILTIN_BLOG_POST_WIDGETS), so the
+// "every legacy id has a catalog entry" check excludes them — they're owned
+// elsewhere now, not dropped.
+const MIGRATED_PLUGIN_IDS = new Set([
+  "github-repos",
+  "funkwhale",
+  "blogroll",
+  "feedland",
+  "webmentions",
+  "recent-comments",
+  "fediverse-follow",
+]);
+
 test("every legacy configSchema field survives into the catalog schema (no dropped fields)", () => {
   // Union field names per id across all three legacy arrays — this handles
   // the four dual-origin merges (recent-posts, custom-html, ai-usage,
@@ -72,6 +90,7 @@ test("every legacy configSchema field survives into the catalog schema (no dropp
     legacyFields.set(entry.id, fields);
   }
   for (const [id, fields] of legacyFields) {
+    if (MIGRATED_PLUGIN_IDS.has(id)) continue; // plugin-owned now (Phase 7d)
     const catalogEntry = BUILTIN_BLOCKS.find((e) => e.id === id);
     assert.ok(catalogEntry, `no catalog entry for legacy id "${id}"`);
     for (const field of fields) {
