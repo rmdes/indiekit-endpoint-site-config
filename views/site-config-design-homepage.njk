@@ -79,6 +79,25 @@
     <p class="sc-flash__note">{{ __("siteConfig.design.flash.undoUnavailable") }}</p>
     {% endif %}
   </div>
+  {% elif success == "restoredHistory" %}
+  {# The restored entry's structured label (month number + change noun) is
+     composed here from locale keys so the whimsical name localizes. #}
+  {% if historyMonth and historyNoun %}
+  {{ notificationBanner({
+    type: "success",
+    text: __("siteConfig.design.flash.restoredHistory", {
+      label: __("siteConfig.design.history.label", {
+        month: __("siteConfig.design.history.months." + historyMonth),
+        noun: __("siteConfig.design.history.nouns." + historyNoun)
+      })
+    })
+  }) }}
+  {% else %}
+  {{ notificationBanner({
+    type: "success",
+    text: __("siteConfig.design.flash.restoredHistoryPlain")
+  }) }}
+  {% endif %}
   {% elif success %}
   {{ notificationBanner({
     type: "success",
@@ -302,6 +321,32 @@
       {% endif %}
       {% endif %}
     </div>
+
+    {# Publish history (newest first): each entry archives the tree a publish
+       replaced. Restore writes it back as a DRAFT — the published tree stays
+       untouched until an explicit publish. Empty history → no section. #}
+    {% if history.length %}
+    {% call details({ classes: "sc-history", summary: __("siteConfig.design.history.title") }) %}
+      <ol class="sc-history__list">
+        {% for entry in history %}
+        <li class="sc-history__entry">
+          {% if entry.label %}
+          <span class="sc-history__label">{{ __("siteConfig.design.history.label", {
+            month: __("siteConfig.design.history.months." + entry.label.month),
+            noun: __("siteConfig.design.history.nouns." + entry.label.noun)
+          }) }}</span>
+          {% endif %}
+          {% if entry.archivedAt %}
+          <time datetime="{{ entry.archivedAt }}">{{ entry.archivedAt | date("PPp") }}</time>
+          {% endif %}
+          <form method="post" action="{{ surfaceBase }}/history/{{ loop.index0 }}/restore" class="sc-mini-form">
+            <button class="button button--small button--secondary">{{ __("siteConfig.design.history.restore") }}</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ol>
+    {% endcall %}
+    {% endif %}
   </div>
 
   {# Right pane: Structural (Phase 4 skeleton, default) | Preview (Phase 5

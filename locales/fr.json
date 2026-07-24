@@ -323,8 +323,36 @@
         "removed": "« {{label}} » supprimé.",
         "deleted": "Page supprimée.",
         "sidebarMoved": "{{count}} bloc(s) de la barre latérale déplacé(s) vers la colonne principale.",
+        "restoredHistory": "« {{{label}}} » restauré comme brouillon — vérifiez puis publiez.",
+        "restoredHistoryPlain": "Version précédente restaurée comme brouillon — vérifiez puis publiez.",
         "undoUnavailable": "L'annulation n'est pas disponible pour cette suppression.",
         "dismiss": "Fermer"
+      },
+      "history": {
+        "title": "Historique",
+        "restore": "Restaurer comme brouillon",
+        "label": "{{{noun}}} de {{{month}}}",
+        "months": {
+          "1": "janvier",
+          "2": "février",
+          "3": "mars",
+          "4": "avril",
+          "5": "mai",
+          "6": "juin",
+          "7": "juillet",
+          "8": "août",
+          "9": "septembre",
+          "10": "octobre",
+          "11": "novembre",
+          "12": "décembre"
+        },
+        "nouns": {
+          "addition": "L'ajout",
+          "trim": "L'élagage",
+          "rearrangement": "Le réagencement",
+          "tune-up": "La retouche",
+          "remodel": "La refonte"
+        }
       },
       "errors": {
         "page-title-required": "Une page doit avoir un titre.",
@@ -342,6 +370,7 @@
         "not-found": "Ce bloc n'existe plus — la page est peut-être obsolète.",
         "invalid-index": "Position invalide.",
         "undo-invalid": "Ce lien d'annulation n'est plus valide.",
+        "history-invalid": "Cette entrée d'historique n'existe plus.",
         "invalid-arrangement": "Disposition inconnue.",
         "unknown-recipe": "Modèle inconnu.",
         "publish-invalid": "Le brouillon n'a pas passé la validation et n'a pas été publié.",

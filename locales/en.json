@@ -323,8 +323,36 @@
         "removed": "“{{label}}” removed.",
         "deleted": "Page deleted.",
         "sidebarMoved": "{{count}} sidebar block(s) moved to the main column.",
+        "restoredHistory": "Restored “{{{label}}}” as a draft — review and publish.",
+        "restoredHistoryPlain": "Restored a previous version as a draft — review and publish.",
         "undoUnavailable": "Undo isn't available for this removal.",
         "dismiss": "Dismiss"
+      },
+      "history": {
+        "title": "History",
+        "restore": "Restore as draft",
+        "label": "The {{{month}}} {{{noun}}}",
+        "months": {
+          "1": "January",
+          "2": "February",
+          "3": "March",
+          "4": "April",
+          "5": "May",
+          "6": "June",
+          "7": "July",
+          "8": "August",
+          "9": "September",
+          "10": "October",
+          "11": "November",
+          "12": "December"
+        },
+        "nouns": {
+          "addition": "addition",
+          "trim": "trim",
+          "rearrangement": "rearrangement",
+          "tune-up": "tune-up",
+          "remodel": "remodel"
+        }
       },
       "errors": {
         "page-title-required": "A page needs a title.",
@@ -342,6 +370,7 @@
         "not-found": "That block no longer exists — the page may be out of date.",
         "invalid-index": "Invalid position.",
         "undo-invalid": "This undo link is no longer valid.",
+        "history-invalid": "That history entry no longer exists.",
         "invalid-arrangement": "Unknown arrangement.",
         "unknown-recipe": "Unknown recipe.",
         "publish-invalid": "The draft failed validation and was not published.",

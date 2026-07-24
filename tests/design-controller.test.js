@@ -591,6 +591,28 @@ test("readFlash surfaces query flags as success/error vars", () => {
   assert.deepEqual(readFlash({}), {});
 });
 
+test("readFlash rejects non-allowlisted values for key-concatenated params (reflected-XSS regression)", () => {
+  // error/hm/hn are concatenated into i18n LOOKUP KEYS by the view; a miss
+  // makes i18n echo the full key (payload included) through unescaping
+  // {{{…}}} into the |safe banner. These payloads must never survive.
+  const payload = '<img src=x onerror=alert(1)>';
+  assert.equal(readFlash({ error: payload }).error, undefined);
+  assert.equal(readFlash({ error: "Not-A-Key!" }).error, undefined);
+  assert.equal(readFlash({ error: "a".repeat(65) }).error, undefined);
+  assert.equal(readFlash({ hm: payload }).historyMonth, undefined);
+  assert.equal(readFlash({ hm: "0" }).historyMonth, undefined);
+  assert.equal(readFlash({ hm: "13" }).historyMonth, undefined);
+  assert.equal(readFlash({ hn: payload }).historyNoun, undefined);
+  assert.equal(readFlash({ hn: "not-a-noun" }).historyNoun, undefined);
+  assert.equal(readFlash({ sidebarMoved: payload }).sidebarMoved, undefined);
+  // …while every legitimate value still round-trips.
+  assert.equal(readFlash({ error: "history-invalid" }).error, "history-invalid");
+  assert.equal(readFlash({ hm: "7" }).historyMonth, "7");
+  assert.equal(readFlash({ hm: "12" }).historyMonth, "12");
+  assert.equal(readFlash({ hn: "tune-up" }).historyNoun, "tune-up");
+  assert.equal(readFlash({ hn: "rearrangement" }).historyNoun, "rearrangement");
+});
+
 // ---- hub ----
 
 test("GET / renders the hub with homepage + listing + posttype live, pages disabled (6.4-T2)", async () => {
