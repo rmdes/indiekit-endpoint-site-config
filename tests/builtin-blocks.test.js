@@ -48,6 +48,10 @@ test("merged dual-origin entries carry both regions", () => {
 // performed is moot now that the migrated fields are plugin-owned).
 
 test("no schema uses required (legacy configs may omit anything; migration must not fail)", () => {
+  // embed is exempt: it shipped AFTER the v3 → v4 migration, so no legacy
+  // config can exist to fail migration — and its url host allowlist is a
+  // security gate that required must back up.
+  const NO_LEGACY_IDS = new Set(["embed"]);
   for (const entry of BUILTIN_BLOCKS) {
     // Checked BEFORE the no-required assertion so it actually runs if a
     // required array ever appears: a required property must never also
@@ -61,6 +65,7 @@ test("no schema uses required (legacy configs may omit anything; migration must 
         `${entry.id}: "${name}" combines required with default`,
       );
     }
+    if (NO_LEGACY_IDS.has(entry.id)) continue;
     assert.ok(
       !("required" in entry.schema),
       `${entry.id}: schema must not use required`,
@@ -128,6 +133,28 @@ test("table conformance spot checks", () => {
 
   const socialActivity = byId.get("social-activity");
   assert.deepEqual(socialActivity.data, { source: "api" });
+
+  const embed = byId.get("embed");
+  assert.equal(embed.multiple, true);
+  assert.deepEqual([...embed.placement.regions], ["main", "sidebar", "footer"]);
+  assert.equal(embed.render.renderer, "embed");
+  assert.deepEqual([...embed.schema.required], ["url"]);
+  assert.equal(embed.schema.properties.url.maxLength, 500);
+  assert.ok(
+    embed.schema.properties.url["x-allowed-url-hosts"].includes("youtube.com"),
+  );
+  // Allowlist enforced through the real schema, not just declared.
+  assert.equal(
+    validateConfigAgainstSchema({ url: "https://evil.com/x" }, embed.schema).ok,
+    false,
+  );
+  assert.equal(
+    validateConfigAgainstSchema(
+      { url: "https://www.youtube.com/watch?v=x" },
+      embed.schema,
+    ).ok,
+    true,
+  );
 });
 
 /**

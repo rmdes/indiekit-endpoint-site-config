@@ -405,6 +405,92 @@ test("truthy non-object config produces a warning instead of silent ok", () => {
   assert.equal(validateConfigAgainstSchema(undefined, schema).warnings.length, 0);
 });
 
+// --- x-allowed-url-hosts (embed block, 2026-07-24) ---
+
+const URL_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    url: {
+      type: "string",
+      maxLength: 500,
+      "x-allowed-url-hosts": ["youtube.com", "youtu.be", "vimeo.com"],
+    },
+  },
+  required: ["url"],
+};
+
+test("x-allowed-url-hosts: valid declaration on a string property is accepted", () => {
+  assert.deepEqual(validateSchemaDefinition(URL_SCHEMA), { ok: true, errors: [] });
+});
+
+test("x-allowed-url-hosts: rejected on non-string properties", () => {
+  const result = validateSchemaDefinition({
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      x: { type: "integer", "x-allowed-url-hosts": ["youtube.com"] },
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join(" "), /x-allowed-url-hosts/);
+});
+
+test("x-allowed-url-hosts: empty array and malformed host entries rejected", () => {
+  for (const bad of [
+    [],
+    "youtube.com",
+    [""],
+    [42],
+    ["YouTube.com"],
+    ["https://youtube.com"],
+    ["youtube.com/embed"],
+  ]) {
+    const result = validateSchemaDefinition({
+      type: "object",
+      additionalProperties: false,
+      properties: { x: { type: "string", "x-allowed-url-hosts": bad } },
+    });
+    assert.equal(result.ok, false, `expected ${JSON.stringify(bad)} to be rejected`);
+    assert.match(result.errors.join(" "), /x-allowed-url-hosts/);
+  }
+});
+
+test("x-allowed-url-hosts enforcement: https URL on an allowed host (or subdomain) passes", () => {
+  for (const url of [
+    "https://www.youtube.com/watch?v=x",
+    "https://youtube.com/watch?v=x",
+    "https://youtu.be/x",
+    "https://player.vimeo.com/video/1",
+  ]) {
+    const result = validateConfigAgainstSchema({ url }, URL_SCHEMA);
+    assert.equal(result.ok, true, `${url}: ${result.errors.join("; ")}`);
+  }
+});
+
+test("x-allowed-url-hosts enforcement: non-https, unparseable, and off-list hosts rejected", () => {
+  for (const url of [
+    "http://www.youtube.com/watch?v=x",
+    "https://evil.com/watch?v=x",
+    "https://evilyoutube.com/watch?v=x", // suffix match must be dot-anchored
+    "javascript:alert(1)",
+    "not a url",
+  ]) {
+    const result = validateConfigAgainstSchema({ url }, URL_SCHEMA);
+    assert.equal(result.ok, false, `expected ${url} to be rejected`);
+    assert.match(result.errors.join(" "), /"url"/);
+  }
+});
+
+test("x-allowed-url-hosts enforcement: empty string passes (required-ness is the required array's job)", () => {
+  const schema = { ...URL_SCHEMA, required: [] };
+  assert.equal(validateConfigAgainstSchema({ url: "" }, schema).ok, true);
+  // absent value: only the required array complains, never the host check
+  const missing = validateConfigAgainstSchema({}, URL_SCHEMA);
+  assert.equal(missing.ok, false);
+  assert.deepEqual(missing.errors, ['missing required "url"']);
+});
+
 test("boolean false and empty string are valid config values (no falsy traps)", () => {
   const result = validateConfigAgainstSchema(
     { maxItems: 5, enabled: false, title: "" },

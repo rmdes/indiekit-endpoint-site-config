@@ -37,11 +37,12 @@ test("legacy entries keep the legacy flag in output", () => {
   assert.equal(json.blocks[0].version, 0);
 });
 
-test("the real BUILTIN_BLOCKS array round-trips as valid JSON with 15 blocks", () => {
+test("the real BUILTIN_BLOCKS array round-trips as valid JSON with 16 blocks", () => {
   // Phase 7d removed the 7 plugin-owned widget seeds (now declared by their
-  // plugins via get blocks()); 22 → 15 theme-level built-ins remain.
+  // plugins via get blocks()); 22 → 15 theme-level built-ins remained, then
+  // the long-deferred embed block landed → 16.
   const json = JSON.parse(renderBlockCatalog(BUILTIN_BLOCKS));
-  assert.equal(json.blocks.length, 15);
+  assert.equal(json.blocks.length, 16);
   // Built-ins have no sourcePlugin — always available.
   assert.ok(json.blocks.every((b) => b.requiresPlugin === null));
   // Sorted by id.
