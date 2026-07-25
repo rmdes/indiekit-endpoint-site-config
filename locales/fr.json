@@ -402,6 +402,8 @@
         "failed": "La construction a échoué — votre site en ligne est inchangé.",
         "retryHint": "Republiez pour réessayer.",
         "stuck": "C'est plus long que d'habitude. Republier réécrit la page d'accueil et débloque généralement une construction bloquée.",
+        "notStarted": "La reconstruction n'a pas démarré — le générateur du site a peut-être manqué la publication. Publier à nouveau corrige généralement le problème.",
+        "republish": "Publier à nouveau",
         "unknown": "Statut de construction indisponible — votre site en ligne est inchangé.",
         "reloadNote": "Rechargez cette page pour actualiser le statut de construction."
       }

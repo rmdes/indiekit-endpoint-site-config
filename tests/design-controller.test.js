@@ -18,6 +18,7 @@ import {
   findNode,
   readFlash,
   isStuckBuild,
+  isNeverStartedBuild,
   mergeBuildStatus,
   buildStatusHandler,
 } from "../lib/controllers/design.js";
@@ -2395,6 +2396,121 @@ test("GET /homepage without ?published does not read the status file", async () 
   const res = await callRoute(router, "get", "/homepage");
   assert.equal(calls, 0);
   assert.equal(res.rendered.locals.buildStatus, undefined);
+});
+
+// ---- never-started detection (missed-publish escape hatch) ----
+
+// A terminal status whose finishedAt predates the publish epoch — the state
+// the file is left in when the Eleventy watcher misses the publish entirely.
+const staleOk = () => ({
+  state: "ok",
+  finishedAt: new Date(T0 - 60_000).toISOString(),
+  lastOkDurationSeconds: 27,
+});
+
+test("isNeverStartedBuild: stale terminal states past 90s → true (the watcher missed the publish)", () => {
+  const nowMs = T0 + 91_000;
+  assert.equal(isNeverStartedBuild(staleOk(), T0, nowMs), true);
+  assert.equal(
+    isNeverStartedBuild(
+      { state: "failed", finishedAt: new Date(T0 - 60_000).toISOString() },
+      T0,
+      nowMs,
+    ),
+    true,
+  );
+  assert.equal(isNeverStartedBuild({ state: "unknown" }, T0, nowMs), true);
+  assert.equal(isNeverStartedBuild(null, T0, nowMs), true); // absent file counts
+});
+
+test("isNeverStartedBuild: building is NEVER never-started (stuck detection owns overdue builds)", () => {
+  assert.equal(isNeverStartedBuild(buildingStatus(), T0, T0 + 999_000), false);
+  assert.equal(isNeverStartedBuild({ state: "building" }, T0, T0 + 999_000), false);
+});
+
+test("isNeverStartedBuild: a fresh terminal state (finishedAt > epoch) means the build RAN", () => {
+  const freshOk = { state: "ok", finishedAt: new Date(T0 + 30_000).toISOString() };
+  assert.equal(isNeverStartedBuild(freshOk, T0, T0 + 999_000), false);
+  const freshFailed = { state: "failed", finishedAt: new Date(T0 + 30_000).toISOString() };
+  assert.equal(isNeverStartedBuild(freshFailed, T0, T0 + 999_000), false);
+});
+
+test("isNeverStartedBuild: at or under the 90s threshold → false (strictly greater)", () => {
+  assert.equal(isNeverStartedBuild(staleOk(), T0, T0 + 89_000), false);
+  assert.equal(isNeverStartedBuild(staleOk(), T0, T0 + 90_000), false); // boundary
+  assert.equal(isNeverStartedBuild(staleOk(), T0, T0 + 90_001), true);
+  assert.equal(isNeverStartedBuild(null, T0, T0 + 89_000), false);
+});
+
+test("isNeverStartedBuild: garbage finishedAt on a terminal state counts as stale", () => {
+  for (const finishedAt of ["garbage", 12_345, null, undefined]) {
+    assert.equal(
+      isNeverStartedBuild({ state: "ok", finishedAt }, T0, T0 + 91_000),
+      true,
+      String(finishedAt),
+    );
+  }
+});
+
+test("isNeverStartedBuild: invalid publish epochs never flag (legacy ?published=1, garbage, strings)", () => {
+  for (const epoch of [1, 0, -T0, 999_999_999_999, Number.NaN, undefined, null, String(T0)]) {
+    assert.equal(isNeverStartedBuild(null, epoch, T0 + 999_000), false, String(epoch));
+  }
+  // the 1e12 plausibility floor is inclusive
+  assert.equal(isNeverStartedBuild(null, 1e12, 1e12 + 91_000), true);
+});
+
+test("GET /homepage?published=<epoch> past 90s with a STALE ok → buildNotStarted true in locals", async () => {
+  const router = makeRouter(makeIndiekit(), {
+    readStatus: async () => staleOk(),
+    now: atT0(120_000),
+  });
+  const res = await callRoute(router, "get", `/homepage?published=${T0}`);
+  assert.equal(res.rendered.locals.buildNotStarted, true);
+  // the merged status object itself is unchanged — notStarted rides alongside
+  assert.deepEqual(res.rendered.locals.buildStatus, { ...staleOk(), stuck: false });
+});
+
+test("GET /homepage?published=<epoch> with a FRESH terminal status → buildNotStarted false", async () => {
+  const router = makeRouter(makeIndiekit(), {
+    readStatus: async () => ({ state: "ok", finishedAt: new Date(T0 + 30_000).toISOString() }),
+    now: atT0(120_000),
+  });
+  const res = await callRoute(router, "get", `/homepage?published=${T0}`);
+  assert.equal(res.rendered.locals.buildNotStarted, false);
+});
+
+test("GET /homepage?published=<epoch> under the 90s threshold → buildNotStarted false", async () => {
+  const router = makeRouter(makeIndiekit(), {
+    readStatus: async () => staleOk(),
+    now: atT0(60_000),
+  });
+  const res = await callRoute(router, "get", `/homepage?published=${T0}`);
+  assert.equal(res.rendered.locals.buildNotStarted, false);
+});
+
+test("GET /homepage?published=<epoch> with no status file past 90s → buildNotStarted true (unknown counts)", async () => {
+  const router = makeRouter(makeIndiekit(), {
+    readStatus: async () => null,
+    now: atT0(120_000),
+  });
+  const res = await callRoute(router, "get", `/homepage?published=${T0}`);
+  assert.equal(res.rendered.locals.buildNotStarted, true);
+  assert.deepEqual(res.rendered.locals.buildStatus, { state: "unknown", stuck: false });
+});
+
+test("GET /homepage?published=<invalid> renders the strip but never computes notStarted (epoch shape gate)", async () => {
+  // SECURITY-adjacent: the raw query value must pass /^\d{13,16}$/ before any
+  // numeric use; legacy ?published=1 and garbage keep the pre-fix behavior.
+  for (const published of ["1", "abc", "123", "1".repeat(17), `${T0}x`]) {
+    const router = makeRouter(makeIndiekit(), {
+      readStatus: async () => staleOk(),
+      now: atT0(999_000),
+    });
+    const res = await callRoute(router, "get", `/homepage?published=${published}`);
+    assert.equal(res.rendered.locals.success, "published", published); // strip still renders
+    assert.equal(res.rendered.locals.buildNotStarted, false, published);
+  }
 });
 
 // ---- mode ----

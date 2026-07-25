@@ -48,6 +48,7 @@
   buildFailed: __("siteConfig.design.buildStatus.failed"),
   buildRetryHint: __("siteConfig.design.buildStatus.retryHint"),
   buildStuck: __("siteConfig.design.buildStatus.stuck"),
+  buildNotStarted: __("siteConfig.design.buildStatus.notStarted"),
   buildUnknown: __("siteConfig.design.buildStatus.unknown")
 } %}
 <script type="application/json" id="sc-editor-i18n">{{ editorI18n | dump | replace("</", "<\\/") | safe }}</script>
@@ -306,6 +307,8 @@
           {%- else %}
           {{ __("siteConfig.design.buildStatus.buildingUnknown") }}
           {%- endif %}
+          {%- elif buildNotStarted %}
+          {{ __("siteConfig.design.buildStatus.notStarted") }}
           {%- elif buildStatus.state == "ok" and buildStatus.finishedAt %}
           <time datetime="{{ buildStatus.finishedAt }}">{{ __("siteConfig.design.buildStatus.live", { time: buildStatus.finishedAt | date("PPp") }) }}</time>
           {%- elif buildStatus.state == "failed" %}
@@ -316,6 +319,15 @@
           {{ __("siteConfig.design.buildStatus.unknown") }}
           {%- endif %}
         </p>
+        {# Missed-publish escape hatch: a plain POST to the SAME publish route
+           the draft bar uses (republishing with no draft re-promotes the
+           stored tree), so it works end-to-end without JS. Server-rendered
+           visible on the no-JS notStarted/stuck branches; otherwise hidden
+           (the sc-zone__add convention) until editor.js reveals it when its
+           polling hits the stuck or never-started state. #}
+        <form method="post" action="{{ surfaceBase }}/publish" class="sc-mini-form sc-build-status__republish" data-sc-build-republish{% if not (buildNotStarted or buildStatus.stuck) %} hidden{% endif %}>
+          <button class="button button--small button--secondary">{{ __("siteConfig.design.buildStatus.republish") }}</button>
+        </form>
         <noscript><p class="sc-build-status__note">{{ __("siteConfig.design.buildStatus.reloadNote") }}</p></noscript>
       </div>
       {% endif %}

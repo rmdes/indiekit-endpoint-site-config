@@ -402,6 +402,8 @@
         "failed": "Build failed — your live site is unchanged.",
         "retryHint": "Republish to retry.",
         "stuck": "This is taking longer than usual. Publishing again rewrites the homepage and usually unblocks a stalled build.",
+        "notStarted": "The rebuild didn't start — the site generator may have missed the publish. Publishing again usually fixes it.",
+        "republish": "Publish again",
         "unknown": "Build status unavailable — your live site is unchanged.",
         "reloadNote": "Reload this page to update the build status."
       }

@@ -339,6 +339,12 @@ function initPreviewPane(i18n) {
  *   one: building copy + poll.
  * - building → building copy (stuck variant keeps polling too) + poll.
  * - unknown → building copy + poll (a build is known to be coming).
+ * - never-started: past 90s after the publish with the status STILL stale
+ *   (stale ok, stale failed, unknown — the watcher missed the publish
+ *   entirely, no build ever started), the generic building copy would show
+ *   forever. Render the notStarted copy, reveal the republish form, KEEP
+ *   polling — render is stateless per poll, so a late "building" flip
+ *   resumes normal rendering (and re-hides the form) automatically.
  *
  * A legacy/garbage published value (e.g. "1") falls back to probe-first
  * semantics with epoch 0: any parseable terminal status renders as-is and
@@ -352,6 +358,11 @@ const BUILD_ERROR_EXCERPT_CHARS = 140;
 // Plausibility floor for the URL epoch: anything ≤ this (legacy "1",
 // garbage, tampered values) is not a publish time. 1e12 ms ≈ 2001-09-09.
 const MIN_PUBLISH_EPOCH_MS = 1e12;
+// Never-started grace window (mirrors isNeverStartedBuild in
+// lib/controllers/design.js): the watcher's debounce + a fast incremental fit
+// well inside 90s, so a status still stale past it means the publish was
+// missed, not merely slow.
+const NOT_STARTED_AFTER_MS = 90_000;
 
 function initBuildStatus(i18n) {
   const strip = document.querySelector("[data-sc-build-status]");
@@ -366,9 +377,23 @@ function initBuildStatus(i18n) {
   // The moment finishedAt must beat for a status to count as THIS
   // publish's build. Real epoch from the redirect URL, or 0 (legacy
   // probe-first semantics — any parseable terminal status wins).
-  const raw = Number(new URLSearchParams(window.location.search).get("published"));
+  // Strict digit-only shape, mirroring the server's /^\d{13,16}$/ gate in
+  // design.js — Number() alone also accepts "1e13"/hex, which would make the
+  // JS strip disagree with the no-JS render on crafted URLs.
+  const rawParam = new URLSearchParams(window.location.search).get("published");
+  const raw = /^\d{13,16}$/.test(rawParam || "") ? Number(rawParam) : Number.NaN;
   const publishedAt =
     Number.isFinite(raw) && raw > MIN_PUBLISH_EPOCH_MS ? raw : 0;
+
+  // Missed-publish escape hatch: the server-rendered republish form (visible
+  // only on the no-JS notStarted/stuck branches; hidden otherwise). Toggled
+  // statelessly on every render like the copy itself.
+  const republish = strip.querySelector("[data-sc-build-republish]");
+  const setRepublish = (visible) => {
+    if (republish) republish.hidden = !visible;
+  };
+  const isNotStarted = () =>
+    publishedAt > 0 && Date.now() - publishedAt > NOT_STARTED_AFTER_MS;
 
   let timer = null;
   let ended = false;
@@ -398,13 +423,18 @@ function initBuildStatus(i18n) {
     const finishedAt =
       typeof status?.finishedAt === "string" ? Date.parse(status.finishedAt) : Number.NaN;
     if (state === "building") {
-      if (status.stuck) return setText(i18n.buildStuck || ""); // keeps polling
+      if (status.stuck) {
+        setRepublish(true); // same escape hatch as never-started
+        return setText(i18n.buildStuck || ""); // keeps polling
+      }
+      setRepublish(false);
       return renderBuilding(status);
     }
     if (state === "ok") {
       if (!Number.isNaN(finishedAt) && finishedAt > publishedAt) {
         // Terminal: the post-publish build landed. (Client-side display
         // only — templates never see this Date.)
+        setRepublish(false);
         setText(
           (i18n.buildLive || "").replace(
             "{{time}}",
@@ -415,19 +445,33 @@ function initBuildStatus(i18n) {
         return;
       }
       // Stale ok from before the publish (or finishedAt dropped): the
-      // rebuild hasn't been observed yet — show the building copy (the
-      // stale ok carries lastOkDurationSeconds, so the ~Xs estimate is
-      // usually available) and keep waiting.
+      // rebuild hasn't been observed yet. Past the never-started window
+      // this stale ok means the watcher missed the publish — offer the
+      // republish and keep polling; before it, show the building copy
+      // (the stale ok carries lastOkDurationSeconds, so the ~Xs estimate
+      // is usually available) and keep waiting.
+      if (isNotStarted()) {
+        setRepublish(true);
+        return setText(i18n.buildNotStarted || "");
+      }
+      setRepublish(false);
       return renderBuilding(status);
     }
     if (state === "failed") {
       // With a real epoch, only a POST-publish failure is terminal. A
       // stale failed (finishedAt ≤ epoch, or unparseable) means the LAST
       // build failed before this publish — the publish just triggered a
-      // new build, so keep the building copy and poll on.
+      // new build, so keep the building copy and poll on (never-started
+      // applies here too once past the window).
       if (publishedAt > 0 && !(finishedAt > publishedAt)) {
+        if (isNotStarted()) {
+          setRepublish(true);
+          return setText(i18n.buildNotStarted || "");
+        }
+        setRepublish(false);
         return renderBuilding(status);
       }
+      setRepublish(false);
       const parts = [i18n.buildFailed || ""];
       if (typeof status.error === "string" && status.error !== "") {
         parts.push(status.error.slice(0, BUILD_ERROR_EXCERPT_CHARS));
@@ -440,7 +484,13 @@ function initBuildStatus(i18n) {
     // unknown — or any unrecognized/garbage state. With a real epoch a
     // build is known to be coming, so show the building copy; in legacy
     // probe mode keep the neutral copy. Either way keep polling (the
-    // writer may catch up).
+    // writer may catch up) — past the never-started window the missing
+    // status means the publish was missed.
+    if (isNotStarted()) {
+      setRepublish(true);
+      return setText(i18n.buildNotStarted || "");
+    }
+    setRepublish(false);
     setText(publishedAt > 0 ? i18n.buildBuildingUnknown || "" : i18n.buildUnknown || "");
   };
 
