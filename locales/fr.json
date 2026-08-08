@@ -406,6 +406,15 @@
         "republish": "Publier à nouveau",
         "unknown": "Statut de construction indisponible — votre site en ligne est inchangé.",
         "reloadNote": "Rechargez cette page pour actualiser le statut de construction."
+      },
+      "tellReaders": {
+        "prompt": "Vous avez réorganisé votre site — envie d'en parler à vos lecteurs ?",
+        "intro": "J'ai rafraîchi {{{surface}}} sur mon site",
+        "added": "ajouté {{{list}}}",
+        "removed": "retiré {{{list}}}",
+        "rearranged": "réorganisé l'ensemble",
+        "noteName": "Mise à jour du site",
+        "cta": "Rédiger une note"
       }
     },
     "homepage": {
