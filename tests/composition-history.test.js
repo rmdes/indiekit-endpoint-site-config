@@ -3,8 +3,6 @@ import assert from "node:assert/strict";
 import {
   HISTORY_LIMIT,
   historyLabel,
-  describeChanges,
-  matchesPublishEpoch,
 } from "../lib/storage/composition-history.js";
 import {
   publishDraft,
@@ -348,58 +346,4 @@ test("restore works on the slug-scoped pages surface (per-page history)", async 
   assert.equal(flag(res, "restoredHistory"), "1");
   assert.ok(res.redirected.url.startsWith("/site-config/design/pages/about?"));
   assert.deepEqual(ik._db.store.get("page:about").draftTree, validTree({ maxItems: 8 }));
-});
-
-// ---- describeChanges (pure reader-visible diff, spec §5.3 tell-your-readers) ----
-
-test("describeChanges: identical trees → null", () => {
-  assert.equal(describeChanges(validTree(), validTree()), null);
-});
-
-test("describeChanges: config-only change is not reader-visible → null", () => {
-  const prev = treeWith([section("b_1", "recent-posts", { maxItems: 10 })]);
-  const next = treeWith([section("b_1", "recent-posts", { maxItems: 5 })]);
-  assert.equal(describeChanges(prev, next), null);
-});
-
-test("describeChanges: added + removed report block TYPES", () => {
-  const prev = treeWith([section("b_1", "recent-posts"), section("b_2", "custom-html")]);
-  const next = treeWith([section("b_1", "recent-posts"), section("b_3", "donation-campaign")]);
-  assert.deepEqual(describeChanges(prev, next), {
-    added: ["donation-campaign"],
-    removed: ["custom-html"],
-    rearranged: false,
-  });
-});
-
-test("describeChanges: reorder of the same blocks → rearranged only", () => {
-  const a = section("b_1", "recent-posts");
-  const b = section("b_2", "custom-html");
-  const result = describeChanges(treeWith([a, b]), treeWith([b, a]));
-  assert.deepEqual(result, { added: [], removed: [], rearranged: true });
-});
-
-test("describeChanges: zone move (container path change) → rearranged", () => {
-  const s = section("b_1", "recent-posts");
-  const prev = container("c_root", "root", [container("c_main", "main", [s])]);
-  const next = container("c_root", "root", [
-    container("c_main", "main", []),
-    container("c_side", "complementary", [s]),
-  ]);
-  assert.deepEqual(describeChanges(prev, next), { added: [], removed: [], rearranged: true });
-});
-
-// ---- matchesPublishEpoch ----
-
-test("matchesPublishEpoch: same-request timestamps match within tolerance", () => {
-  const epoch = Date.parse(NOW);
-  assert.equal(matchesPublishEpoch(NOW, epoch), true);
-  assert.equal(matchesPublishEpoch(NOW, epoch + 59_000), true);
-  assert.equal(matchesPublishEpoch(NOW, epoch + 61_000), false);
-});
-
-test("matchesPublishEpoch: garbage inputs never match", () => {
-  assert.equal(matchesPublishEpoch(undefined, Date.parse(NOW)), false);
-  assert.equal(matchesPublishEpoch("not-a-date", Date.parse(NOW)), false);
-  assert.equal(matchesPublishEpoch(NOW, Number.NaN), false);
 });

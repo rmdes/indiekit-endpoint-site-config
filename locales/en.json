@@ -406,15 +406,6 @@
         "republish": "Publish again",
         "unknown": "Build status unavailable — your live site is unchanged.",
         "reloadNote": "Reload this page to update the build status."
-      },
-      "tellReaders": {
-        "prompt": "You rearranged your site — want to tell your readers?",
-        "intro": "I refreshed the {{{surface}}} on my site",
-        "added": "added {{{list}}}",
-        "removed": "removed {{{list}}}",
-        "rearranged": "moved things around",
-        "noteName": "Site update",
-        "cta": "Draft a note"
       }
     },
     "homepage": {

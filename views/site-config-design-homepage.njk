@@ -330,24 +330,6 @@
         </form>
         <noscript><p class="sc-build-status__note">{{ __("siteConfig.design.buildStatus.reloadNote") }}</p></noscript>
       </div>
-      {# "Tell your readers?" (spec §5.3 wildcard): renders only when THIS
-         publish changed the tree (controller epoch-matches history[0]) and
-         the share endpoint is loaded. The draft is assembled here from
-         locale keys (en/fr parity) and handed to the share form via its
-         documented name/content/url prefill — the user reviews and posts
-         through the normal flow; nothing is posted automatically. #}
-      {% if tellReaders %}
-      {% set tellParts = [] %}
-      {% if tellReaders.added.length %}{% set tellParts = tellParts.concat([__("siteConfig.design.tellReaders.added", { list: tellReaders.added | join(", ") })]) %}{% endif %}
-      {% if tellReaders.removed.length %}{% set tellParts = tellParts.concat([__("siteConfig.design.tellReaders.removed", { list: tellReaders.removed | join(", ") })]) %}{% endif %}
-      {% if tellReaders.rearranged %}{% set tellParts = tellParts.concat([__("siteConfig.design.tellReaders.rearranged")]) %}{% endif %}
-      {% set tellDraft = __("siteConfig.design.tellReaders.intro", { surface: __(editorNounKey) }) + ": " + (tellParts | join("; ")) + " — " + tellReaders.siteUrl %}
-      <div class="sc-tell-readers">
-        <p class="sc-tell-readers__prompt">{{ __("siteConfig.design.tellReaders.prompt") }}</p>
-        <p class="sc-tell-readers__draft">{{ tellDraft }}</p>
-        <a class="button button--small button--secondary" href="{{ tellReaders.shareEndpoint }}?name={{ __("siteConfig.design.tellReaders.noteName") | urlencode }}&content={{ tellDraft | urlencode }}&url={{ tellReaders.siteUrl | urlencode }}">{{ __("siteConfig.design.tellReaders.cta") }}</a>
-      </div>
-      {% endif %}
       {% endif %}
       {% endif %}
     </div>
