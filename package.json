@@ -1,6 +1,6 @@
 {
   "name": "@rmdes/indiekit-endpoint-site-config",
-  "version": "1.0.0-beta.34",
+  "version": "1.0.0-beta.35",
   "type": "module",
   "description": "Site identity, branding, and navigation configuration for Indiekit",
   "main": "index.js",
@@ -35,5 +35,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "peerDependencies": {
+    "@indiekit/indiekit": ">=1.0.0-beta.25"
   }
 }
